@@ -1,0 +1,8 @@
+{
+  "name": "Remix Kaachu Phool",
+  "description": "Traditional Indian trick-taking card game with Ka-Chu-Fu-L trump rotation, intelligent bots, and multiplayer scorekeeper.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
