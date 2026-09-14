@@ -43,6 +43,7 @@ class RoomManager {
     companion object {
         private val localRooms = ConcurrentHashMap<String, MutableStateFlow<GameRoom?>>()
         private val roomFlows = ConcurrentHashMap<String, Flow<GameRoom?>>()
+        private val activeListeners = ConcurrentHashMap<String, ValueEventListener>()
 
         fun gameRoomToMap(room: GameRoom): Map<String, Any?> = mapOf(
             "roomId" to room.roomId,
@@ -164,7 +165,27 @@ class RoomManager {
     private suspend fun fetchRoomSnapshot(ref: DatabaseReference): DataSnapshot? {
         return try {
             withTimeoutOrNull(4000L) {
-                ref.get().await()
+                suspendCancellableCoroutine { continuation ->
+                    val listener = object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            if (continuation.isActive) {
+                                continuation.resume(snapshot)
+                            }
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            if (continuation.isActive) {
+                                continuation.resume(null)
+                            }
+                        }
+                    }
+                    ref.addListenerForSingleValueEvent(listener)
+                    continuation.invokeOnCancellation {
+                        try {
+                            ref.removeEventListener(listener)
+                        } catch (e: Exception) {}
+                    }
+                }
             }
         } catch (e: Exception) {
             Log.w("RoomManager", "Error fetching room snapshot: ${e.message}")
@@ -770,10 +791,19 @@ class RoomManager {
                 }
 
                 val ref = roomsRef?.child(cleanRoomId)
-                try {
-                    ref?.addValueEventListener(listener)
-                } catch (t: Throwable) {
-                    Log.w("RoomManager", "Error registering Firebase listener", t)
+                if (ref != null) {
+                    val oldListener = activeListeners.remove(cleanRoomId)
+                    if (oldListener != null) {
+                        try {
+                            ref.removeEventListener(oldListener)
+                        } catch (t: Throwable) {}
+                    }
+                    try {
+                        activeListeners[cleanRoomId] = listener
+                        ref.addValueEventListener(listener)
+                    } catch (t: Throwable) {
+                        Log.w("RoomManager", "Error registering Firebase listener", t)
+                    }
                 }
 
                 val scope = CoroutineScope(Dispatchers.Default)
@@ -784,9 +814,12 @@ class RoomManager {
                 }
 
                 awaitClose {
-                    try {
-                        ref?.removeEventListener(listener)
-                    } catch (t: Throwable) {}
+                    if (ref != null) {
+                        try {
+                            ref.removeEventListener(listener)
+                        } catch (t: Throwable) {}
+                        activeListeners.remove(cleanRoomId, listener)
+                    }
                     localJob.cancel()
                 }
             }.shareIn(

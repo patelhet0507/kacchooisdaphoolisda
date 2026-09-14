@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -60,28 +61,45 @@ fun TrickTableView(
     trickWinner: Player?,
     isTrickFinished: Boolean,
     onNextTrickClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    is3DMode: Boolean = false
 ) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isSmallScreen = configuration.screenHeightDp < 600
+    val tableMinHeight = 125.dp
+    val tableMaxHeight = 240.dp
+    val outerShapeRadius = if (isSmallScreen) 18.dp else 28.dp
+    val centerRing1Size = if (isSmallScreen) 80.dp else 150.dp
+    val centerRing2Size = if (isSmallScreen) 105.dp else 170.dp
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(290.dp)
-            .shadow(10.dp, RoundedCornerShape(28.dp), spotColor = GoldDark.copy(alpha = 0.5f))
-            .clip(RoundedCornerShape(28.dp))
+            .heightIn(min = tableMinHeight, max = tableMaxHeight)
+            .shadow(
+                elevation = if (is3DMode) 16.dp else 8.dp,
+                shape = RoundedCornerShape(outerShapeRadius),
+                spotColor = if (is3DMode) Color(0xFF5B3A1A) else GoldDark.copy(alpha = 0.5f)
+            )
+            .clip(RoundedCornerShape(outerShapeRadius))
             .background(
                 Brush.radialGradient(
-                    colors = listOf(
-                        EmeraldFelt,
-                        EmeraldDeep,
-                        Color(0xFF03140A)
-                    ),
+                    colors = if (is3DMode) {
+                        listOf(EmeraldFelt, EmeraldDeep, Color(0xFF021008))
+                    } else {
+                        listOf(EmeraldFelt, EmeraldDeep, Color(0xFF03140A))
+                    },
                     radius = 900f
                 )
             )
             .border(
-                2.5.dp,
-                Brush.linearGradient(listOf(GoldLight.copy(alpha = 0.6f), EmeraldBorder, GoldDark.copy(alpha = 0.7f))),
-                RoundedCornerShape(28.dp)
+                width = if (is3DMode) 4.dp else 2.5.dp,
+                brush = if (is3DMode) {
+                    Brush.linearGradient(listOf(Color(0xFFD4AF37), Color(0xFF8B5A2B), Color(0xFFD4AF37)))
+                } else {
+                    Brush.linearGradient(listOf(GoldLight.copy(alpha = 0.6f), EmeraldBorder, GoldDark.copy(alpha = 0.7f)))
+                },
+                shape = RoundedCornerShape(outerShapeRadius)
             )
             .testTag("trick_table_view"),
         contentAlignment = Alignment.Center
@@ -89,13 +107,13 @@ fun TrickTableView(
         // Decorative center felt emblem ring
         Box(
             modifier = Modifier
-                .size(150.dp)
+                .size(centerRing1Size)
                 .clip(CircleShape)
                 .border(1.5.dp, GoldLight.copy(alpha = 0.15f), CircleShape)
         )
         Box(
             modifier = Modifier
-                .size(170.dp)
+                .size(centerRing2Size)
                 .clip(CircleShape)
                 .border(1.dp, EmeraldBorder.copy(alpha = 0.20f), CircleShape)
         )
@@ -105,7 +123,7 @@ fun TrickTableView(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 10.dp)
+                    .padding(top = if (isSmallScreen) 4.dp else 10.dp)
                     .clip(RoundedCornerShape(14.dp))
                     .background(
                         Brush.horizontalGradient(
@@ -122,13 +140,13 @@ fun TrickTableView(
                     Text(
                         text = "Lead Suit:",
                         color = TextMuted,
-                        fontSize = 11.sp,
+                        fontSize = if (isSmallScreen) 9.sp else 11.sp,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
                         text = "${leadSuit.symbol} ${leadSuit.displayName} (${leadSuit.localName})",
                         color = if (leadSuit.isRed) Color(0xFFF87171) else GoldLight,
-                        fontSize = 11.sp,
+                        fontSize = if (isSmallScreen) 9.sp else 11.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -138,18 +156,18 @@ fun TrickTableView(
         if (playedCards.isEmpty()) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(if (isSmallScreen) 2.dp else 4.dp)
             ) {
                 Text(
                     text = "♠ ♣ ♥ ♦",
                     color = GoldLight.copy(alpha = 0.4f),
-                    fontSize = 18.sp,
-                    letterSpacing = 4.sp
+                    fontSize = if (isSmallScreen) 13.sp else 18.sp,
+                    letterSpacing = if (isSmallScreen) 2.sp else 4.sp
                 )
                 Text(
                     text = "Lead a card to start the trick",
                     color = TextMuted.copy(alpha = 0.8f),
-                    fontSize = 13.sp,
+                    fontSize = if (isSmallScreen) 10.sp else 13.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -158,7 +176,7 @@ fun TrickTableView(
             Row(
                 modifier = Modifier
                     .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(if (isSmallScreen) 6.dp else 10.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 playedCards.forEach { played ->
@@ -166,15 +184,15 @@ fun TrickTableView(
                     val isWinner = trickWinner?.id == played.player.id
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                        verticalArrangement = Arrangement.spacedBy(if (isSmallScreen) 2.dp else 4.dp)
                     ) {
                         PlayingCardView(
                             card = played.card,
                             isTrump = isTrump,
                             isPlayable = false,
                             isSelected = isWinner && isTrickFinished,
-                            width = 56.dp,
-                            height = 80.dp
+                            width = if (isSmallScreen) 38.dp else 56.dp,
+                            height = if (isSmallScreen) 54.dp else 80.dp
                         )
 
                         // Name of player who played this card
@@ -189,12 +207,12 @@ fun TrickTableView(
                                     if (isWinner && isTrickFinished) GoldLight else EmeraldBorder.copy(alpha = 0.6f),
                                     RoundedCornerShape(8.dp)
                                 )
-                                .padding(horizontal = 7.dp, vertical = 2.dp)
+                                .padding(horizontal = if (isSmallScreen) 4.dp else 7.dp, vertical = if (isSmallScreen) 1.dp else 2.dp)
                         ) {
                             Text(
                                 text = played.player.name,
                                 color = if (isWinner && isTrickFinished) EmeraldDeep else TextLight,
-                                fontSize = 10.sp,
+                                fontSize = if (isSmallScreen) 8.sp else 10.sp,
                                 fontWeight = if (isWinner && isTrickFinished) FontWeight.Black else FontWeight.SemiBold
                             )
                         }
@@ -212,7 +230,7 @@ fun TrickTableView(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 10.dp),
+                    .padding(bottom = if (isSmallScreen) 4.dp else 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Button(
@@ -233,13 +251,13 @@ fun TrickTableView(
                             imageVector = Icons.Default.EmojiEvents,
                             contentDescription = null,
                             tint = EmeraldDeep,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(if (isSmallScreen) 12.dp else 16.dp)
                         )
                         Text(
-                            text = "${trickWinner?.name} won the trick! Next Trick »",
+                            text = "${trickWinner?.name} won! Next Trick »",
                             color = EmeraldDeep,
                             fontWeight = FontWeight.Black,
-                            fontSize = 12.sp
+                            fontSize = if (isSmallScreen) 10.sp else 12.sp
                         )
                     }
                 }

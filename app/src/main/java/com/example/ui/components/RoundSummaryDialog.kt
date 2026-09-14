@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -54,13 +57,18 @@ fun RoundSummaryDialog(
     isLastRound: Boolean,
     onContinueClick: () -> Unit
 ) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val maxDialogHeight = (configuration.screenHeightDp * 0.88f).dp
+    val dialogWidthFraction = if (configuration.screenWidthDp > 600) 0.65f else 0.92f
+
     Dialog(
         onDismissRequest = { /* Modal */ },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
+                .fillMaxWidth(dialogWidthFraction)
+                .heightIn(max = maxDialogHeight)
                 .padding(12.dp),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = DarkSurface),
@@ -92,113 +100,122 @@ fun RoundSummaryDialog(
                     )
                 }
 
-                // Table Header
-                Row(
+                // Scrollable Body
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(DarkSurfaceElevated)
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                        .weight(1f, fill = false)
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(text = "Player", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.8f))
-                    Text(text = "Bid", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                    Text(text = "Won", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                    Text(text = "Round", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.Center)
-                    Text(text = "Total", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End)
-                }
-
-                // Table Rows
-                playerStates.forEach { state ->
-                    val isSuccess = state.bid != null && state.bid == state.tricksWon
+                    // Table Header
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSuccess) SuccessGreen.copy(alpha = 0.08f) else Color.Transparent)
-                            .border(
-                                1.dp,
-                                if (isSuccess) SuccessGreen.copy(alpha = 0.3f) else EmeraldBorder.copy(alpha = 0.2f),
-                                RoundedCornerShape(8.dp)
-                            )
+                            .background(DarkSurfaceElevated)
                             .padding(horizontal = 8.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Name
+                        Text(text = "Player", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.8f))
+                        Text(text = "Bid", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                        Text(text = "Won", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+                        Text(text = "Round", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.Center)
+                        Text(text = "Total", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End)
+                    }
+
+                    // Table Rows
+                    playerStates.forEach { state ->
+                        val isSuccess = state.bid != null && state.bid == state.tricksWon
                         Row(
-                            modifier = Modifier.weight(1.8f),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSuccess) SuccessGreen.copy(alpha = 0.08f) else Color.Transparent)
+                                .border(
+                                    1.dp,
+                                    if (isSuccess) SuccessGreen.copy(alpha = 0.3f) else EmeraldBorder.copy(alpha = 0.2f),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 8.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(text = state.player.avatarEmoji, fontSize = 12.sp)
+                            // Name
+                            Row(
+                                modifier = Modifier.weight(1.8f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(text = state.player.avatarEmoji, fontSize = 12.sp)
+                                Text(
+                                    text = state.player.name,
+                                    color = TextLight,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                            // Bid
                             Text(
-                                text = state.player.name,
+                                text = "${state.bid ?: "-"}",
                                 color = TextLight,
                                 fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center
+                            )
+
+                            // Won
+                            Text(
+                                text = "${state.tricksWon}",
+                                color = if (isSuccess) SuccessGreen else TextLight,
+                                fontSize = 12.sp,
+                                fontWeight = if (isSuccess) FontWeight.Bold else FontWeight.Normal,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center
+                            )
+
+                            // Round Score
+                            Text(
+                                text = if (state.roundScore > 0) "+${state.roundScore}" else "0",
+                                color = if (isSuccess) SuccessGreen else ErrorRed,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.weight(1.2f),
+                                textAlign = TextAlign.Center
+                            )
+
+                            // Total Score
+                            Text(
+                                text = "${state.totalScore}",
+                                color = GoldPrimary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Black,
+                                modifier = Modifier.weight(1.2f),
+                                textAlign = TextAlign.End
                             )
                         }
-
-                        // Bid
-                        Text(
-                            text = "${state.bid ?: "-"}",
-                            color = TextLight,
-                            fontSize = 12.sp,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Center
-                        )
-
-                        // Won
-                        Text(
-                            text = "${state.tricksWon}",
-                            color = if (isSuccess) SuccessGreen else TextLight,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSuccess) FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier.weight(1f),
-                            textAlign = TextAlign.Center
-                        )
-
-                        // Round Score
-                        Text(
-                            text = if (state.roundScore > 0) "+${state.roundScore}" else "0",
-                            color = if (isSuccess) SuccessGreen else ErrorRed,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1.2f),
-                            textAlign = TextAlign.Center
-                        )
-
-                        // Total Score
-                        Text(
-                            text = "${state.totalScore}",
-                            color = GoldPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Black,
-                            modifier = Modifier.weight(1.2f),
-                            textAlign = TextAlign.End
-                        )
                     }
-                }
 
-                // Next round preview
-                if (!isLastRound && nextTrumpSuit != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(DarkSurfaceElevated)
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Next Round Trump: ${nextTrumpSuit.displayName} ${nextTrumpSuit.symbol} (${nextTrumpSuit.mnemonic})",
-                            color = GoldLight,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                    // Next round preview
+                    if (!isLastRound && nextTrumpSuit != null) {
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(DarkSurfaceElevated)
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Next Round Trump: ${nextTrumpSuit.displayName} ${nextTrumpSuit.symbol} (${nextTrumpSuit.mnemonic})",
+                                color = GoldLight,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 }
 

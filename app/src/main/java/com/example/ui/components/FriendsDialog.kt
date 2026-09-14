@@ -8,6 +8,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -46,13 +48,18 @@ fun FriendsDialog(
     var friendInput by remember { mutableStateOf("") }
     val myPlayerCode = remember { "KACHU-${Math.abs(myPlayerName.hashCode() % 90000 + 10000)}" }
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val maxDialogHeight = (configuration.screenHeightDp * 0.88f).dp
+    val dialogWidthFraction = if (configuration.screenWidthDp > 600) 0.65f else 0.92f
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
+                .fillMaxWidth(dialogWidthFraction)
+                .heightIn(max = maxDialogHeight)
                 .padding(12.dp),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = DarkSurface),
@@ -96,140 +103,147 @@ fun FriendsDialog(
                     }
                 }
 
-                // Share My Code / Copy Button
-                OutlinedButton(
-                    onClick = {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("Friend Code", myPlayerCode)
-                        clipboard.setPrimaryClip(clip)
-                        Toast.makeText(context, "Copied Friend Code: $myPlayerCode", Toast.LENGTH_SHORT).show()
-                    },
-                    modifier = Modifier.fillMaxWidth().height(40.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldLight),
-                    shape = RoundedCornerShape(10.dp),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                // Scrollable Body
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Copy Code to Invite", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-
-                // Add Friend Input
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = friendInput,
-                        onValueChange = { friendInput = it },
-                        placeholder = { Text("Friend Name or Code", fontSize = 12.sp, color = TextMuted) },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GoldPrimary,
-                            unfocusedBorderColor = EmeraldBorder,
-                            focusedTextColor = TextLight,
-                            unfocusedTextColor = TextLight
-                        ),
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                    Button(
+                    // Share My Code / Copy Button
+                    OutlinedButton(
                         onClick = {
-                            if (friendInput.isNotBlank()) {
-                                onAddFriend(friendInput.trim())
-                                friendInput = ""
-                                Toast.makeText(context, "Friend added!", Toast.LENGTH_SHORT).show()
-                            }
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clip = ClipData.newPlainText("Friend Code", myPlayerCode)
+                            clipboard.setPrimaryClip(clip)
+                            Toast.makeText(context, "Copied Friend Code: $myPlayerCode", Toast.LENGTH_SHORT).show()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
+                        modifier = Modifier.fillMaxWidth().height(40.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = GoldLight),
                         shape = RoundedCornerShape(10.dp),
-                        contentPadding = PaddingValues(10.dp)
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     ) {
-                        Icon(Icons.Default.PersonAdd, contentDescription = "Add", tint = EmeraldDeep, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Copy Code to Invite", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
-                }
 
-                Text(
-                    text = "Your Friends (${friends.size})",
-                    color = TextMuted,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                if (friends.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
+                    // Add Friend Input
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "No friends added yet. Enter a code above to add!",
-                            color = TextMuted,
-                            fontSize = 11.sp
+                        OutlinedTextField(
+                            value = friendInput,
+                            onValueChange = { friendInput = it },
+                            placeholder = { Text("Friend Name or Code", fontSize = 12.sp, color = TextMuted) },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = GoldPrimary,
+                                unfocusedBorderColor = EmeraldBorder,
+                                focusedTextColor = TextLight,
+                                unfocusedTextColor = TextLight
+                            ),
+                            shape = RoundedCornerShape(10.dp)
                         )
+                        Button(
+                            onClick = {
+                                if (friendInput.isNotBlank()) {
+                                    onAddFriend(friendInput.trim())
+                                    friendInput = ""
+                                    Toast.makeText(context, "Friend added!", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(10.dp)
+                        ) {
+                            Icon(Icons.Default.PersonAdd, contentDescription = "Add", tint = EmeraldDeep, modifier = Modifier.size(18.dp))
+                        }
                     }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 180.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        items(friends) { friend ->
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated),
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, GoldPrimary.copy(alpha = 0.3f))
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+
+                    Text(
+                        text = "Your Friends (${friends.size})",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    if (friends.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No friends added yet. Enter a code above to add!",
+                                color = TextMuted,
+                                fontSize = 11.sp
+                            )
+                        }
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            friends.forEach { friend ->
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated),
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = BorderStroke(1.dp, GoldPrimary.copy(alpha = 0.3f))
                                 ) {
-                                    Box(
+                                    Row(
                                         modifier = Modifier
-                                            .size(28.dp)
-                                            .clip(CircleShape)
-                                            .background(GoldPrimary.copy(alpha = 0.2f)),
-                                        contentAlignment = Alignment.Center
+                                            .fillMaxWidth()
+                                            .padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Text(text = "👑", fontSize = 12.sp)
-                                    }
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = friend,
-                                            color = TextLight,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 13.sp
-                                        )
-                                        Text(
-                                            text = "Online",
-                                            color = Color(0xFF10B981),
-                                            fontSize = 9.sp
-                                        )
-                                    }
+                                        Box(
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .clip(CircleShape)
+                                                .background(GoldPrimary.copy(alpha = 0.2f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(text = "👑", fontSize = 12.sp)
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = friend,
+                                                color = TextLight,
+                                                fontWeight = FontWeight.Bold,
+                                                fontSize = 13.sp
+                                            )
+                                            Text(
+                                                text = "Online",
+                                                color = Color(0xFF10B981),
+                                                fontSize = 9.sp
+                                            )
+                                        }
 
-                                    Button(
-                                        onClick = { onInviteFriend(friend) },
-                                        colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
-                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
-                                        shape = RoundedCornerShape(6.dp),
-                                        modifier = Modifier.height(28.dp)
-                                    ) {
-                                        Icon(Icons.Default.Share, contentDescription = null, tint = EmeraldDeep, modifier = Modifier.size(12.dp))
-                                        Spacer(modifier = Modifier.width(3.dp))
-                                        Text("Invite", color = EmeraldDeep, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                    }
+                                        Button(
+                                            onClick = { onInviteFriend(friend) },
+                                            colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
+                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                            shape = RoundedCornerShape(6.dp),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Icon(Icons.Default.Share, contentDescription = null, tint = EmeraldDeep, modifier = Modifier.size(12.dp))
+                                            Spacer(modifier = Modifier.width(3.dp))
+                                            Text("Invite", color = EmeraldDeep, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
 
-                                    IconButton(
-                                        onClick = { onRemoveFriend(friend) },
-                                        modifier = Modifier.size(28.dp)
-                                    ) {
-                                        Icon(Icons.Default.PersonRemove, contentDescription = "Remove", tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
+                                        IconButton(
+                                            onClick = { onRemoveFriend(friend) },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(Icons.Default.PersonRemove, contentDescription = "Remove", tint = Color.Red.copy(alpha = 0.8f), modifier = Modifier.size(14.dp))
+                                        }
                                     }
                                 }
                             }

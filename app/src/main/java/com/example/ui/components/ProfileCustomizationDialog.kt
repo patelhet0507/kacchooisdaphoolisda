@@ -54,13 +54,18 @@ fun ProfileCustomizationDialog(
     val unlockedCount = achievements.count { it.isUnlocked }
     val winRate = if (gamesPlayed > 0) ((winsCount.toFloat() / gamesPlayed) * 100).toInt() else 0
 
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val maxDialogHeight = (configuration.screenHeightDp * 0.88f).dp
+    val dialogWidthFraction = if (configuration.screenWidthDp > 600) 0.65f else 0.92f
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Card(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
+                .fillMaxWidth(dialogWidthFraction)
+                .heightIn(max = maxDialogHeight)
                 .padding(12.dp),
             shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = DarkSurface),
@@ -103,59 +108,68 @@ fun ProfileCustomizationDialog(
                         )
                     }
                 }
-                // Google Account Status Banner
-                Card(
+
+                // Scrollable Body Column
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onOpenGoogleLogin() },
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated),
-                    shape = RoundedCornerShape(12.dp),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(if (isLoggedIn) Color(0xFF10B981).copy(alpha = 0.5f) else GoldPrimary.copy(alpha = 0.4f))
-                    )
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(
+                    // Google Account Status Banner
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(Color.White),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "G",
-                                color = Color(0xFF4285F4),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
-                            )
-                        }
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = if (isLoggedIn) googleName else "Sign in with Google",
-                                color = TextLight,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = if (isLoggedIn) googleEmail else "Tap to connect account & sync stats",
-                                color = TextMuted,
-                                fontSize = 11.sp
-                            )
-                        }
-                        Text(
-                            text = if (isLoggedIn) "Connected" else "Sign In",
-                            color = if (isLoggedIn) Color(0xFF10B981) else GoldPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
+                            .clickable { onOpenGoogleLogin() },
+                        colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated),
+                        shape = RoundedCornerShape(12.dp),
+                        border = CardDefaults.outlinedCardBorder().copy(
+                            brush = androidx.compose.ui.graphics.SolidColor(if (isLoggedIn) Color(0xFF10B981).copy(alpha = 0.5f) else GoldPrimary.copy(alpha = 0.4f))
                         )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "G",
+                                    color = Color(0xFF4285F4),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (isLoggedIn) googleName else "Sign in with Google",
+                                    color = TextLight,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = if (isLoggedIn) googleEmail else "Tap to connect account & sync stats",
+                                    color = TextMuted,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Text(
+                                text = if (isLoggedIn) "Connected" else "Sign In",
+                                color = if (isLoggedIn) Color(0xFF10B981) else GoldPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
-                }
 
                 // Career Statistics Summary Grid
                 Card(
@@ -529,6 +543,7 @@ fun ProfileCustomizationDialog(
                         }
                     }
                 }
+                } // close scrollable Column
             }
         }
     }

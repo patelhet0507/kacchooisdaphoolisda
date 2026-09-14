@@ -59,22 +59,39 @@ fun PlayerSeatView(
     isBottomUser: Boolean = false,
     is3DMode: Boolean = false
 ) {
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val isSmallScreen = configuration.screenHeightDp < 600
+
     val borderColor by animateColorAsState(
         targetValue = if (isCurrentTurn) GoldPrimary else if (is3DMode) GoldLight else EmeraldBorder.copy(alpha = 0.6f),
         label = "border_color"
     )
+
+    val avatarSize = if (isSmallScreen) {
+        if (isBottomUser) 36.dp else 30.dp
+    } else {
+        if (isBottomUser) {
+            if (is3DMode) 52.dp else 46.dp
+        } else {
+            if (is3DMode) 46.dp else 40.dp
+        }
+    }
+
+    val chairWidth = if (isBottomUser) 72.dp else 60.dp
+    val chairHeight = if (isBottomUser) 36.dp else 30.dp
+    val chairOffset = if (isBottomUser) 18.dp else 14.dp
 
     Column(
         modifier = modifier.testTag("player_seat_${player.id}"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(contentAlignment = Alignment.Center) {
-            if (is3DMode) {
-                // 3D Chair Seat Base (Cushion & Backrest visual)
+            if (is3DMode && !isSmallScreen) {
+                // 3D Chair Seat Base (Cushion & Backrest visual) - Hidden in compact mode to maximize space
                 Box(
                     modifier = Modifier
-                        .size(if (isBottomUser) 72.dp else 60.dp, if (isBottomUser) 36.dp else 30.dp)
-                        .offset(y = if (isBottomUser) 18.dp else 14.dp)
+                        .size(chairWidth, chairHeight)
+                        .offset(y = chairOffset)
                         .shadow(8.dp, RoundedCornerShape(50))
                         .background(
                             brush = androidx.compose.ui.graphics.Brush.verticalGradient(
@@ -88,11 +105,11 @@ fun PlayerSeatView(
             // Main avatar circle with 3D elevation if is3DMode is true
             Box(
                 modifier = Modifier
-                    .size(if (isBottomUser) (if (is3DMode) 52.dp else 46.dp) else (if (is3DMode) 46.dp else 40.dp))
-                    .shadow(if (is3DMode) 14.dp else if (isCurrentTurn) 8.dp else 2.dp, CircleShape)
+                    .size(avatarSize)
+                    .shadow(if (is3DMode && !isSmallScreen) 14.dp else if (isCurrentTurn) 8.dp else 2.dp, CircleShape)
                     .clip(CircleShape)
                     .background(
-                        brush = if (is3DMode) {
+                        brush = if (is3DMode && !isSmallScreen) {
                             androidx.compose.ui.graphics.Brush.verticalGradient(
                                 colors = listOf(Color(player.colorHex), Color(player.colorHex).copy(alpha = 0.6f))
                             )
@@ -103,7 +120,7 @@ fun PlayerSeatView(
                         }
                     )
                     .border(
-                        width = if (is3DMode) 3.dp else if (isCurrentTurn) 2.5.dp else 1.5.dp,
+                        width = if (is3DMode && !isSmallScreen) 3.dp else if (isCurrentTurn) 2.5.dp else 1.5.dp,
                         color = borderColor,
                         shape = CircleShape
                     ),
@@ -111,7 +128,11 @@ fun PlayerSeatView(
             ) {
                 Text(
                     text = player.avatarEmoji,
-                    fontSize = if (isBottomUser) (if (is3DMode) 26.sp else 22.sp) else (if (is3DMode) 22.sp else 18.sp)
+                    fontSize = if (isSmallScreen) {
+                        if (isBottomUser) 16.sp else 14.sp
+                    } else {
+                        if (isBottomUser) (if (is3DMode) 26.sp else 22.sp) else (if (is3DMode) 22.sp else 18.sp)
+                    }
                 )
             }
 
@@ -119,7 +140,7 @@ fun PlayerSeatView(
             if (!activeEmote.isNullOrBlank()) {
                 EmoteBubbleView(
                     emoteEmoji = activeEmote,
-                    modifier = Modifier.offset(y = (-32).dp)
+                    modifier = Modifier.offset(y = if (isSmallScreen) (-22).dp else (-32).dp)
                 )
             }
 
@@ -127,9 +148,12 @@ fun PlayerSeatView(
             if (isDealer) {
                 Box(
                     modifier = Modifier
-                        .offset(x = if (is3DMode) 20.dp else 18.dp, y = (-12).dp)
-                        .size(22.dp)
-                        .shadow(if (is3DMode) 6.dp else 2.dp, CircleShape)
+                        .offset(
+                            x = if (isSmallScreen) 12.dp else (if (is3DMode) 20.dp else 18.dp),
+                            y = if (isSmallScreen) (-8).dp else (-12).dp
+                        )
+                        .size(if (isSmallScreen) 14.dp else 22.dp)
+                        .shadow(if (is3DMode && !isSmallScreen) 6.dp else 2.dp, CircleShape)
                         .clip(CircleShape)
                         .background(GoldPrimary)
                         .border(1.dp, GoldLight, CircleShape),
@@ -138,14 +162,14 @@ fun PlayerSeatView(
                     Text(
                         text = "D",
                         color = EmeraldDeep,
-                        fontSize = 11.sp,
+                        fontSize = if (isSmallScreen) 8.sp else 11.sp,
                         fontWeight = FontWeight.Black
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(3.dp))
+        Spacer(modifier = Modifier.height(if (isSmallScreen) 1.dp else 3.dp))
 
         // Player Name & Score
         Row(
@@ -155,7 +179,7 @@ fun PlayerSeatView(
             Text(
                 text = if (isBottomUser) "You" else player.name,
                 color = if (isCurrentTurn) GoldLight else TextLight,
-                fontSize = 12.sp,
+                fontSize = if (isSmallScreen) 10.sp else 12.sp,
                 fontWeight = if (isCurrentTurn) FontWeight.Bold else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -164,7 +188,7 @@ fun PlayerSeatView(
             Text(
                 text = "($totalScore)",
                 color = GoldPrimary,
-                fontSize = 11.sp,
+                fontSize = if (isSmallScreen) 9.sp else 11.sp,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -172,8 +196,8 @@ fun PlayerSeatView(
         // Status / Bid & Tricks Badge
         Box(
             modifier = Modifier
-                .padding(top = 2.dp)
-                .clip(RoundedCornerShape(8.dp))
+                .padding(top = if (isSmallScreen) 1.dp else 2.dp)
+                .clip(RoundedCornerShape(6.dp))
                 .background(
                     if (isCurrentTurn && turnActionText != null) {
                         GoldPrimary.copy(alpha = 0.2f)
@@ -184,38 +208,41 @@ fun PlayerSeatView(
                 .border(
                     1.dp,
                     if (isCurrentTurn) GoldPrimary.copy(alpha = 0.5f) else EmeraldBorder.copy(alpha = 0.3f),
-                    RoundedCornerShape(8.dp)
+                    RoundedCornerShape(6.dp)
                 )
-                .padding(horizontal = 6.dp, vertical = 2.dp)
+                .padding(
+                    horizontal = if (isSmallScreen) 4.dp else 6.dp,
+                    vertical = if (isSmallScreen) 1.dp else 2.dp
+                )
         ) {
             if (isCurrentTurn && turnActionText != null) {
                 Text(
                     text = turnActionText,
                     color = GoldLight,
-                    fontSize = 10.sp,
+                    fontSize = if (isSmallScreen) 8.sp else 10.sp,
                     fontWeight = FontWeight.Bold
                 )
             } else {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
                         text = "Bid: ${bid?.toString() ?: "-"}",
                         color = if (bid != null) TextLight else TextMuted,
-                        fontSize = 10.sp,
+                        fontSize = if (isSmallScreen) 8.sp else 10.sp,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
                         text = "•",
                         color = TextMuted,
-                        fontSize = 8.sp
+                        fontSize = if (isSmallScreen) 7.sp else 8.sp
                     )
                     val isGoalMet = bid != null && tricksWon == bid
                     Text(
                         text = "Won: $tricksWon",
                         color = if (isGoalMet) SuccessGreen else GoldLight,
-                        fontSize = 10.sp,
+                        fontSize = if (isSmallScreen) 8.sp else 10.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }

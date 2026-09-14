@@ -236,22 +236,27 @@ fun PhoneAuthScreen(
                                 isLoading = true
                                 errorMessage = null
                                 coroutineScope.launch {
-                                    val res = if (verId.startsWith("test_id_")) {
-                                        authManager.connectGoogleProfile("PhoneUser_${phoneNumber.takeLast(4)}", "${phoneNumber.filter { it.isDigit() }}@phone.auth")
-                                    } else {
-                                        authManager.signInWithPhoneCredential(verId, smsCode)
-                                    }
-                                    isLoading = false
-                                    if (res is AuthResult.Success) {
-                                        onSuccess(res.user.displayName ?: "PhoneUser", res.user.email ?: "phone@firebase.auth")
-                                    } else if (res is AuthResult.Error) {
-                                        // Fall back to profile connect for demo/test mode if standard credential rejected test code
-                                        val fallbackRes = authManager.connectGoogleProfile("PhoneUser_${phoneNumber.takeLast(4)}", "${phoneNumber.filter { it.isDigit() }}@phone.auth")
-                                        if (fallbackRes is AuthResult.Success) {
-                                            onSuccess(fallbackRes.user.displayName ?: "PhoneUser", fallbackRes.user.email ?: "phone@firebase.auth")
+                                    try {
+                                        val res = if (verId.startsWith("test_id_")) {
+                                            authManager.connectGoogleProfile("PhoneUser_${phoneNumber.takeLast(4)}", "${phoneNumber.filter { it.isDigit() }}@phone.auth")
                                         } else {
-                                            errorMessage = res.message
+                                            authManager.signInWithPhoneCredential(verId, smsCode)
                                         }
+                                        isLoading = false
+                                        if (res is AuthResult.Success) {
+                                            onSuccess(res.user.displayName ?: "PhoneUser", res.user.email ?: "phone@firebase.auth")
+                                        } else if (res is AuthResult.Error) {
+                                            // Fall back to profile connect for demo/test mode if standard credential rejected test code
+                                            val fallbackRes = authManager.connectGoogleProfile("PhoneUser_${phoneNumber.takeLast(4)}", "${phoneNumber.filter { it.isDigit() }}@phone.auth")
+                                            if (fallbackRes is AuthResult.Success) {
+                                                onSuccess(fallbackRes.user.displayName ?: "PhoneUser", fallbackRes.user.email ?: "phone@firebase.auth")
+                                            } else {
+                                                errorMessage = res.message
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        isLoading = false
+                                        errorMessage = "Auth Error: ${e.localizedMessage ?: "Verification failed."}"
                                     }
                                 }
                             },

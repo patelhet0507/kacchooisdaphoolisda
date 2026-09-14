@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -45,6 +47,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -128,50 +131,94 @@ fun GamePlayScreen(
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = if (uiState.isMultiplayer) "Play Together Match" else "Kaachu Phool Match",
-                            color = GoldLight,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 17.sp
-                        )
-                        if (uiState.isMultiplayer && uiState.roomCode != null) {
-                            Text(
-                                text = "Table Code: ${uiState.roomCode} • ${uiState.players.size} Players Online",
-                                color = EmeraldLight,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-                },
-                navigationIcon = {
+        containerColor = DarkBackground
+    ) { innerPadding ->
+        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+        val isSmallScreen = configuration.screenHeightDp < 600
+        val cardWidth = if (isSmallScreen) 48.dp else 68.dp
+        val cardHeight = if (isSmallScreen) 70.dp else 98.dp
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = if (isSmallScreen) 6.dp else 12.dp, vertical = 2.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // 1. Sleek Top Bar (Single Row: Back + Title | Trump Indicator | Settings + Restart)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(if (isSmallScreen) 36.dp else 48.dp)
+                    .padding(vertical = 1.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Left: Back button + Title
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     IconButton(
                         onClick = { showQuitDialog = true },
-                        modifier = Modifier.testTag("game_back_button")
+                        modifier = Modifier
+                            .size(if (isSmallScreen) 32.dp else 40.dp)
+                            .testTag("game_back_button")
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Leave Match",
-                            tint = GoldPrimary
+                            tint = GoldPrimary,
+                            modifier = Modifier.size(if (isSmallScreen) 18.dp else 22.dp)
                         )
                     }
-                },
-                actions = {
+
+                    Column {
+                        Text(
+                            text = if (uiState.isMultiplayer) "Play Together" else "Kaachu Phool",
+                            color = GoldLight,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = if (isSmallScreen) 13.sp else 16.sp
+                        )
+                        if (uiState.isMultiplayer && uiState.roomCode != null) {
+                            Text(
+                                text = "Code: ${uiState.roomCode}",
+                                color = EmeraldLight,
+                                fontSize = if (isSmallScreen) 9.sp else 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+
+                // Center: Trump Rotation & Round Info Banner
+                TrumpIndicator(
+                    currentTrump = uiState.currentTrump,
+                    roundNumber = uiState.currentRoundIndex + 1,
+                    totalRounds = uiState.rounds.size.coerceAtLeast(1),
+                    cardCount = uiState.currentRoundCardCount,
+                    modifier = Modifier.wrapContentWidth()
+                )
+
+                // Right: Action Buttons
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(if (isSmallScreen) 2.dp else 6.dp)
+                ) {
                     IconButton(
                         onClick = {
                             soundEffectsManager.playButtonTap()
                             showSettingsDialog = true
                         },
-                        modifier = Modifier.testTag("game_settings_button")
+                        modifier = Modifier
+                            .size(if (isSmallScreen) 32.dp else 40.dp)
+                            .testTag("game_settings_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings & Sound Effects",
-                            tint = GoldLight
+                            contentDescription = "Settings",
+                            tint = GoldLight,
+                            modifier = Modifier.size(if (isSmallScreen) 18.dp else 22.dp)
                         )
                     }
                     IconButton(
@@ -179,60 +226,43 @@ fun GamePlayScreen(
                             soundEffectsManager.playButtonTap()
                             viewModel.restartCurrentGame()
                         },
-                        modifier = Modifier.testTag("restart_match_button")
+                        modifier = Modifier
+                            .size(if (isSmallScreen) 32.dp else 40.dp)
+                            .testTag("restart_match_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Restart Match",
-                            tint = TextMuted
+                            tint = TextMuted,
+                            modifier = Modifier.size(if (isSmallScreen) 18.dp else 22.dp)
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground
-                )
-            )
-        },
-        containerColor = DarkBackground
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 12.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            // 1. Trump Rotation & Round Info Banner
-            TrumpIndicator(
-                currentTrump = uiState.currentTrump,
-                roundNumber = uiState.currentRoundIndex + 1,
-                totalRounds = uiState.rounds.size.coerceAtLeast(1),
-                cardCount = uiState.currentRoundCardCount
-            )
+                }
+            }
 
-            // 2. Center Playing Table with Seated Opponents
-            Column(
+            // 2. Center Playing Table Arena with Seated Opponents (Takes all remaining vertical space)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Top Opponents Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+                // Left Opponent Seat
+                Box(
+                    modifier = Modifier.width(if (isSmallScreen) 68.dp else 78.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    topOpponents.forEach { opponent ->
-                        val pState = uiState.playerStates.find { it.player.name == opponent.name }
-                        val isTurn = uiState.players.getOrNull(uiState.currentTurnIndex)?.name == opponent.name
-                        val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == opponent.name
-                        val activeEmote = uiState.activeEmotes[opponent.name] ?: uiState.activeEmotes[opponent.id]
+                    if (leftOpponent != null) {
+                        val pState = uiState.playerStates.find { it.player.name == leftOpponent.name }
+                        val isTurn = (uiState.phase == GamePhase.BIDDING || uiState.phase == GamePhase.PLAYING) &&
+                                uiState.players.getOrNull(uiState.currentTurnIndex)?.name == leftOpponent.name
+                        val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == leftOpponent.name
+                        val activeEmote = uiState.activeEmotes[leftOpponent.name] ?: uiState.activeEmotes[leftOpponent.id]
 
                         PlayerSeatView(
-                            player = opponent,
+                            player = leftOpponent,
                             bid = pState?.bid,
                             tricksWon = pState?.tricksWon ?: 0,
                             isDealer = isDealer,
@@ -245,111 +275,132 @@ fun GamePlayScreen(
                     }
                 }
 
-                // Middle Row: Left Opponent - Table Arena - Right Opponent
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                // Center Felt Table with Top Opponent(s)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(horizontal = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    // Left Opponent
-                    Box(
-                        modifier = Modifier.width(76.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (leftOpponent != null) {
-                            val pState = uiState.playerStates.find { it.player.name == leftOpponent.name }
-                            val isTurn = uiState.players.getOrNull(uiState.currentTurnIndex)?.name == leftOpponent.name
-                            val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == leftOpponent.name
-                            val activeEmote = uiState.activeEmotes[leftOpponent.name] ?: uiState.activeEmotes[leftOpponent.id]
+                    // Top Opponent(s) Row
+                    if (topOpponents.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            topOpponents.forEach { opponent ->
+                                val pState = uiState.playerStates.find { it.player.name == opponent.name }
+                                val isTurn = (uiState.phase == GamePhase.BIDDING || uiState.phase == GamePhase.PLAYING) &&
+                                        uiState.players.getOrNull(uiState.currentTurnIndex)?.name == opponent.name
+                                val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == opponent.name
+                                val activeEmote = uiState.activeEmotes[opponent.name] ?: uiState.activeEmotes[opponent.id]
 
-                            PlayerSeatView(
-                                player = leftOpponent,
-                                bid = pState?.bid,
-                                tricksWon = pState?.tricksWon ?: 0,
-                                isDealer = isDealer,
-                                isCurrentTurn = isTurn,
-                                turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                                totalScore = pState?.totalScore ?: 0,
-                                activeEmote = activeEmote,
-                                is3DMode = appSettings.is3DMode
-                            )
+                                PlayerSeatView(
+                                    player = opponent,
+                                    bid = pState?.bid,
+                                    tricksWon = pState?.tricksWon ?: 0,
+                                    isDealer = isDealer,
+                                    isCurrentTurn = isTurn,
+                                    turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
+                                    totalScore = pState?.totalScore ?: 0,
+                                    activeEmote = activeEmote,
+                                    is3DMode = appSettings.is3DMode
+                                )
+                            }
                         }
                     }
 
-                    // Trick Arena (Center Felt Table)
-                    Box(modifier = Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                    // Felt Trick Arena (Takes the majority of the center area!)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(vertical = 2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         TrickTableView(
+                            modifier = Modifier.fillMaxSize(),
                             playedCards = uiState.currentTrick,
                             trumpSuit = uiState.currentTrump,
                             leadSuit = uiState.leadSuit,
                             trickWinner = uiState.lastTrickWinner,
                             isTrickFinished = uiState.phase == GamePhase.TRICK_FINISHED,
-                            onNextTrickClick = { viewModel.continueNextTrick() }
+                            onNextTrickClick = { viewModel.continueNextTrick() },
+                            is3DMode = appSettings.is3DMode
                         )
                     }
 
-                    // Right Opponent
-                    Box(
-                        modifier = Modifier.width(76.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (rightOpponent != null) {
-                            val pState = uiState.playerStates.find { it.player.name == rightOpponent.name }
-                            val isTurn = uiState.players.getOrNull(uiState.currentTurnIndex)?.name == rightOpponent.name
-                            val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == rightOpponent.name
-                            val activeEmote = uiState.activeEmotes[rightOpponent.name] ?: uiState.activeEmotes[rightOpponent.id]
-
-                            PlayerSeatView(
-                                player = rightOpponent,
-                                bid = pState?.bid,
-                                tricksWon = pState?.tricksWon ?: 0,
-                                isDealer = isDealer,
-                                isCurrentTurn = isTurn,
-                                turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                                totalScore = pState?.totalScore ?: 0,
-                                activeEmote = activeEmote,
-                                is3DMode = appSettings.is3DMode
+                    // Table Status Message Banner
+                    if (uiState.statusMessage.isNotBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.85f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(DarkSurfaceElevated.copy(alpha = 0.92f))
+                                .border(1.dp, EmeraldBorder, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 10.dp, vertical = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = uiState.statusMessage,
+                                color = GoldLight,
+                                fontSize = if (isSmallScreen) 10.sp else 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
                 }
 
-                // Table Status Message Banner
+                // Right Opponent Seat
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.92f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DarkSurfaceElevated.copy(alpha = 0.9f))
-                        .border(1.dp, EmeraldBorder, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 14.dp, vertical = 6.dp),
+                    modifier = Modifier.width(if (isSmallScreen) 68.dp else 78.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = uiState.statusMessage,
-                        color = GoldLight,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center
-                    )
+                    if (rightOpponent != null) {
+                        val pState = uiState.playerStates.find { it.player.name == rightOpponent.name }
+                        val isTurn = (uiState.phase == GamePhase.BIDDING || uiState.phase == GamePhase.PLAYING) &&
+                                uiState.players.getOrNull(uiState.currentTurnIndex)?.name == rightOpponent.name
+                        val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == rightOpponent.name
+                        val activeEmote = uiState.activeEmotes[rightOpponent.name] ?: uiState.activeEmotes[rightOpponent.id]
+
+                        PlayerSeatView(
+                            player = rightOpponent,
+                            bid = pState?.bid,
+                            tricksWon = pState?.tricksWon ?: 0,
+                            isDealer = isDealer,
+                            isCurrentTurn = isTurn,
+                            turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
+                            totalScore = pState?.totalScore ?: 0,
+                            activeEmote = activeEmote,
+                            is3DMode = appSettings.is3DMode
+                        )
+                    }
                 }
             }
 
-            // 3. Bottom Player Controls & Hand
-            Column(
+            // 3. Bottom Player Controls & Hand (Unified Horizontal Row)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+                    .height(if (isSmallScreen) 74.dp else 86.dp)
+                    .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // User Stats Bar & Emote Picker
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                // Left: User Seat View
+                Box(
+                    modifier = Modifier.width(if (isSmallScreen) 84.dp else 96.dp),
+                    contentAlignment = Alignment.CenterStart
                 ) {
                     if (myPlayer != null) {
-                        val isTurn = uiState.players.getOrNull(uiState.currentTurnIndex)?.name == myPlayer.name
+                        val isTurn = (uiState.phase == GamePhase.BIDDING || uiState.phase == GamePhase.PLAYING) &&
+                                uiState.players.getOrNull(uiState.currentTurnIndex)?.name == myPlayer.name
                         val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == myPlayer.name
                         val myActiveEmote = uiState.activeEmotes[myPlayer.name] ?: uiState.activeEmotes[myPlayer.id] ?: uiState.activeEmotes["You"]
 
@@ -359,85 +410,95 @@ fun GamePlayScreen(
                             tricksWon = userState?.tricksWon ?: 0,
                             isDealer = isDealer,
                             isCurrentTurn = isTurn,
-                            turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Your Turn to Bid!" else "Your Turn to Play!") else null,
+                            turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bid!" else "Play!") else null,
                             totalScore = userState?.totalScore ?: 0,
                             activeEmote = myActiveEmote,
                             isBottomUser = true,
                             is3DMode = appSettings.is3DMode
                         )
                     }
-
-                    // Emote Reaction Picker & Score pill
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        EmotePickerBar(
-                            onEmoteSelected = { emote ->
-                                viewModel.sendEmote(emote)
-                            }
-                        )
-
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(DarkSurface)
-                                .border(1.dp, GoldPrimary.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                                .padding(horizontal = 12.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                text = "Score: ${userState?.totalScore ?: 0} pts",
-                                color = GoldLight,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // User Hand Cards
-                val isMyTurnToPlay = uiState.phase == GamePhase.PLAYING &&
-                        uiState.players.getOrNull(uiState.currentTurnIndex)?.name == myPlayer?.name
-
-                val playableCards = remember(uiState.userHand, uiState.leadSuit, isMyTurnToPlay) {
-                    if (isMyTurnToPlay) {
-                        KaachuPhoolEngine.getPlayableCards(uiState.userHand, uiState.leadSuit)
-                    } else emptyList()
-                }
-
-                Row(
+                // Center: Cards in Hand
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .padding(horizontal = 4.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (uiState.userHand.isEmpty()) {
-                        Text(
-                            text = if (uiState.phase == GamePhase.ROUND_FINISHED) "Round finished" else "No cards in hand",
-                            color = TextMuted,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    } else {
-                        uiState.userHand.forEach { card ->
-                            val isPlayable = playableCards.contains(card)
-                            PlayingCardView(
-                                card = card,
-                                isPlayable = isPlayable,
-                                isSelected = false,
-                                isTrump = card.suit == uiState.currentTrump,
-                                onClick = {
-                                    if (isMyTurnToPlay && isPlayable) {
-                                        viewModel.playUserCard(card)
-                                    }
-                                }
+                    val isMyTurnToPlay = uiState.phase == GamePhase.PLAYING &&
+                            uiState.players.getOrNull(uiState.currentTurnIndex)?.name == myPlayer?.name
+
+                    val playableCards = remember(uiState.userHand, uiState.leadSuit, isMyTurnToPlay) {
+                        if (isMyTurnToPlay) {
+                            KaachuPhoolEngine.getPlayableCards(uiState.userHand, uiState.leadSuit)
+                        } else emptyList()
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (uiState.userHand.isEmpty()) {
+                            Text(
+                                text = if (uiState.phase == GamePhase.ROUND_FINISHED) "Round Finished"
+                                       else if (uiState.phase == GamePhase.TRICK_FINISHED) "Trick Finished"
+                                       else if (uiState.phase == GamePhase.BIDDING) "Bidding Phase"
+                                       else "No cards in hand",
+                                color = TextMuted,
+                                fontSize = if (isSmallScreen) 11.sp else 13.sp
                             )
+                        } else {
+                            uiState.userHand.forEach { card ->
+                                val isPlayable = playableCards.contains(card)
+                                PlayingCardView(
+                                    card = card,
+                                    isPlayable = isPlayable,
+                                    isSelected = false,
+                                    isTrump = card.suit == uiState.currentTrump,
+                                    width = cardWidth,
+                                    height = cardHeight,
+                                    onClick = {
+                                        if (isMyTurnToPlay && isPlayable) {
+                                            viewModel.playUserCard(card)
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
+                }
+
+                // Right: Emote Reaction Picker & Score Pill
+                Column(
+                    modifier = Modifier.width(if (isSmallScreen) 96.dp else 110.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(DarkSurface)
+                            .border(1.dp, GoldPrimary.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = "Score: ${userState?.totalScore ?: 0}",
+                            color = GoldLight,
+                            fontSize = if (isSmallScreen) 11.sp else 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    EmotePickerBar(
+                        onEmoteSelected = { emote ->
+                            viewModel.sendEmote(emote)
+                        }
+                    )
                 }
             }
         }
