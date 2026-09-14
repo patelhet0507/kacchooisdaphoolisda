@@ -71,11 +71,13 @@ jobs:
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'androiddebugkey' }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || 'android' }}
         run: |
+          VERSION_NAME="1.0.${{ github.run_number }}"
+          VERSION_CODE=${{ github.run_number }}
           if [ -f "./gradlew" ]; then
             chmod +x ./gradlew
-            ./gradlew assembleRelease --no-daemon --no-configuration-cache --stacktrace
+            ./gradlew assembleRelease -PversionName=$VERSION_NAME -PversionCode=$VERSION_CODE --no-daemon --no-configuration-cache --stacktrace
           else
-            gradle assembleRelease --no-daemon --no-configuration-cache --stacktrace
+            gradle assembleRelease -PversionName=$VERSION_NAME -PversionCode=$VERSION_CODE --no-daemon --no-configuration-cache --stacktrace
           fi
 
       - name: Locate Generated APK

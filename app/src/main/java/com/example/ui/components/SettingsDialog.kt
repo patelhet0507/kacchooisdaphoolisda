@@ -652,7 +652,7 @@ fun SettingsDialog(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Kaachu Phool • Version ${appUpdateManager.currentVersionName}",
+                        text = "Kaachu Phool • v${appUpdateManager.currentVersionName} (${appUpdateManager.currentVersionCode})",
                         color = TextMuted,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
