@@ -91,6 +91,8 @@ class AppUpdateManager private constructor(private val context: Context) {
                     if (!response.isSuccessful) {
                         val msg = if (response.code == 404) {
                             "No releases found for '$cleanRepo'. Note: The repository must be PUBLIC for the app to detect updates."
+                        } else if (response.code == 403) {
+                            "GitHub API Rate Limit Exceeded (HTTP 403). Please try again in an hour or check manually at the repository URL."
                         } else {
                             "GitHub API HTTP ${response.code}: ${response.message}"
                         }

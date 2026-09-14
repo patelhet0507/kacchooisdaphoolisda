@@ -37,13 +37,23 @@ jobs:
         with:
           gradle-version: '9.3.1'
 
-      - name: Restore Debug Keystore and Secrets
+      - name: Restore Signing Keystore and Secrets
         run: |
-          # 1. Restore debug.keystore if base64 file exists, or generate one
-          if [ -f "debug.keystore.base64" ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
-          elif [ ! -f "debug.keystore" ]; then
-            keytool -genkey -v -keystore debug.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+          # 1. Restore release keystore if base64 secret exists
+          if [ ! -z "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
+            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/release.keystore" >> $GITHUB_ENV
+          else
+            # Fallback for debug/development if no release secret
+            if [ -f "debug.keystore.base64" ]; then
+              base64 -d debug.keystore.base64 > release.keystore
+            else
+              keytool -genkey -v -keystore release.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
+            fi
+            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/release.keystore" >> $GITHUB_ENV
+            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           fi
 
           # 2. Ensure .env exists to prevent missing secrets file warnings
@@ -55,19 +65,28 @@ jobs:
             fi
           fi
 
-      - name: Build Debug APK
+      - name: Build Signed Release APK
+        env:
+          STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD || 'android' }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'androiddebugkey' }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || 'android' }}
         run: |
           if [ -f "./gradlew" ]; then
             chmod +x ./gradlew
-            ./gradlew assembleDebug --no-daemon --no-configuration-cache --stacktrace
+            ./gradlew assembleRelease --no-daemon --no-configuration-cache --stacktrace
           else
-            gradle assembleDebug --no-daemon --no-configuration-cache --stacktrace
+            gradle assembleRelease --no-daemon --no-configuration-cache --stacktrace
           fi
 
       - name: Locate Generated APK
         id: find_apk
         run: |
-          APK_PATH=$(find app/build/outputs/apk -name "*.apk" | head -n 1)
+          APK_PATH=$(find app/build/outputs/apk/release -name "*.apk" | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            echo "Error: No Release APK found!"
+            # Fallback to debug if release build failed to produce file for some reason
+            APK_PATH=$(find app/build/outputs/apk -name "*.apk" | head -n 1)
+          fi
           if [ -z "$APK_PATH" ]; then
             echo "Error: No APK found!"
             exit 1
@@ -78,13 +97,14 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kaachu-phool-debug-apk
+          name: kaachu-phool-release-apk
           path: ${{ steps.find_apk.outputs.apk_path }}
           retention-days: 30
 
       - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           tag_name: v1.0.${{ github.run_number }}
           name: ${{ github.event.inputs.release_title || format('Kaachu Phool Build v1.0.{0}', github.run_number) }}
           files: ${{ steps.find_apk.outputs.apk_path }}

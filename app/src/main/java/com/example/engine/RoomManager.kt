@@ -302,21 +302,34 @@ class RoomManager {
         val isHostLeaving = (current.hostName == player) || (current.players.firstOrNull() == player)
 
         if (isHostLeaving) {
-            // Disband the room: Notify remaining players that room is disbanded and delete from Firebase
-            val disbandedRoom = current.copy(
-                gameState = "DISBANDED",
-                statusMessage = "Room has been disbanded by host ($player)."
-            )
-            getOrCreateLocalFlow(cleanRoomId).value = disbandedRoom
+            val remainingPlayers = current.players.filter { it != player }
+            if (remainingPlayers.size == 1 && (current.gameState == "PLAYING" || current.gameState == "BIDDING" || current.gameState == "TRICK_FINISHED" || current.gameState == "ROUND_FINISHED")) {
+                val winner = remainingPlayers.first()
+                val winningRoom = current.copy(
+                    players = remainingPlayers,
+                    gameState = "GAME_OVER",
+                    statusMessage = "$winner wins! ($player left the game)",
+                    completedAt = System.currentTimeMillis()
+                )
+                getOrCreateLocalFlow(cleanRoomId).value = winningRoom
+                syncRoomToFirebase(cleanRoomId, winningRoom)
+            } else {
+                // Disband the room: Notify remaining players that room is disbanded and delete from Firebase
+                val disbandedRoom = current.copy(
+                    gameState = "DISBANDED",
+                    statusMessage = "Room has been disbanded by host ($player)."
+                )
+                getOrCreateLocalFlow(cleanRoomId).value = disbandedRoom
 
-            try {
-                // First push DISBANDED state so active listeners get notified immediately
-                roomsRef?.child(cleanRoomId)?.child("gameState")?.setValue("DISBANDED")
-                roomsRef?.child(cleanRoomId)?.child("statusMessage")?.setValue("Room has been disbanded by host ($player).")
-                // Delete the room node from Firebase
-                roomsRef?.child(cleanRoomId)?.removeValue()
-            } catch (e: Exception) {
-                Log.w("RoomManager", "Failed to disband room: ${e.message}")
+                try {
+                    // First push DISBANDED state so active listeners get notified immediately
+                    roomsRef?.child(cleanRoomId)?.child("gameState")?.setValue("DISBANDED")
+                    roomsRef?.child(cleanRoomId)?.child("statusMessage")?.setValue("Room has been disbanded by host ($player).")
+                    // Delete the room node from Firebase
+                    roomsRef?.child(cleanRoomId)?.removeValue()
+                } catch (e: Exception) {
+                    Log.w("RoomManager", "Failed to disband room: ${e.message}")
+                }
             }
         } else {
             // Guest leaving: remove guest from player list
@@ -334,7 +347,19 @@ class RoomManager {
                     timestamp = System.currentTimeMillis(),
                     isSystem = true
                 ))
-                val updated = current.copy(players = updatedPlayers, messages = updatedMessages)
+                
+                var updated = current.copy(players = updatedPlayers, messages = updatedMessages)
+                
+                // NEW: If only 1 player left in an active game, they win
+                if (updatedPlayers.size == 1 && (current.gameState == "PLAYING" || current.gameState == "BIDDING" || current.gameState == "TRICK_FINISHED" || current.gameState == "ROUND_FINISHED")) {
+                    val winner = updatedPlayers.first()
+                    updated = updated.copy(
+                        gameState = "GAME_OVER",
+                        statusMessage = "$winner wins! ($player left the game)",
+                        completedAt = System.currentTimeMillis()
+                    )
+                }
+                
                 getOrCreateLocalFlow(cleanRoomId).value = updated
                 syncRoomToFirebase(cleanRoomId, updated)
             }
@@ -361,11 +386,22 @@ class RoomManager {
             isSystem = true
         ))
 
-        val updated = current.copy(
+        var updated = current.copy(
             players = updatedPlayers,
             kickedPlayers = updatedKicked,
             messages = updatedMessages
         )
+        
+        // NEW: If only 1 player left in an active game, they win
+        if (updatedPlayers.size == 1 && (current.gameState == "PLAYING" || current.gameState == "BIDDING" || current.gameState == "TRICK_FINISHED" || current.gameState == "ROUND_FINISHED")) {
+            val winner = updatedPlayers.first()
+            updated = updated.copy(
+                gameState = "GAME_OVER",
+                statusMessage = "$winner wins! ($playerToKick was kicked from the room)",
+                completedAt = System.currentTimeMillis()
+            )
+        }
+        
         getOrCreateLocalFlow(cleanRoomId).value = updated
         syncRoomToFirebase(cleanRoomId, updated)
         true
