@@ -1,6 +1,8 @@
 package com.example.ui.components
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
@@ -635,16 +637,16 @@ fun GoogleLoginDialog(
                                             }
                                         }
                                     }
-                                } else if (authMode == 2) {
+        } else if (authMode == 2) {
                                     // Phone Auth
-                                    val activity = context as? android.app.Activity
+                                    val activity = context.findActivity()
                                     if (phoneInput.isBlank() || phoneInput.length < 10) {
                                         errorMessage = "Please enter a valid phone number with country code (e.g. +1 555-0199)."
                                         showErrorDialog = true
                                         return@Button
                                     }
                                     if (activity == null) {
-                                        errorMessage = "Activity context missing. Cannot verify."
+                                        errorMessage = "System Configuration Error: Could not find an Activity context required for reCAPTCHA verification. Please restart the application."
                                         showErrorDialog = true
                                         return@Button
                                     }
@@ -660,12 +662,17 @@ fun GoogleLoginDialog(
                                                     isLoading = false
                                                     statusMessage = "Auto-verification successful!"
                                                     coroutineScope.launch {
-                                                        val res = authManager.signInWithPhoneAuthCredential(credential)
-                                                        if (res is AuthResult.Success) {
-                                                            onLogin(res.user.displayName ?: "PhoneUser", res.user.email ?: "phone@firebase.auth")
-                                                            onDismiss()
-                                                        } else if (res is AuthResult.Error) {
-                                                            errorMessage = res.message
+                                                        try {
+                                                            val res = authManager.signInWithPhoneAuthCredential(credential)
+                                                            if (res is AuthResult.Success) {
+                                                                onLogin(res.user.displayName ?: "PhoneUser", res.user.email ?: "phone@firebase.auth")
+                                                                onDismiss()
+                                                            } else if (res is AuthResult.Error) {
+                                                                errorMessage = "Automatic sign-in failed: ${res.message}. Please enter the code manually."
+                                                                showErrorDialog = true
+                                                            }
+                                                        } catch (e: Exception) {
+                                                            errorMessage = "Sign-in encountered an error: ${e.localizedMessage}. Please try again."
                                                             showErrorDialog = true
                                                         }
                                                     }
@@ -673,12 +680,14 @@ fun GoogleLoginDialog(
 
                                                 override fun onVerificationFailed(e: com.google.firebase.FirebaseException) {
                                                     isLoading = false
-                                                    errorMessage = "SMS failed: ${e.localizedMessage ?: "Verification failed."}"
+                                                    errorMessage = "Verification Request Failed: ${e.localizedMessage ?: "Service unavailable"}. \n\nPlease verify your number format and network connection. You may need to wait a few minutes before retrying."
                                                     showErrorDialog = true
-                                                    // Enable verification code input so user can verify with test code 123456
-                                                    verificationIdState = "test_id_${System.currentTimeMillis()}"
+                                                    // Enable verification code input for failsafe
+                                                    if (verificationIdState == null) {
+                                                        verificationIdState = "test_id_${System.currentTimeMillis()}"
+                                                    }
                                                     phoneCodeSent = true
-                                                    statusMessage = "Failsafe Demo mode enabled. Enter any 6-digit code (e.g. 123456) to proceed!"
+                                                    statusMessage = "Test Mode Enabled. If you didn't receive an SMS, enter any 6-digit code to proceed."
                                                 }
 
                                                 override fun onCodeSent(
@@ -725,19 +734,16 @@ fun GoogleLoginDialog(
                                                     onLogin(phoneName, phoneEmail)
                                                     onDismiss()
                                                 } else if (res is AuthResult.Error) {
-                                                    // Try demo fallback if Firebase verification failed
-                                                    val fallbackRes = authManager.connectGoogleProfile(phoneName, phoneEmail)
-                                                    if (fallbackRes is AuthResult.Success) {
-                                                        onLogin(phoneName, phoneEmail)
-                                                        onDismiss()
-                                                    } else {
-                                                        errorMessage = res.message
-                                                        showErrorDialog = true
-                                                    }
+                                                    errorMessage = "Authentication Failed: ${res.message}. Please double-check your code."
+                                                    showErrorDialog = true
                                                 }
+                                            } catch (e: com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
+                                                isLoading = false
+                                                errorMessage = "Invalid SMS Code: The code you entered is incorrect or has expired. Please request a new code."
+                                                showErrorDialog = true
                                             } catch (e: Exception) {
                                                 isLoading = false
-                                                errorMessage = "Sign in failed: ${e.localizedMessage ?: "Verification failed."}"
+                                                errorMessage = "Sign-in Error: ${e.localizedMessage ?: "Verification failed."}. Please check your connection and try again."
                                                 showErrorDialog = true
                                             }
                                         }
@@ -799,5 +805,14 @@ fun GoogleLoginDialog(
         }
     }
 }
+}
+
+private fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
 }
 

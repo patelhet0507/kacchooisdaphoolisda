@@ -164,22 +164,31 @@ class AppUpdateManager private constructor(private val context: Context) {
      */
     fun startDownload(release: GithubReleaseInfo) {
         val downloadUrl = release.apkDownloadUrl ?: return
-        val fileName = release.apkFileName ?: "KaachuPhool-update.apk"
+        // Use a unique filename with timestamp to avoid parsing errors from corrupted/cached partial downloads
+        val timestamp = System.currentTimeMillis() / 1000
+        val fileName = "KaachuPhool_${release.tagName.replace(".", "_")}_$timestamp.apk"
 
         try {
-            _downloadStatus.value = DownloadStatus.Downloading(0)
+            _downloadStatus.value = DownloadStatus.Downloading(0, 0.0)
 
             val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             val uri = Uri.parse(downloadUrl)
 
             val request = DownloadManager.Request(uri).apply {
                 setTitle("Downloading Kaachu Phool ${release.tagName}")
-                setDescription("Downloading latest game update APK...")
+                setDescription("Fetching latest game update...")
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                
+                // Be more aggressive to start the download immediately
                 setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
                 setAllowedOverMetered(true)
                 setAllowedOverRoaming(true)
+                
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    setRequiresCharging(false)
+                    setRequiresDeviceIdle(false)
+                }
             }
 
             activeDownloadId = downloadManager.enqueue(request)
