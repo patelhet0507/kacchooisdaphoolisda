@@ -90,7 +90,7 @@ class AppUpdateManager private constructor(private val context: Context) {
                 client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         val msg = if (response.code == 404) {
-                            "No releases found yet for repository '$cleanRepo'."
+                            "No releases found for '$cleanRepo'. Note: The repository must be PUBLIC for the app to detect updates."
                         } else {
                             "GitHub API HTTP ${response.code}: ${response.message}"
                         }
