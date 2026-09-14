@@ -130,6 +130,17 @@ fun GamePlayScreen(
         else -> opponents.lastOrNull()
     }
 
+    if (uiState.isMultiplayer && uiState.players.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                androidx.compose.material3.CircularProgressIndicator(color = GoldPrimary)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Waiting for game state...", color = GoldLight)
+            }
+        }
+        return
+    }
+
     Scaffold(
         containerColor = DarkBackground
     ) { innerPadding ->

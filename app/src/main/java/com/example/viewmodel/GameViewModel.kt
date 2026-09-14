@@ -82,7 +82,8 @@ class GameViewModel : ViewModel() {
         isHost: Boolean = false
     ) {
         this.currentRoomId = roomId.trim()
-        this.localPlayerName = localPlayerName.ifBlank { "You" }
+        val sanitizedName = localPlayerName.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "You" }
+        this.localPlayerName = sanitizedName
         this.isHost = isHost
 
         _uiState.update {
@@ -362,7 +363,7 @@ class GameViewModel : ViewModel() {
         botTurnJob?.cancel()
         currentRoomId = null
         isHost = false
-        localPlayerName = userName.ifBlank { "You" }
+        localPlayerName = userName.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "You" }
 
         val user = Player(
             id = "user",
@@ -642,6 +643,11 @@ class GameViewModel : ViewModel() {
         if (botIndex !in state.players.indices) return
         val botPlayer = state.players[botIndex]
         val botState = state.playerStates.find { it.player.id == botPlayer.id } ?: return
+
+        if (botState.cards.isEmpty()) {
+            _uiState.update { it.copy(isProcessingBot = false) }
+            return
+        }
 
         val chosenCard = KaachuPhoolEngine.chooseBotCard(
             hand = botState.cards,
