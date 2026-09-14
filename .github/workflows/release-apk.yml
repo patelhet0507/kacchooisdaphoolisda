@@ -71,8 +71,18 @@ jobs:
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'androiddebugkey' }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || 'android' }}
         run: |
-          VERSION_NAME="1.0.${{ github.run_number }}"
-          VERSION_CODE=${{ github.run_number }}
+          # Extract version from app/build.gradle.kts
+          VERSION_NAME=$(grep "versionName =" app/build.gradle.kts | awk -F'"' '{print $2}')
+          VERSION_CODE=$(grep "versionCode =" app/build.gradle.kts | awk -F'?: ' '{print $2}')
+          
+          # Fallbacks if extraction fails
+          if [ -z "$VERSION_NAME" ]; then VERSION_NAME="1.1.1"; fi
+          if [ -z "$VERSION_CODE" ]; then VERSION_CODE="111"; fi
+          
+          echo "Building version $VERSION_NAME ($VERSION_CODE)"
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
+          echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_ENV
+          
           if [ -f "./gradlew" ]; then
             chmod +x ./gradlew
             ./gradlew assembleRelease -PversionName=$VERSION_NAME -PversionCode=$VERSION_CODE --no-daemon --no-configuration-cache --stacktrace
@@ -107,8 +117,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
-          tag_name: v1.0.${{ github.run_number }}
-          name: ${{ github.event.inputs.release_title || format('Kaachu Phool Build v1.0.{0}', github.run_number) }}
+          tag_name: v${{ env.VERSION_NAME }}
+          name: ${{ github.event.inputs.release_title || format('Kaachu Phool Build v{0}', env.VERSION_NAME) }}
           files: ${{ steps.find_apk.outputs.apk_path }}
           draft: false
           prerelease: false
