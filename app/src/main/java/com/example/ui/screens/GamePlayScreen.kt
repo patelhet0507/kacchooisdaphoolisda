@@ -51,9 +51,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.UserProfileManager
 import com.example.engine.KaachuPhoolEngine
 import com.example.engine.SoundEffectsManager
+import com.example.model.Emote
 import com.example.model.GamePhase
 import com.example.model.Player
 import com.example.ui.components.BiddingDialog
+import com.example.ui.components.EmotePickerBar
 import com.example.ui.components.GameOverDialog
 import com.example.ui.components.PlayerSeatView
 import com.example.ui.components.PlayingCardView
@@ -86,6 +88,8 @@ fun GamePlayScreen(
     val context = LocalContext.current
     val soundEffectsManager = remember { SoundEffectsManager.getInstance(context) }
     val userProfileManager = remember { UserProfileManager(context) }
+    val settingsManager = remember { com.example.data.SettingsManager.getInstance(context) }
+    val appSettings by settingsManager.settings.collectAsStateWithLifecycle()
 
     LaunchedEffect(soundEffectsManager) {
         viewModel.setSoundEffectsManager(soundEffectsManager)
@@ -225,6 +229,7 @@ fun GamePlayScreen(
                         val pState = uiState.playerStates.find { it.player.name == opponent.name }
                         val isTurn = uiState.players.getOrNull(uiState.currentTurnIndex)?.name == opponent.name
                         val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == opponent.name
+                        val activeEmote = uiState.activeEmotes[opponent.name] ?: uiState.activeEmotes[opponent.id]
 
                         PlayerSeatView(
                             player = opponent,
@@ -233,7 +238,9 @@ fun GamePlayScreen(
                             isDealer = isDealer,
                             isCurrentTurn = isTurn,
                             turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                            totalScore = pState?.totalScore ?: 0
+                            totalScore = pState?.totalScore ?: 0,
+                            activeEmote = activeEmote,
+                            is3DMode = appSettings.is3DMode
                         )
                     }
                 }
@@ -253,6 +260,7 @@ fun GamePlayScreen(
                             val pState = uiState.playerStates.find { it.player.name == leftOpponent.name }
                             val isTurn = uiState.players.getOrNull(uiState.currentTurnIndex)?.name == leftOpponent.name
                             val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == leftOpponent.name
+                            val activeEmote = uiState.activeEmotes[leftOpponent.name] ?: uiState.activeEmotes[leftOpponent.id]
 
                             PlayerSeatView(
                                 player = leftOpponent,
@@ -261,7 +269,9 @@ fun GamePlayScreen(
                                 isDealer = isDealer,
                                 isCurrentTurn = isTurn,
                                 turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                                totalScore = pState?.totalScore ?: 0
+                                totalScore = pState?.totalScore ?: 0,
+                                activeEmote = activeEmote,
+                                is3DMode = appSettings.is3DMode
                             )
                         }
                     }
@@ -287,6 +297,7 @@ fun GamePlayScreen(
                             val pState = uiState.playerStates.find { it.player.name == rightOpponent.name }
                             val isTurn = uiState.players.getOrNull(uiState.currentTurnIndex)?.name == rightOpponent.name
                             val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == rightOpponent.name
+                            val activeEmote = uiState.activeEmotes[rightOpponent.name] ?: uiState.activeEmotes[rightOpponent.id]
 
                             PlayerSeatView(
                                 player = rightOpponent,
@@ -295,7 +306,9 @@ fun GamePlayScreen(
                                 isDealer = isDealer,
                                 isCurrentTurn = isTurn,
                                 turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                                totalScore = pState?.totalScore ?: 0
+                                totalScore = pState?.totalScore ?: 0,
+                                activeEmote = activeEmote,
+                                is3DMode = appSettings.is3DMode
                             )
                         }
                     }
@@ -327,7 +340,7 @@ fun GamePlayScreen(
                     .fillMaxWidth()
                     .padding(bottom = 8.dp)
             ) {
-                // User Stats Bar
+                // User Stats Bar & Emote Picker
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -338,6 +351,7 @@ fun GamePlayScreen(
                     if (myPlayer != null) {
                         val isTurn = uiState.players.getOrNull(uiState.currentTurnIndex)?.name == myPlayer.name
                         val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == myPlayer.name
+                        val myActiveEmote = uiState.activeEmotes[myPlayer.name] ?: uiState.activeEmotes[myPlayer.id] ?: uiState.activeEmotes["You"]
 
                         PlayerSeatView(
                             player = myPlayer,
@@ -347,24 +361,37 @@ fun GamePlayScreen(
                             isCurrentTurn = isTurn,
                             turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Your Turn to Bid!" else "Your Turn to Play!") else null,
                             totalScore = userState?.totalScore ?: 0,
-                            isBottomUser = true
+                            activeEmote = myActiveEmote,
+                            isBottomUser = true,
+                            is3DMode = appSettings.is3DMode
                         )
                     }
 
-                    // Score pill
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkSurface)
-                            .border(1.dp, GoldPrimary.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    // Emote Reaction Picker & Score pill
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "Score: ${userState?.totalScore ?: 0} pts",
-                            color = GoldLight,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
+                        EmotePickerBar(
+                            onEmoteSelected = { emote ->
+                                viewModel.sendEmote(emote)
+                            }
                         )
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(DarkSurface)
+                                .border(1.dp, GoldPrimary.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = "Score: ${userState?.totalScore ?: 0} pts",
+                                color = GoldLight,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
 
@@ -446,8 +473,25 @@ fun GamePlayScreen(
 
         // Game Over Dialog
         if (uiState.phase == GamePhase.GAME_OVER) {
+            val userState = uiState.playerStates.find { it.player.name == uiState.localPlayerName || it.player.id == "user" }
+            val highestScorePlayer = uiState.playerStates.maxByOrNull { it.totalScore }
+            val userWon = highestScorePlayer != null && (highestScorePlayer.player.name == uiState.localPlayerName || highestScorePlayer.player.id == "user")
+            val userScore = userState?.totalScore ?: 0
+            val perfectBids = userState?.bid != null && userState.bid == userState.tricksWon
+
+            var newlyUnlocked by remember { mutableStateOf<List<com.example.model.Achievement>>(emptyList()) }
+            LaunchedEffect(uiState.phase) {
+                newlyUnlocked = userProfileManager.recordGameFinished(
+                    userWon = userWon,
+                    userTotalScore = userScore,
+                    perfectBids = perfectBids,
+                    difficultyOrMultiplayer = if (uiState.isMultiplayer) "MULTIPLAYER" else uiState.botDifficulty.name
+                )
+            }
+
             GameOverDialog(
                 playerStates = uiState.playerStates,
+                newlyUnlockedAchievements = newlyUnlocked,
                 onPlayAgain = { viewModel.restartCurrentGame() },
                 onHomeClick = {
                     viewModel.exitGame()

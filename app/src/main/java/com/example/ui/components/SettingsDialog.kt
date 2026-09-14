@@ -2,6 +2,7 @@ package com.example.ui.components
 
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +25,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.SettingsManager
 import com.example.data.UserProfileManager
@@ -54,63 +57,91 @@ fun SettingsDialog(
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
     var statusNotification by remember { mutableStateOf<String?>(null) }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        containerColor = DarkSurface,
-        titleContentColor = GoldLight,
-        textContentColor = TextLight,
-        title = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(GoldPrimary.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = GoldPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-                Text(
-                    text = "Game Settings",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = GoldLight
-                )
-            }
-        },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .padding(12.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            border = BorderStroke(1.5.dp, GoldPrimary.copy(alpha = 0.5f))
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 480.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                if (statusNotification != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF064E3B).copy(alpha = 0.6f))
-                            .border(1.dp, Color(0xFF10B981), RoundedCornerShape(8.dp))
-                            .padding(10.dp)
+                // Header with Title & Close Icon
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(GoldPrimary.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Settings",
+                                tint = GoldPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                         Text(
-                            text = statusNotification!!,
-                            color = Color(0xFF6EE7B7),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                            text = "Game Settings ⚙️",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldLight
+                        )
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = TextMuted
                         )
                     }
                 }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 440.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    if (statusNotification != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF064E3B).copy(alpha = 0.6f))
+                                .border(1.dp, Color(0xFF10B981), RoundedCornerShape(8.dp))
+                                .padding(10.dp)
+                        ) {
+                            Text(
+                                text = statusNotification!!,
+                                color = Color(0xFF6EE7B7),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
 
                 // ====================================================
                 // 1. SOUND EFFECTS & AUDIO
@@ -362,6 +393,53 @@ fun SettingsDialog(
                         onCheckedChange = { settingsManager.setFastBotTurns(it) }
                     )
 
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "GAMEPLAY VIEW MODE",
+                        color = GoldLight,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { settingsManager.set3DMode(false) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("btn_2d_mode"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (!appSettings.is3DMode) GoldPrimary else DarkSurfaceElevated
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "2D Classic",
+                                color = if (!appSettings.is3DMode) Color.Black else TextLight,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                        Button(
+                            onClick = { settingsManager.set3DMode(true) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("btn_3d_mode"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (appSettings.is3DMode) GoldPrimary else DarkSurfaceElevated
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = "3D Avatar Mode",
+                                color = if (appSettings.is3DMode) Color.Black else TextLight,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -419,18 +497,10 @@ fun SettingsDialog(
                         fontSize = 10.sp
                     )
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Done", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
             }
         }
-    )
+    }
 
     // Log Out Confirmation Dialog
     if (showLogoutConfirmDialog) {

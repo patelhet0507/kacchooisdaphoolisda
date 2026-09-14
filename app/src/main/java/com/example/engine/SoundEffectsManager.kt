@@ -275,6 +275,28 @@ class SoundEffectsManager private constructor(private val context: Context) {
         playPcm(samples, 0.5f)
     }
 
+    /**
+     * Emote Pop Sound Effect:
+     * Bright, cheerful pop chime (C6 -> E6).
+     */
+    fun playEmoteSound() {
+        vibrate(20, 90)
+        val numSamples = (sampleRate * 0.18).toInt() // 180ms
+        val samples = ShortArray(numSamples)
+        val split = numSamples / 2
+
+        for (i in 0 until numSamples) {
+            val isFirst = i < split
+            val freq = if (isFirst) 1046.50 else 1318.51 // C6, E6
+            val noteT = if (isFirst) i.toDouble() / split else (i - split).toDouble() / (numSamples - split)
+            val env = exp(-10.0 * noteT)
+            val tone = sin(2 * PI * freq * (i.toDouble() / sampleRate))
+            val sampleVal = tone * env * 22000
+            samples[i] = sampleVal.toInt().coerceIn(Short.MIN_VALUE.toInt(), Short.MAX_VALUE.toInt()).toShort()
+        }
+        playPcm(samples, 0.8f)
+    }
+
     companion object {
         @Volatile
         private var INSTANCE: SoundEffectsManager? = null

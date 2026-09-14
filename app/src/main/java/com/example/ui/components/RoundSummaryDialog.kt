@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -12,9 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.model.PlayerRoundState
 import com.example.model.Suit
 import com.example.ui.theme.DarkSurface
@@ -50,37 +54,44 @@ fun RoundSummaryDialog(
     isLastRound: Boolean,
     onContinueClick: () -> Unit
 ) {
-    AlertDialog(
+    Dialog(
         onDismissRequest = { /* Modal */ },
-        containerColor = DarkSurface,
-        shape = RoundedCornerShape(20.dp),
-        title = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Round $roundNumber Summary",
-                    color = GoldLight,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "Trump was ${trumpSuit.displayName} (${trumpSuit.symbol} ${trumpSuit.mnemonic})",
-                    color = TextMuted,
-                    fontSize = 12.sp
-                )
-            }
-        },
-        text = {
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .padding(12.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = DarkSurface),
+            border = BorderStroke(1.5.dp, GoldPrimary.copy(alpha = 0.5f))
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                // Title
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Round $roundNumber Summary 📊",
+                        color = GoldLight,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Trump was ${trumpSuit.displayName} (${trumpSuit.symbol} ${trumpSuit.mnemonic})",
+                        color = TextMuted,
+                        fontSize = 11.sp
+                    )
+                }
+
                 // Table Header
                 Row(
                     modifier = Modifier
@@ -173,7 +184,7 @@ fun RoundSummaryDialog(
 
                 // Next round preview
                 if (!isLastRound && nextTrumpSuit != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -190,24 +201,25 @@ fun RoundSummaryDialog(
                         )
                     }
                 }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onContinueClick,
-                colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("summary_continue_button")
-            ) {
-                Text(
-                    text = if (isLastRound) "View Game Results 🏆" else "Start Next Round »",
-                    color = EmeraldDeep,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 14.sp
-                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Button(
+                    onClick = onContinueClick,
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("summary_continue_button")
+                ) {
+                    Text(
+                        text = if (isLastRound) "View Game Results 🏆" else "Start Next Round »",
+                        color = EmeraldDeep,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 13.sp
+                    )
+                }
             }
         }
-    )
+    }
 }

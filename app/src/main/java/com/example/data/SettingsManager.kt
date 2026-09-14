@@ -12,7 +12,8 @@ data class AppSettingsState(
     val hapticFeedbackEnabled: Boolean = true,
     val autoSortHand: Boolean = true,
     val dealerHookWarning: Boolean = true,
-    val fastBotTurns: Boolean = false
+    val fastBotTurns: Boolean = false,
+    val is3DMode: Boolean = false
 )
 
 class SettingsManager private constructor(context: Context) {
@@ -28,7 +29,8 @@ class SettingsManager private constructor(context: Context) {
             hapticFeedbackEnabled = prefs.getBoolean("haptic_feedback_enabled", true),
             autoSortHand = prefs.getBoolean("auto_sort_hand", true),
             dealerHookWarning = prefs.getBoolean("dealer_hook_warning", true),
-            fastBotTurns = prefs.getBoolean("fast_bot_turns", false)
+            fastBotTurns = prefs.getBoolean("fast_bot_turns", false),
+            is3DMode = prefs.getBoolean("is_3d_mode", false)
         )
     )
     val settings: StateFlow<AppSettingsState> = _settings.asStateFlow()
@@ -62,6 +64,11 @@ class SettingsManager private constructor(context: Context) {
     fun setFastBotTurns(enabled: Boolean) {
         prefs.edit().putBoolean("fast_bot_turns", enabled).apply()
         _settings.value = _settings.value.copy(fastBotTurns = enabled)
+    }
+
+    fun set3DMode(enabled: Boolean) {
+        prefs.edit().putBoolean("is_3d_mode", enabled).apply()
+        _settings.value = _settings.value.copy(is3DMode = enabled)
     }
 
     companion object {

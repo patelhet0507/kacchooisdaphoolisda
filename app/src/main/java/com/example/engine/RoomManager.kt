@@ -16,6 +16,9 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -39,7 +42,7 @@ enum class JoinRoomStatus {
 class RoomManager {
     companion object {
         private val localRooms = ConcurrentHashMap<String, MutableStateFlow<GameRoom?>>()
-        private val activeListeners = ConcurrentHashMap<String, ValueEventListener>()
+        private val roomFlows = ConcurrentHashMap<String, Flow<GameRoom?>>()
 
         fun gameRoomToMap(room: GameRoom): Map<String, Any?> = mapOf(
             "roomId" to room.roomId,
@@ -82,6 +85,7 @@ class RoomManager {
                 )
             },
             "activeSpeakers" to room.activeSpeakers,
+            "activeEmotes" to room.activeEmotes,
             "kickedPlayers" to room.kickedPlayers,
             "completedAt" to room.completedAt
         )
@@ -158,53 +162,12 @@ class RoomManager {
     }
 
     private suspend fun fetchRoomSnapshot(ref: DatabaseReference): DataSnapshot? {
-        val fastSnapshot = try {
-            withTimeoutOrNull(3500L) {
+        return try {
+            withTimeoutOrNull(4000L) {
                 ref.get().await()
             }
         } catch (e: Exception) {
-            null
-        }
-
-        if (fastSnapshot != null && fastSnapshot.exists()) {
-            return fastSnapshot
-        }
-
-        return try {
-            withTimeoutOrNull(3500L) {
-                suspendCancellableCoroutine { cont ->
-                    val listener = object : ValueEventListener {
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            if (cont.isActive) {
-                                try {
-                                    cont.resume(snapshot)
-                                } catch (e: Exception) {}
-                            }
-                        }
-
-                        override fun onCancelled(error: DatabaseError) {
-                            if (cont.isActive) {
-                                try {
-                                    cont.resume(null)
-                                } catch (e: Exception) {}
-                            }
-                        }
-                    }
-                    try {
-                        ref.addListenerForSingleValueEvent(listener)
-                    } catch (e: Exception) {
-                        if (cont.isActive) {
-                            try { cont.resume(null) } catch (re: Exception) {}
-                        }
-                    }
-                    cont.invokeOnCancellation {
-                        try {
-                            ref.removeEventListener(listener)
-                        } catch (e: Exception) {}
-                    }
-                }
-            }
-        } catch (e: Exception) {
+            Log.w("RoomManager", "Error fetching room snapshot: ${e.message}")
             null
         }
     }
@@ -486,6 +449,22 @@ class RoomManager {
         }
     }
 
+    suspend fun sendEmote(roomId: String, playerName: String, emoteEmoji: String) = withContext(Dispatchers.IO) {
+        val cleanRoomId = roomId.trim()
+        val safePlayer = playerName.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "Player" }
+        val current = getOrCreateLocalFlow(cleanRoomId).value
+        if (current != null) {
+            val updatedEmotes = current.activeEmotes + (safePlayer to emoteEmoji)
+            getOrCreateLocalFlow(cleanRoomId).value = current.copy(activeEmotes = updatedEmotes)
+        }
+
+        try {
+            roomsRef?.child(cleanRoomId)?.child("activeEmotes")?.child(safePlayer)?.setValue(emoteEmoji)
+        } catch (e: Exception) {
+            // non-critical
+        }
+    }
+
     // ==========================================
     // MULTIPLAYER MATCH GAME SYNCHRONIZATION
     // ==========================================
@@ -747,55 +726,75 @@ class RoomManager {
 
     fun getRoomUpdates(roomId: String): Flow<GameRoom?> {
         val cleanRoomId = roomId.trim()
-        val localFlow = getOrCreateLocalFlow(cleanRoomId)
+        return roomFlows.computeIfAbsent(cleanRoomId) {
+            callbackFlow {
+                val localFlow = getOrCreateLocalFlow(cleanRoomId)
+                trySend(localFlow.value)
 
-        val ref = roomsRef?.child(cleanRoomId)
-        if (ref != null && !activeListeners.containsKey(cleanRoomId)) {
-            val listener = object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    try {
-                        if (snapshot.exists()) {
-                            val room = parseRoomFromSnapshot(snapshot)
-                            if (room != null) {
-                                // Check if game completed more than 5 minutes ago -> auto delete
-                                if (room.gameState == "GAME_OVER" && room.completedAt > 0L &&
-                                    System.currentTimeMillis() - room.completedAt >= 5 * 60 * 1000L
-                                ) {
-                                    try {
-                                        roomsRef?.child(cleanRoomId)?.removeValue()
-                                    } catch (e: Throwable) {}
-                                    localFlow.value = null
-                                    return
+                val listener = object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        try {
+                            if (snapshot.exists()) {
+                                val room = parseRoomFromSnapshot(snapshot)
+                                if (room != null) {
+                                    // Check if game completed more than 5 minutes ago -> auto delete
+                                    if (room.gameState == "GAME_OVER" && room.completedAt > 0L &&
+                                        System.currentTimeMillis() - room.completedAt >= 5 * 60 * 1000L
+                                    ) {
+                                        try {
+                                            roomsRef?.child(cleanRoomId)?.removeValue()
+                                        } catch (e: Throwable) {}
+                                        localFlow.value = null
+                                        trySend(null)
+                                        return
+                                    }
+                                    localFlow.value = room
+                                    trySend(room)
                                 }
-                                localFlow.value = room
+                            } else {
+                                // Snapshot not found on server yet:
+                                // If local room exists and is active, sync it up to Firebase so other players see it!
+                                val local = localFlow.value
+                                if (local != null && local.gameState != "DISBANDED") {
+                                    syncRoomToFirebase(cleanRoomId, local)
+                                }
                             }
-                        } else {
-                            // Snapshot not found on server yet:
-                            // If local room exists and is active, sync it up to Firebase so other players see it!
-                            val local = localFlow.value
-                            if (local != null && local.gameState != "DISBANDED") {
-                                syncRoomToFirebase(cleanRoomId, local)
-                            }
+                        } catch (t: Throwable) {
+                            Log.w("RoomManager", "Error processing onDataChange", t)
                         }
-                    } catch (t: Throwable) {
-                        Log.w("RoomManager", "Error processing onDataChange", t)
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.w("RoomManager", "Firebase listener cancelled: ${error.message}")
                     }
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    Log.w("RoomManager", "Firebase listener cancelled: ${error.message}")
+                val ref = roomsRef?.child(cleanRoomId)
+                try {
+                    ref?.addValueEventListener(listener)
+                } catch (t: Throwable) {
+                    Log.w("RoomManager", "Error registering Firebase listener", t)
                 }
-            }
 
-            try {
-                ref.addValueEventListener(listener)
-                activeListeners[cleanRoomId] = listener
-            } catch (t: Throwable) {
-                Log.w("RoomManager", "Error registering Firebase listener", t)
-            }
+                val scope = CoroutineScope(Dispatchers.Default)
+                val localJob = scope.launch {
+                    localFlow.collect { localRoom ->
+                        trySend(localRoom)
+                    }
+                }
+
+                awaitClose {
+                    try {
+                        ref?.removeEventListener(listener)
+                    } catch (t: Throwable) {}
+                    localJob.cancel()
+                }
+            }.shareIn(
+                scope = CoroutineScope(Dispatchers.Default + SupervisorJob()),
+                started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 3000),
+                replay = 1
+            )
         }
-
-        return localFlow
     }
 
     private fun parseRoomFromSnapshot(snapshot: DataSnapshot): GameRoom? {
@@ -954,6 +953,15 @@ class RoomManager {
                 activeSpeakersMap[pName] = isSpk
             }
 
+            val activeEmotesMap = mutableMapOf<String, String>()
+            snapshot.child("activeEmotes").children.forEach { child ->
+                val pName = child.key ?: return@forEach
+                val emote = child.value?.toString() ?: return@forEach
+                if (emote.isNotBlank()) {
+                    activeEmotesMap[pName] = emote
+                }
+            }
+
             val kickedPlayersList = mutableListOf<String>()
             val kickedVal = snapshot.child("kickedPlayers").value
             when (kickedVal) {
@@ -1001,6 +1009,7 @@ class RoomManager {
                 messages = messagesMap,
                 voiceNotes = voiceMap,
                 activeSpeakers = activeSpeakersMap,
+                activeEmotes = activeEmotesMap,
                 kickedPlayers = kickedPlayersList,
                 completedAt = completedAt
             )

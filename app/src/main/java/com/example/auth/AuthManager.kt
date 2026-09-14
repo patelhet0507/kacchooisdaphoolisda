@@ -138,6 +138,47 @@ class AuthManager private constructor() {
         }
     }
 
+    suspend fun verifyPhoneNumber(
+        activity: android.app.Activity,
+        phoneNumber: String,
+        callbacks: com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks
+    ) {
+        withContext(Dispatchers.Main) {
+            val options = com.google.firebase.auth.PhoneAuthOptions.newBuilder(auth)
+                .setPhoneNumber(phoneNumber.trim())
+                .setTimeout(60L, java.util.concurrent.TimeUnit.SECONDS)
+                .setActivity(activity)
+                .setCallbacks(callbacks)
+                .build()
+            com.google.firebase.auth.PhoneAuthProvider.verifyPhoneNumber(options)
+        }
+    }
+
+    suspend fun signInWithPhoneCredential(verificationId: String, smsCode: String): AuthResult = withContext(Dispatchers.IO) {
+        try {
+            val credential = com.google.firebase.auth.PhoneAuthProvider.getCredential(verificationId, smsCode.trim())
+            val result = auth.signInWithCredential(credential).await()
+            val userState = mapFirebaseUser(result.user)
+            _authState.value = userState
+            AuthResult.Success(userState)
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Phone verification sign in error", e)
+            AuthResult.Error(e.localizedMessage ?: "Invalid verification code.")
+        }
+    }
+
+    suspend fun signInWithPhoneAuthCredential(credential: com.google.firebase.auth.PhoneAuthCredential): AuthResult = withContext(Dispatchers.IO) {
+        try {
+            val result = auth.signInWithCredential(credential).await()
+            val userState = mapFirebaseUser(result.user)
+            _authState.value = userState
+            AuthResult.Success(userState)
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Phone credential sign in error", e)
+            AuthResult.Error(e.localizedMessage ?: "Phone authentication failed.")
+        }
+    }
+
     suspend fun connectGoogleProfile(name: String, email: String): AuthResult = withContext(Dispatchers.IO) {
         try {
             val cleanName = name.trim().ifBlank { "Player" }

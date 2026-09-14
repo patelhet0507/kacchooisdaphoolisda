@@ -8,6 +8,7 @@ import com.example.engine.RoomManager
 import com.example.engine.SoundEffectsManager
 import com.example.model.Card
 import com.example.model.BotDifficulty
+import com.example.model.Emote
 import com.example.model.GameMode
 import com.example.model.GamePhase
 import com.example.model.GameRoom
@@ -49,7 +50,8 @@ data class GameUiState(
     val isRoomDisbanded: Boolean = false,
     val localPlayerName: String = "You",
     val roomCode: String? = null,
-    val botDifficulty: BotDifficulty = BotDifficulty.MEDIUM
+    val botDifficulty: BotDifficulty = BotDifficulty.MEDIUM,
+    val activeEmotes: Map<String, String> = emptyMap()
 )
 
 class GameViewModel : ViewModel() {
@@ -272,7 +274,8 @@ class GameViewModel : ViewModel() {
                         GamePhase.ROUND_FINISHED -> "Round Completed!"
                         GamePhase.GAME_OVER -> "Game Completed!"
                     }
-                }
+                },
+                activeEmotes = room.activeEmotes
             )
         }
 
@@ -444,6 +447,7 @@ class GameViewModel : ViewModel() {
     private fun checkBiddingTurn() {
         val state = _uiState.value
         val currentIdx = state.currentTurnIndex
+        if (currentIdx !in state.players.indices) return
         val currentPlayer = state.players[currentIdx]
 
         if (!currentPlayer.isBot) {
@@ -506,6 +510,7 @@ class GameViewModel : ViewModel() {
 
     private fun executeBotBid(botIndex: Int) {
         val state = _uiState.value
+        if (botIndex !in state.players.indices) return
         val botPlayer = state.players[botIndex]
         val botState = state.playerStates.find { it.player.id == botPlayer.id } ?: return
         val isDealer = botIndex == state.dealerIndex
@@ -564,6 +569,7 @@ class GameViewModel : ViewModel() {
         if (state.phase != GamePhase.PLAYING) return
 
         val currentIdx = state.currentTurnIndex
+        if (currentIdx !in state.players.indices) return
         val currentPlayer = state.players[currentIdx]
 
         if (!currentPlayer.isBot) {
@@ -601,7 +607,7 @@ class GameViewModel : ViewModel() {
             return
         }
 
-        if (state.phase != GamePhase.PLAYING || state.players[state.currentTurnIndex].id != "user") return
+        if (state.phase != GamePhase.PLAYING || state.currentTurnIndex !in state.players.indices || state.players[state.currentTurnIndex].id != "user") return
 
         val playable = KaachuPhoolEngine.getPlayableCards(state.userHand, state.leadSuit)
         if (!playable.contains(card)) return
@@ -633,6 +639,7 @@ class GameViewModel : ViewModel() {
 
     private fun executeBotCardPlay(botIndex: Int) {
         val state = _uiState.value
+        if (botIndex !in state.players.indices) return
         val botPlayer = state.players[botIndex]
         val botState = state.playerStates.find { it.player.id == botPlayer.id } ?: return
 
@@ -795,5 +802,72 @@ class GameViewModel : ViewModel() {
             userName = state.players.firstOrNull { !it.isBot }?.name ?: "You",
             botCount = state.players.filter { it.isBot }.size
         )
+    }
+
+    // ==========================================
+    // EMOTE SYSTEM INTEGRATION
+    // ==========================================
+
+    fun sendEmote(emote: Emote) {
+        soundEffectsManager?.playEmoteSound()
+        val sender = _uiState.value.localPlayerName
+        val isMulti = _uiState.value.isMultiplayer
+        val roomId = currentRoomId
+
+        _uiState.update { state ->
+            val updated = state.activeEmotes + (sender to emote.emoji)
+            state.copy(activeEmotes = updated)
+        }
+
+        // Clear local emote after 3 seconds
+        viewModelScope.launch {
+            delay(3000)
+            _uiState.update { state ->
+                if (state.activeEmotes[sender] == emote.emoji) {
+                    state.copy(activeEmotes = state.activeEmotes - sender)
+                } else state
+            }
+        }
+
+        if (isMulti && !roomId.isNullOrBlank()) {
+            viewModelScope.launch {
+                roomManager.sendEmote(roomId, sender, emote.emoji)
+            }
+        } else {
+            // Trigger bot reaction in single player match
+            triggerBotReaction(emote)
+        }
+    }
+
+    private fun triggerBotReaction(userEmote: Emote) {
+        val bots = _uiState.value.players.filter { it.isBot }
+        if (bots.isEmpty()) return
+
+        viewModelScope.launch {
+            delay((600..1200).random().toLong())
+            val respondingBot = bots.random()
+            val botEmote = when (userEmote) {
+                Emote.THUMBS_UP -> listOf(Emote.THUMBS_UP, Emote.CLAPPING, Emote.HEART).random()
+                Emote.LAUGHING -> listOf(Emote.LAUGHING, Emote.FIRE, Emote.SURPRISED).random()
+                Emote.THINKING -> listOf(Emote.THINKING, Emote.SURPRISED).random()
+                Emote.CLAPPING -> listOf(Emote.CLAPPING, Emote.HEART, Emote.FIRE).random()
+                Emote.ANGRY -> listOf(Emote.LAUGHING, Emote.SURPRISED, Emote.THINKING).random()
+                Emote.HEART -> listOf(Emote.HEART, Emote.THUMBS_UP, Emote.CLAPPING).random()
+                Emote.SURPRISED -> listOf(Emote.SURPRISED, Emote.LAUGHING).random()
+                Emote.FIRE -> listOf(Emote.FIRE, Emote.CLAPPING).random()
+            }
+
+            soundEffectsManager?.playEmoteSound()
+            _uiState.update { state ->
+                state.copy(activeEmotes = state.activeEmotes + (respondingBot.name to botEmote.emoji))
+            }
+
+            delay(3000)
+            _uiState.update { state ->
+                if (state.activeEmotes[respondingBot.name] == botEmote.emoji) {
+                    state.copy(activeEmotes = state.activeEmotes - respondingBot.name)
+                } else state
+            }
+        }
     }
 }

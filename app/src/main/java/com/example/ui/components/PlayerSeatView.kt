@@ -54,11 +54,13 @@ fun PlayerSeatView(
     isCurrentTurn: Boolean,
     turnActionText: String? = null,
     totalScore: Int = 0,
+    activeEmote: String? = null,
     modifier: Modifier = Modifier,
-    isBottomUser: Boolean = false
+    isBottomUser: Boolean = false,
+    is3DMode: Boolean = false
 ) {
     val borderColor by animateColorAsState(
-        targetValue = if (isCurrentTurn) GoldPrimary else EmeraldBorder.copy(alpha = 0.6f),
+        targetValue = if (isCurrentTurn) GoldPrimary else if (is3DMode) GoldLight else EmeraldBorder.copy(alpha = 0.6f),
         label = "border_color"
     )
 
@@ -67,15 +69,41 @@ fun PlayerSeatView(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(contentAlignment = Alignment.Center) {
-            // Main avatar circle
+            if (is3DMode) {
+                // 3D Chair Seat Base (Cushion & Backrest visual)
+                Box(
+                    modifier = Modifier
+                        .size(if (isBottomUser) 72.dp else 60.dp, if (isBottomUser) 36.dp else 30.dp)
+                        .offset(y = if (isBottomUser) 18.dp else 14.dp)
+                        .shadow(8.dp, RoundedCornerShape(50))
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(Color(0xFF8B5A2B), Color(0xFF5C3A21))
+                            )
+                        )
+                        .border(1.5.dp, GoldPrimary.copy(alpha = 0.8f), RoundedCornerShape(50))
+                )
+            }
+
+            // Main avatar circle with 3D elevation if is3DMode is true
             Box(
                 modifier = Modifier
-                    .size(if (isBottomUser) 46.dp else 40.dp)
-                    .shadow(if (isCurrentTurn) 8.dp else 2.dp, CircleShape)
+                    .size(if (isBottomUser) (if (is3DMode) 52.dp else 46.dp) else (if (is3DMode) 46.dp else 40.dp))
+                    .shadow(if (is3DMode) 14.dp else if (isCurrentTurn) 8.dp else 2.dp, CircleShape)
                     .clip(CircleShape)
-                    .background(Color(player.colorHex).copy(alpha = 0.25f))
+                    .background(
+                        brush = if (is3DMode) {
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(Color(player.colorHex), Color(player.colorHex).copy(alpha = 0.6f))
+                            )
+                        } else {
+                            androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(Color(player.colorHex).copy(alpha = 0.25f), Color(player.colorHex).copy(alpha = 0.25f))
+                            )
+                        }
+                    )
                     .border(
-                        width = if (isCurrentTurn) 2.5.dp else 1.5.dp,
+                        width = if (is3DMode) 3.dp else if (isCurrentTurn) 2.5.dp else 1.5.dp,
                         color = borderColor,
                         shape = CircleShape
                     ),
@@ -83,7 +111,15 @@ fun PlayerSeatView(
             ) {
                 Text(
                     text = player.avatarEmoji,
-                    fontSize = if (isBottomUser) 22.sp else 18.sp
+                    fontSize = if (isBottomUser) (if (is3DMode) 26.sp else 22.sp) else (if (is3DMode) 22.sp else 18.sp)
+                )
+            }
+
+            // Floating Active Emote Bubble
+            if (!activeEmote.isNullOrBlank()) {
+                EmoteBubbleView(
+                    emoteEmoji = activeEmote,
+                    modifier = Modifier.offset(y = (-32).dp)
                 )
             }
 
@@ -91,8 +127,9 @@ fun PlayerSeatView(
             if (isDealer) {
                 Box(
                     modifier = Modifier
-                        .offset(x = 18.dp, y = (-12).dp)
-                        .size(20.dp)
+                        .offset(x = if (is3DMode) 20.dp else 18.dp, y = (-12).dp)
+                        .size(22.dp)
+                        .shadow(if (is3DMode) 6.dp else 2.dp, CircleShape)
                         .clip(CircleShape)
                         .background(GoldPrimary)
                         .border(1.dp, GoldLight, CircleShape),
