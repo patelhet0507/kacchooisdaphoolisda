@@ -37,18 +37,66 @@ enum class JoinRoomStatus {
 }
 
 class RoomManager {
-    private val localRooms = ConcurrentHashMap<String, MutableStateFlow<GameRoom?>>()
+    companion object {
+        private val localRooms = ConcurrentHashMap<String, MutableStateFlow<GameRoom?>>()
+        private val activeListeners = ConcurrentHashMap<String, ValueEventListener>()
+
+        fun gameRoomToMap(room: GameRoom): Map<String, Any?> = mapOf(
+            "roomId" to room.roomId,
+            "hostName" to room.hostName,
+            "players" to room.players,
+            "gameState" to room.gameState,
+            "gameMode" to room.gameMode,
+            "scoringRule" to room.scoringRule,
+            "rounds" to room.rounds,
+            "currentRoundIndex" to room.currentRoundIndex,
+            "currentTurnIndex" to room.currentTurnIndex,
+            "dealerIndex" to room.dealerIndex,
+            "trumpSuit" to room.trumpSuit,
+            "leadSuit" to room.leadSuit,
+            "dealtHands" to room.dealtHands,
+            "bids" to room.bids,
+            "tricksWon" to room.tricksWon,
+            "scores" to room.scores,
+            "trickCards" to room.trickCards,
+            "trickOrder" to room.trickOrder,
+            "lastTrickWinner" to room.lastTrickWinner,
+            "lastWinningCard" to room.lastWinningCard,
+            "statusMessage" to room.statusMessage,
+            "messages" to room.messages.mapValues { (_, msg) ->
+                mapOf(
+                    "id" to msg.id,
+                    "senderName" to msg.senderName,
+                    "text" to msg.text,
+                    "timestamp" to msg.timestamp,
+                    "isSystem" to msg.isSystem
+                )
+            },
+            "voiceNotes" to room.voiceNotes.mapValues { (_, note) ->
+                mapOf(
+                    "id" to note.id,
+                    "senderName" to note.senderName,
+                    "audioBase64" to note.audioBase64,
+                    "durationMs" to note.durationMs,
+                    "timestamp" to note.timestamp
+                )
+            },
+            "activeSpeakers" to room.activeSpeakers,
+            "kickedPlayers" to room.kickedPlayers,
+            "completedAt" to room.completedAt
+        )
+    }
 
     private val database: FirebaseDatabase? by lazy {
         val rtdbUrl = "https://gen-lang-client-0782479965-default-rtdb.asia-southeast1.firebasedatabase.app"
         try {
             FirebaseDatabase.getInstance(rtdbUrl)
-        } catch (e: Exception) {
-            Log.w("RoomManager", "FirebaseDatabase regional instance warning: ${e.message}")
+        } catch (t: Throwable) {
+            Log.w("RoomManager", "FirebaseDatabase regional instance warning: ${t.message}")
             try {
                 FirebaseDatabase.getInstance()
-            } catch (e2: Exception) {
-                Log.w("RoomManager", "FirebaseDatabase default fallback warning: ${e2.message}")
+            } catch (t2: Throwable) {
+                Log.w("RoomManager", "FirebaseDatabase default fallback warning: ${t2.message}")
                 null
             }
         }
@@ -57,10 +105,21 @@ class RoomManager {
     private val roomsRef: DatabaseReference?
         get() = try {
             database?.getReference("rooms")
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Error getting rooms reference", e)
+        } catch (t: Throwable) {
+            Log.w("RoomManager", "Error getting rooms reference", t)
             null
         }
+
+    fun syncRoomToFirebase(roomId: String, room: GameRoom) {
+        try {
+            val map = gameRoomToMap(room)
+            roomsRef?.child(roomId)?.setValue(map)?.addOnFailureListener { e ->
+                Log.w("RoomManager", "Firebase sync failed for room $roomId: ${e.message}")
+            }
+        } catch (t: Throwable) {
+            Log.w("RoomManager", "Error syncing room to Firebase: ${t.message}")
+        }
+    }
 
     fun getOrCreateLocalFlow(roomId: String): MutableStateFlow<GameRoom?> {
         return localRooms.computeIfAbsent(roomId) {
@@ -90,24 +149,10 @@ class RoomManager {
         flow.value = initialRoom
 
         try {
-            val ref = roomsRef?.child(cleanRoomId)
-            if (ref != null) {
-                try {
-                    ref.keepSynced(true)
-                } catch (e: Exception) {
-                    // non-critical
-                }
-                try {
-                    withTimeoutOrNull(4000L) {
-                        ref.setValue(initialRoom).await()
-                    }
-                } catch (e: Exception) {
-                    ref.setValue(initialRoom)
-                }
-                Log.d("RoomManager", "Room $cleanRoomId created and pushed to Firebase")
-            }
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Firebase room creation sync notice: ${e.message}")
+            syncRoomToFirebase(cleanRoomId, initialRoom)
+            Log.d("RoomManager", "Room $cleanRoomId created and pushed to Firebase")
+        } catch (t: Throwable) {
+            Log.w("RoomManager", "Firebase room creation sync notice: ${t.message}")
         }
         true
     }
@@ -202,12 +247,7 @@ class RoomManager {
                         )
 
                         getOrCreateLocalFlow(cleanRoomId).value = updated
-
-                        try {
-                            ref.setValue(updated)
-                        } catch (e: Exception) {
-                            Log.w("RoomManager", "Failed to update joined room: ${e.message}")
-                        }
+                        syncRoomToFirebase(cleanRoomId, updated)
                         return@withContext JoinRoomStatus.SUCCESS
                     }
                 }
@@ -227,8 +267,9 @@ class RoomManager {
             val updatedMessages = if (isAlreadyInRoom) {
                 currentLocal.messages
             } else {
-                currentLocal.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
-                    id = "msg_${System.currentTimeMillis()}",
+                val msgId = "msg_${System.currentTimeMillis()}"
+                currentLocal.messages + (msgId to ChatMessage(
+                    id = msgId,
                     senderName = "System",
                     text = "$safePlayer joined the room!",
                     timestamp = System.currentTimeMillis(),
@@ -241,12 +282,7 @@ class RoomManager {
                 messages = updatedMessages
             )
             getOrCreateLocalFlow(cleanRoomId).value = updated
-
-            try {
-                roomsRef?.child(cleanRoomId)?.setValue(updated)
-            } catch (e: Exception) {
-                // non-critical
-            }
+            syncRoomToFirebase(cleanRoomId, updated)
             return@withContext JoinRoomStatus.SUCCESS
         }
 
@@ -267,11 +303,7 @@ class RoomManager {
             )
         )
         getOrCreateLocalFlow(cleanRoomId).value = autoCreatedRoom
-        try {
-            roomsRef?.child(cleanRoomId)?.setValue(autoCreatedRoom)
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Failed to sync auto-created room: ${e.message}")
-        }
+        syncRoomToFirebase(cleanRoomId, autoCreatedRoom)
 
         JoinRoomStatus.SUCCESS
     }
@@ -321,12 +353,7 @@ class RoomManager {
                 ))
                 val updated = current.copy(players = updatedPlayers, messages = updatedMessages)
                 getOrCreateLocalFlow(cleanRoomId).value = updated
-
-                try {
-                    roomsRef?.child(cleanRoomId)?.setValue(updated)
-                } catch (e: Exception) {
-                    Log.w("RoomManager", "Failed to sync leaveRoom: ${e.message}")
-                }
+                syncRoomToFirebase(cleanRoomId, updated)
             }
         }
     }
@@ -357,12 +384,7 @@ class RoomManager {
             messages = updatedMessages
         )
         getOrCreateLocalFlow(cleanRoomId).value = updated
-
-        try {
-            roomsRef?.child(cleanRoomId)?.setValue(updated)
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Failed to sync kickPlayer: ${e.message}")
-        }
+        syncRoomToFirebase(cleanRoomId, updated)
         true
     }
 
@@ -401,12 +423,7 @@ class RoomManager {
         ))
         val updated = current.copy(players = updatedPlayers, messages = updatedMessages)
         getOrCreateLocalFlow(cleanRoomId).value = updated
-
-        try {
-            roomsRef?.child(cleanRoomId)?.setValue(updated)
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Failed to sync addBot: ${e.message}")
-        }
+        syncRoomToFirebase(cleanRoomId, updated)
         true
     }
 
@@ -526,11 +543,7 @@ class RoomManager {
         )
 
         getOrCreateLocalFlow(cleanRoomId).value = updated
-        try {
-            roomsRef?.child(cleanRoomId)?.setValue(updated)
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Failed to sync startMultiplayerMatch: ${e.message}")
-        }
+        syncRoomToFirebase(cleanRoomId, updated)
     }
 
     suspend fun submitBid(roomId: String, playerName: String, bid: Int) = withContext(Dispatchers.IO) {
@@ -562,11 +575,7 @@ class RoomManager {
         }
 
         getOrCreateLocalFlow(cleanRoomId).value = updated
-        try {
-            roomsRef?.child(cleanRoomId)?.setValue(updated)
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Failed to sync submitBid: ${e.message}")
-        }
+        syncRoomToFirebase(cleanRoomId, updated)
     }
 
     suspend fun playCard(roomId: String, playerName: String, cardId: String) = withContext(Dispatchers.IO) {
@@ -635,11 +644,7 @@ class RoomManager {
         }
 
         getOrCreateLocalFlow(cleanRoomId).value = updated
-        try {
-            roomsRef?.child(cleanRoomId)?.setValue(updated)
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Failed to sync playCard: ${e.message}")
-        }
+        syncRoomToFirebase(cleanRoomId, updated)
     }
 
     suspend fun nextTrickOrRound(roomId: String) = withContext(Dispatchers.IO) {
@@ -691,11 +696,7 @@ class RoomManager {
         }
 
         getOrCreateLocalFlow(cleanRoomId).value = updated
-        try {
-            roomsRef?.child(cleanRoomId)?.setValue(updated)
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Failed to sync nextTrickOrRound: ${e.message}")
-        }
+        syncRoomToFirebase(cleanRoomId, updated)
     }
 
     suspend fun nextRound(roomId: String) = withContext(Dispatchers.IO) {
@@ -705,7 +706,7 @@ class RoomManager {
         if (nextRoundIdx >= current.rounds.size) {
             val updated = current.copy(gameState = "GAME_OVER", completedAt = System.currentTimeMillis())
             getOrCreateLocalFlow(cleanRoomId).value = updated
-            roomsRef?.child(cleanRoomId)?.setValue(updated)
+            syncRoomToFirebase(cleanRoomId, updated)
             return@withContext
         }
 
@@ -741,64 +742,60 @@ class RoomManager {
         )
 
         getOrCreateLocalFlow(cleanRoomId).value = updated
-        try {
-            roomsRef?.child(cleanRoomId)?.setValue(updated)
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Failed to sync nextRound: ${e.message}")
-        }
+        syncRoomToFirebase(cleanRoomId, updated)
     }
 
-    fun getRoomUpdates(roomId: String): Flow<GameRoom?> = callbackFlow {
+    fun getRoomUpdates(roomId: String): Flow<GameRoom?> {
         val cleanRoomId = roomId.trim()
         val localFlow = getOrCreateLocalFlow(cleanRoomId)
 
-        trySend(localFlow.value)
-
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    val room = parseRoomFromSnapshot(snapshot)
-                    if (room != null) {
-                        // Check if game completed more than 5 minutes ago -> auto delete
-                        if (room.gameState == "GAME_OVER" && room.completedAt > 0L &&
-                            System.currentTimeMillis() - room.completedAt >= 5 * 60 * 1000L
-                        ) {
-                            try {
-                                roomsRef?.child(cleanRoomId)?.removeValue()
-                            } catch (e: Exception) {}
-                            localFlow.value = null
-                            trySend(null)
-                            return
+        val ref = roomsRef?.child(cleanRoomId)
+        if (ref != null && !activeListeners.containsKey(cleanRoomId)) {
+            val listener = object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    try {
+                        if (snapshot.exists()) {
+                            val room = parseRoomFromSnapshot(snapshot)
+                            if (room != null) {
+                                // Check if game completed more than 5 minutes ago -> auto delete
+                                if (room.gameState == "GAME_OVER" && room.completedAt > 0L &&
+                                    System.currentTimeMillis() - room.completedAt >= 5 * 60 * 1000L
+                                ) {
+                                    try {
+                                        roomsRef?.child(cleanRoomId)?.removeValue()
+                                    } catch (e: Throwable) {}
+                                    localFlow.value = null
+                                    return
+                                }
+                                localFlow.value = room
+                            }
+                        } else {
+                            // Snapshot not found on server yet:
+                            // If local room exists and is active, sync it up to Firebase so other players see it!
+                            val local = localFlow.value
+                            if (local != null && local.gameState != "DISBANDED") {
+                                syncRoomToFirebase(cleanRoomId, local)
+                            }
                         }
-                        localFlow.value = room
-                        trySend(room)
+                    } catch (t: Throwable) {
+                        Log.w("RoomManager", "Error processing onDataChange", t)
                     }
-                } else {
-                    // Room deleted or disbanded from Firebase
-                    localFlow.value = null
-                    trySend(null)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.w("RoomManager", "Firebase listener cancelled: ${error.message}")
                 }
             }
 
-            override fun onCancelled(error: DatabaseError) {
-                Log.w("RoomManager", "Firebase listener cancelled: ${error.message}")
+            try {
+                ref.addValueEventListener(listener)
+                activeListeners[cleanRoomId] = listener
+            } catch (t: Throwable) {
+                Log.w("RoomManager", "Error registering Firebase listener", t)
             }
         }
 
-        val ref = roomsRef?.child(cleanRoomId)
-        ref?.addValueEventListener(listener)
-
-        val scope = CoroutineScope(Dispatchers.Default)
-        val localJob = scope.launch {
-            localFlow.collect { localRoom ->
-                trySend(localRoom)
-            }
-        }
-
-        awaitClose {
-            ref?.removeEventListener(listener)
-            localJob.cancel()
-        }
+        return localFlow
     }
 
     private fun parseRoomFromSnapshot(snapshot: DataSnapshot): GameRoom? {

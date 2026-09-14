@@ -116,6 +116,20 @@ class UserProfileManager(private val context: Context) {
         )
     }
 
+    suspend fun deleteAccountAndWipeData() {
+        authManager.deleteAccount(context)
+        prefs.edit().clear().apply()
+        _state.value = UserProfileState(
+            isLoggedIn = false,
+            googleEmail = "",
+            googleName = "Player 1",
+            googlePhotoUrl = "",
+            gamesPlayed = 0,
+            selectedAvatar = "lion",
+            selectedTableTheme = "emerald"
+        )
+    }
+
     fun incrementGamesPlayed() {
         val newCount = _state.value.gamesPlayed + 1
         prefs.edit().putInt("games_played", newCount).apply()

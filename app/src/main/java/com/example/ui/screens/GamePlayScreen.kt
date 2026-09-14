@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -32,6 +33,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,13 +41,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.UserProfileManager
 import com.example.engine.KaachuPhoolEngine
+import com.example.engine.SoundEffectsManager
 import com.example.model.GamePhase
 import com.example.model.Player
 import com.example.ui.components.BiddingDialog
@@ -53,6 +58,7 @@ import com.example.ui.components.GameOverDialog
 import com.example.ui.components.PlayerSeatView
 import com.example.ui.components.PlayingCardView
 import com.example.ui.components.RoundSummaryDialog
+import com.example.ui.components.SettingsDialog
 import com.example.ui.components.TrickTableView
 import com.example.ui.components.TrumpIndicator
 import com.example.ui.theme.DarkBackground
@@ -75,6 +81,15 @@ fun GamePlayScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showQuitDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val soundEffectsManager = remember { SoundEffectsManager.getInstance(context) }
+    val userProfileManager = remember { UserProfileManager(context) }
+
+    LaunchedEffect(soundEffectsManager) {
+        viewModel.setSoundEffectsManager(soundEffectsManager)
+    }
 
     // Intercept hardware / system back gesture
     BackHandler {
@@ -143,7 +158,23 @@ fun GamePlayScreen(
                 },
                 actions = {
                     IconButton(
-                        onClick = { viewModel.restartCurrentGame() },
+                        onClick = {
+                            soundEffectsManager.playButtonTap()
+                            showSettingsDialog = true
+                        },
+                        modifier = Modifier.testTag("game_settings_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings & Sound Effects",
+                            tint = GoldLight
+                        )
+                    }
+                    IconButton(
+                        onClick = {
+                            soundEffectsManager.playButtonTap()
+                            viewModel.restartCurrentGame()
+                        },
                         modifier = Modifier.testTag("restart_match_button")
                     ) {
                         Icon(
@@ -478,6 +509,24 @@ fun GamePlayScreen(
                     }
                 },
                 containerColor = DarkSurfaceElevated
+            )
+        }
+
+        // Settings & Sound Effects Dialog
+        if (showSettingsDialog) {
+            SettingsDialog(
+                userProfileManager = userProfileManager,
+                onDismiss = { showSettingsDialog = false },
+                onLoggedOut = {
+                    showSettingsDialog = false
+                    viewModel.exitGame()
+                    onBackClick()
+                },
+                onAccountDeleted = {
+                    showSettingsDialog = false
+                    viewModel.exitGame()
+                    onBackClick()
+                }
             )
         }
     }

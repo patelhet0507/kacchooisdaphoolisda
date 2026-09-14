@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.engine.KaachuPhoolEngine
 import com.example.engine.RoomManager
+import com.example.engine.SoundEffectsManager
 import com.example.model.Card
 import com.example.model.BotDifficulty
 import com.example.model.GameMode
@@ -58,6 +59,11 @@ class GameViewModel : ViewModel() {
     private var isHost: Boolean = false
     private var roomJob: Job? = null
     private var botTurnJob: Job? = null
+    private var soundEffectsManager: SoundEffectsManager? = null
+
+    fun setSoundEffectsManager(manager: SoundEffectsManager) {
+        this.soundEffectsManager = manager
+    }
 
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
@@ -411,6 +417,9 @@ class GameViewModel : ViewModel() {
 
         val userHand = dealtHands["user"] ?: emptyList()
 
+        soundEffectsManager?.playCardDeal()
+        soundEffectsManager?.playTrumpAnnounce()
+
         _uiState.update {
             it.copy(
                 currentRoundIndex = roundIndex,
@@ -608,6 +617,8 @@ class GameViewModel : ViewModel() {
         val updatedTrick = state.currentTrick + playedCard
         val leadSuit = state.leadSuit ?: card.suit
 
+        soundEffectsManager?.playCardPlay()
+
         _uiState.update {
             it.copy(
                 userHand = updatedHand,
@@ -645,6 +656,8 @@ class GameViewModel : ViewModel() {
         val updatedTrick = state.currentTrick + playedCard
         val leadSuit = state.leadSuit ?: chosenCard.suit
 
+        soundEffectsManager?.playCardPlay()
+
         _uiState.update {
             it.copy(
                 playerStates = updatedStates,
@@ -675,6 +688,8 @@ class GameViewModel : ViewModel() {
             val updatedStates = state.playerStates.map {
                 if (it.player.id == winner.id) it.copy(tricksWon = it.tricksWon + 1) else it
             }
+
+            soundEffectsManager?.playTrickWin()
 
             _uiState.update {
                 it.copy(
@@ -720,6 +735,8 @@ class GameViewModel : ViewModel() {
             }
 
             val isGameOver = state.currentRoundIndex >= state.rounds.size - 1
+
+            soundEffectsManager?.playRoundWin()
 
             _uiState.update {
                 it.copy(

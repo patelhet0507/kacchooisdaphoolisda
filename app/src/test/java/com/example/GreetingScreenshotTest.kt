@@ -25,7 +25,8 @@ class GreetingScreenshotTest {
     composeTestRule.setContent {
       MyApplicationTheme {
         HomeScreen(
-          onStartGame = { _, _, _ -> },
+          onStartGame = { _, _, _, _ -> },
+          onOpenMultiplayerLobby = {},
           onOpenScorecard = {},
           onOpenRules = {}
         )

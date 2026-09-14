@@ -41,6 +41,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import com.example.engine.SoundEffectsManager
 import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.DarkSurfaceElevated
@@ -64,6 +66,8 @@ fun BiddingDialog(
     onBidSelected: (Int) -> Unit,
     onLeaveMatch: (() -> Unit)? = null
 ) {
+    val context = LocalContext.current
+    val soundEffectsManager = remember { SoundEffectsManager.getInstance(context) }
     var selectedBid by remember { mutableStateOf<Int?>(null) }
     var showHookExplanation by remember { mutableStateOf(false) }
 
@@ -107,7 +111,10 @@ fun BiddingDialog(
                             .clip(RoundedCornerShape(10.dp))
                             .background(ErrorRed.copy(alpha = 0.15f))
                             .border(1.dp, ErrorRed.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                            .clickable { showHookExplanation = true }
+                            .clickable {
+                                soundEffectsManager.playDealerHookAlert()
+                                showHookExplanation = true
+                            }
                             .padding(horizontal = 10.dp, vertical = 8.dp)
                     ) {
                         Row(
@@ -172,8 +179,14 @@ fun BiddingDialog(
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(bgColor)
                                 .border(if (isSelected) 2.dp else 1.dp, borderColor, RoundedCornerShape(12.dp))
-                                .clickable(enabled = !isForbidden) {
-                                    selectedBid = bidOption
+                                .clickable {
+                                    if (isForbidden) {
+                                        soundEffectsManager.playDealerHookAlert()
+                                        showHookExplanation = true
+                                    } else {
+                                        soundEffectsManager.playButtonTap()
+                                        selectedBid = bidOption
+                                    }
                                 }
                                 .testTag("bid_option_$bidOption"),
                             contentAlignment = Alignment.Center
@@ -202,7 +215,10 @@ fun BiddingDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    selectedBid?.let { onBidSelected(it) }
+                    selectedBid?.let {
+                        soundEffectsManager.playButtonTap()
+                        onBidSelected(it)
+                    }
                 },
                 enabled = selectedBid != null,
                 colors = ButtonDefaults.buttonColors(

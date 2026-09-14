@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -29,6 +30,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -77,9 +79,11 @@ import com.example.ui.theme.GoldPrimary
 import com.example.ui.theme.TextLight
 import com.example.ui.theme.TextMuted
 import com.example.data.UserProfileManager
+import com.example.engine.SoundEffectsManager
 import com.example.model.CustomizationData
 import com.example.ui.components.GoogleLoginDialog
 import com.example.ui.components.ProfileCustomizationDialog
+import com.example.ui.components.SettingsDialog
 import androidx.compose.ui.platform.LocalContext
 
 @Composable
@@ -92,12 +96,14 @@ fun HomeScreen(
 ) {
     val context = LocalContext.current
     val userProfileManager = remember { UserProfileManager(context) }
+    val soundEffectsManager = remember { SoundEffectsManager.getInstance(context) }
     val userState by userProfileManager.state.collectAsStateWithLifecycle()
 
     var showQuickStartDialog by remember { mutableStateOf(false) }
     var showMultiplayerDialog by remember { mutableStateOf(false) }
     var showGoogleLoginDialog by remember { mutableStateOf(false) }
     var showProfileDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
     val roomCode by multiplayerViewModel.roomCode.collectAsStateWithLifecycle()
     val isLoading by multiplayerViewModel.isLoading.collectAsStateWithLifecycle()
@@ -148,6 +154,35 @@ fun HomeScreen(
                                 )
                             )
                     )
+
+                    // Top Action Buttons in Hero
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 16.dp, end = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                soundEffectsManager.playButtonTap()
+                                showSettingsDialog = true
+                            },
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(DarkSurface.copy(alpha = 0.85f))
+                                .border(1.dp, GoldPrimary.copy(alpha = 0.5f), CircleShape)
+                                .testTag("home_settings_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "Game Settings & Audio",
+                                tint = GoldPrimary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
 
                     // Title in hero
                     Column(
@@ -318,6 +353,20 @@ fun HomeScreen(
                         onClick = onOpenRules,
                         testTag = "menu_rules"
                     )
+
+                    // Game Settings & Sound Effects
+                    FeatureMenuCard(
+                        title = "Game Settings & Audio",
+                        subtitle = "Card sound effects, volume control, vibration haptics, game speeds, log out, and account deletion.",
+                        badge = "SETTINGS",
+                        icon = Icons.Default.Settings,
+                        iconTint = GoldPrimary,
+                        onClick = {
+                            soundEffectsManager.playButtonTap()
+                            showSettingsDialog = true
+                        },
+                        testTag = "menu_settings"
+                    )
                 }
             }
 
@@ -394,6 +443,22 @@ fun HomeScreen(
                 showGoogleLoginDialog = true
             },
             onDismiss = { showProfileDialog = false }
+        )
+    }
+
+    if (showSettingsDialog) {
+        SettingsDialog(
+            userProfileManager = userProfileManager,
+            onDismiss = { showSettingsDialog = false },
+            onOpenRules = onOpenRules,
+            onOpenCustomization = {
+                showSettingsDialog = false
+                showProfileDialog = true
+            },
+            onOpenAuth = {
+                showSettingsDialog = false
+                showGoogleLoginDialog = true
+            }
         )
     }
 }
@@ -708,7 +773,7 @@ private fun QuickStartGameDialog(
 }
 
 @Composable
-private fun MultiplayerDialog(
+fun MultiplayerDialog(
     defaultName: String,
     isLoading: Boolean,
     errorMessage: String?,

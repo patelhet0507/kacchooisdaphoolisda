@@ -242,6 +242,25 @@ class AuthManager private constructor() {
         }
     }
 
+    suspend fun deleteAccount(context: Context? = null): Result<Unit> = withContext(Dispatchers.IO) {
+        try {
+            val user = auth.currentUser
+            if (user != null) {
+                try {
+                    user.delete().await()
+                } catch (e: Exception) {
+                    Log.w("AuthManager", "Firebase delete user error: ${e.message}")
+                }
+            }
+            signOut(context)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Delete account failed", e)
+            signOut(context)
+            Result.success(Unit)
+        }
+    }
+
     suspend fun signOut(context: Context? = null) = withContext(Dispatchers.IO) {
         try {
             auth.signOut()
