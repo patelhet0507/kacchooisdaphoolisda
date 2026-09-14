@@ -11,7 +11,7 @@ import android.os.Environment
 import android.util.Log
 import androidx.core.content.FileProvider
 import com.example.BuildConfig
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,7 +42,7 @@ sealed interface UpdateCheckState {
 
 sealed interface DownloadStatus {
     data object Idle : DownloadStatus
-    data class Downloading(val progressPercent: Int) : DownloadStatus
+    data class Downloading(val progressPercent: Int, val speedKbps: Double = 0.0) : DownloadStatus
     data class ReadyToInstall(val apkUri: Uri, val file: File) : DownloadStatus
     data class Failed(val reason: String) : DownloadStatus
 }
@@ -62,6 +62,7 @@ class AppUpdateManager private constructor(private val context: Context) {
 
     private var activeDownloadId: Long = -1L
     private var downloadCompleteReceiver: BroadcastReceiver? = null
+    private var progressPollingJob: Job? = null
 
     val currentVersionName: String
         get() = BuildConfig.VERSION_NAME
@@ -176,11 +177,15 @@ class AppUpdateManager private constructor(private val context: Context) {
                 setDescription("Downloading latest game update APK...")
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
                 setAllowedOverMetered(true)
                 setAllowedOverRoaming(true)
             }
 
             activeDownloadId = downloadManager.enqueue(request)
+            
+            // Start polling for progress
+            startProgressPolling(activeDownloadId)
 
             // Register broadcast receiver to know when download completes
             registerDownloadReceiver(activeDownloadId, fileName)
@@ -188,6 +193,63 @@ class AppUpdateManager private constructor(private val context: Context) {
         } catch (e: Exception) {
             Log.e("AppUpdateManager", "Download initiation error", e)
             _downloadStatus.value = DownloadStatus.Failed(e.localizedMessage ?: "Download failed")
+        }
+    }
+
+    private fun startProgressPolling(downloadId: Long) {
+        progressPollingJob?.cancel()
+        progressPollingJob = CoroutineScope(Dispatchers.IO).launch {
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            var isFinished = false
+            var lastDownloaded = 0L
+            var lastTime = System.currentTimeMillis()
+            
+            while (isActive && !isFinished) {
+                val query = DownloadManager.Query().setFilterById(downloadId)
+                val cursor = downloadManager.query(query)
+                
+                if (cursor != null && cursor.moveToFirst()) {
+                    val bytesDownloadedIndex = cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR)
+                    val totalBytesIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES)
+                    val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                    
+                    if (bytesDownloadedIndex != -1 && totalBytesIndex != -1) {
+                        val downloaded = cursor.getLong(bytesDownloadedIndex)
+                        val total = cursor.getLong(totalBytesIndex)
+                        
+                        val currentTime = System.currentTimeMillis()
+                        val timeDeltaSec = (currentTime - lastTime) / 1000.0
+                        
+                        val speed = if (timeDeltaSec > 0) {
+                            val bytesDelta = downloaded - lastDownloaded
+                            (bytesDelta / 1024.0) / timeDeltaSec
+                        } else 0.0
+                        
+                        lastDownloaded = downloaded
+                        lastTime = currentTime
+                        
+                        if (total > 0) {
+                            val progress = ((downloaded * 100) / total).toInt()
+                            _downloadStatus.value = DownloadStatus.Downloading(
+                                progressPercent = progress.coerceIn(0, 100),
+                                speedKbps = speed
+                            )
+                        }
+                    }
+                    
+                    val status = if (statusIndex != -1) cursor.getInt(statusIndex) else -1
+                    if (status == DownloadManager.STATUS_SUCCESSFUL || status == DownloadManager.STATUS_FAILED) {
+                        isFinished = true
+                    }
+                    cursor.close()
+                } else {
+                    isFinished = true
+                }
+                
+                if (!isFinished) {
+                    delay(800) // Poll every 800ms
+                }
+            }
         }
     }
 
@@ -299,6 +361,9 @@ class AppUpdateManager private constructor(private val context: Context) {
     }
 
     private fun unregisterReceiverSafe() {
+        progressPollingJob?.cancel()
+        progressPollingJob = null
+        
         downloadCompleteReceiver?.let {
             try {
                 context.unregisterReceiver(it)

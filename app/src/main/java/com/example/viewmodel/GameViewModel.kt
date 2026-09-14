@@ -25,6 +25,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+data class TableState(
+    val playedCards: List<PlayedCard> = emptyList(),
+    val trumpSuit: Suit = Suit.SPADES,
+    val leadSuit: Suit? = null,
+    val trickWinner: Player? = null,
+    val isTrickFinished: Boolean = false
+)
+
+data class PlayerSeatState(
+    val player: Player,
+    val bid: Int? = null,
+    val tricksWon: Int = 0,
+    val isDealer: Boolean = false,
+    val isCurrentTurn: Boolean = false,
+    val totalScore: Int = 0,
+    val activeEmote: String? = null
+)
+
 data class GameUiState(
     val gameMode: GameMode = GameMode.QUICK,
     val scoringRule: ScoringRule = ScoringRule.STANDARD,
@@ -62,6 +80,16 @@ class GameViewModel : ViewModel() {
     private var roomJob: Job? = null
     private var botTurnJob: Job? = null
     private var soundEffectsManager: SoundEffectsManager? = null
+
+    // Granular StateFlows for real-time synchronization
+    private val _tableState = MutableStateFlow(TableState())
+    val tableState: StateFlow<TableState> = _tableState.asStateFlow()
+
+    private val _playerSeats = MutableStateFlow<List<PlayerSeatState>>(emptyList())
+    val playerSeats: StateFlow<List<PlayerSeatState>> = _playerSeats.asStateFlow()
+
+    private val _userHand = MutableStateFlow<List<Card>>(emptyList())
+    val userHand: StateFlow<List<Card>> = _userHand.asStateFlow()
 
     fun setSoundEffectsManager(manager: SoundEffectsManager) {
         this.soundEffectsManager = manager
@@ -121,6 +149,12 @@ class GameViewModel : ViewModel() {
         }
         currentRoomId = null
         isHost = false
+        
+        // Reset granular states
+        _tableState.value = TableState()
+        _playerSeats.value = emptyList()
+        _userHand.value = emptyList()
+
         _uiState.update {
             it.copy(
                 isMultiplayer = false,
@@ -242,6 +276,34 @@ class GameViewModel : ViewModel() {
         val currentTurnPlayerName = playerNames.getOrNull(room.currentTurnIndex)
         val isBotTurn = currentTurnPlayerName != null &&
                 (currentTurnPlayerName.startsWith("Bot ") || currentTurnPlayerName.contains("(Bot)"))
+
+        // Update Granular Table State
+        _tableState.update {
+            it.copy(
+                playedCards = trickCardsList,
+                trumpSuit = trump,
+                leadSuit = leadSuit,
+                trickWinner = lastWinner,
+                isTrickFinished = phase == GamePhase.TRICK_FINISHED
+            )
+        }
+
+        // Update Granular Player Seats State
+        val newPlayerSeats = playersList.map { p ->
+            PlayerSeatState(
+                player = p,
+                bid = room.bids[p.name],
+                tricksWon = room.tricksWon[p.name] ?: 0,
+                isDealer = room.dealerIndex == playerNames.indexOf(p.name),
+                isCurrentTurn = room.currentTurnIndex == playerNames.indexOf(p.name),
+                totalScore = room.scores[p.name] ?: 0,
+                activeEmote = room.activeEmotes[p.name]
+            )
+        }
+        _playerSeats.value = newPlayerSeats
+
+        // Update Granular User Hand State
+        _userHand.value = myHand
 
         _uiState.update {
             it.copy(

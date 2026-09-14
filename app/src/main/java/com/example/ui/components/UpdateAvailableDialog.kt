@@ -198,10 +198,16 @@ fun UpdateAvailableDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Downloading APK from GitHub...", color = GoldLight, fontSize = 11.sp)
-                                Text("Please wait", color = TextMuted, fontSize = 11.sp)
+                                val speedText = if (status.speedKbps > 1024) {
+                                    "%.2f MB/s".format(status.speedKbps / 1024.0)
+                                } else {
+                                    "%.1f KB/s".format(status.speedKbps)
+                                }
+                                Text("Downloading: ${status.progressPercent}% ($speedText)", color = GoldLight, fontSize = 11.sp)
+                                Text("Please wait...", color = TextMuted, fontSize = 11.sp)
                             }
                             LinearProgressIndicator(
+                                progress = { status.progressPercent / 100f },
                                 modifier = Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(3.dp)),
                                 color = GoldPrimary,
                                 trackColor = DarkSurfaceElevated

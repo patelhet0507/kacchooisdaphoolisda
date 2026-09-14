@@ -85,6 +85,10 @@ fun GamePlayScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val tableState by viewModel.tableState.collectAsStateWithLifecycle()
+    val playerSeats by viewModel.playerSeats.collectAsStateWithLifecycle()
+    val userHand by viewModel.userHand.collectAsStateWithLifecycle()
+
     var showQuitDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
 
@@ -103,31 +107,29 @@ fun GamePlayScreen(
         showQuitDialog = true
     }
 
-    val myPlayer = uiState.players.find {
-        it.name == uiState.localPlayerName || it.id == uiState.localPlayerName || it.id == "user"
-    } ?: uiState.players.firstOrNull()
+    val mySeat = playerSeats.find {
+        it.player.name == uiState.localPlayerName || it.player.id == uiState.localPlayerName || it.player.id == "user"
+    } ?: playerSeats.firstOrNull()
 
-    val opponents = uiState.players.filter { it.name != myPlayer?.name }
-
-    val userState = uiState.playerStates.find { it.player.name == myPlayer?.name }
+    val opponentSeats = playerSeats.filter { it.player.name != mySeat?.player?.name }
 
     // Dynamic opponent layout mapping
-    val topOpponents = when (opponents.size) {
-        1 -> listOf(opponents[0])
+    val topOpponentSeats = when (opponentSeats.size) {
+        1 -> listOf(opponentSeats[0])
         2 -> emptyList()
-        3 -> listOf(opponents[1])
-        4 -> listOf(opponents[1], opponents[2])
-        else -> opponents.drop(1).dropLast(1)
+        3 -> listOf(opponentSeats[1])
+        4 -> listOf(opponentSeats[1], opponentSeats[2])
+        else -> opponentSeats.drop(1).dropLast(1)
     }
-    val leftOpponent = when (opponents.size) {
+    val leftOpponentSeat = when (opponentSeats.size) {
         1 -> null
-        2 -> opponents[0]
-        else -> opponents.firstOrNull()
+        2 -> opponentSeats[0]
+        else -> opponentSeats.firstOrNull()
     }
-    val rightOpponent = when (opponents.size) {
+    val rightOpponentSeat = when (opponentSeats.size) {
         1 -> null
-        2 -> opponents[1]
-        else -> opponents.lastOrNull()
+        2 -> opponentSeats[1]
+        else -> opponentSeats.lastOrNull()
     }
 
     if (uiState.isMultiplayer && uiState.players.isEmpty()) {
@@ -265,22 +267,16 @@ fun GamePlayScreen(
                     modifier = Modifier.width(if (isSmallScreen) 68.dp else 78.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (leftOpponent != null) {
-                        val pState = uiState.playerStates.find { it.player.name == leftOpponent.name }
-                        val isTurn = (uiState.phase == GamePhase.BIDDING || uiState.phase == GamePhase.PLAYING) &&
-                                uiState.players.getOrNull(uiState.currentTurnIndex)?.name == leftOpponent.name
-                        val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == leftOpponent.name
-                        val activeEmote = uiState.activeEmotes[leftOpponent.name] ?: uiState.activeEmotes[leftOpponent.id]
-
+                    if (leftOpponentSeat != null) {
                         PlayerSeatView(
-                            player = leftOpponent,
-                            bid = pState?.bid,
-                            tricksWon = pState?.tricksWon ?: 0,
-                            isDealer = isDealer,
-                            isCurrentTurn = isTurn,
-                            turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                            totalScore = pState?.totalScore ?: 0,
-                            activeEmote = activeEmote,
+                            player = leftOpponentSeat.player,
+                            bid = leftOpponentSeat.bid,
+                            tricksWon = leftOpponentSeat.tricksWon,
+                            isDealer = leftOpponentSeat.isDealer,
+                            isCurrentTurn = leftOpponentSeat.isCurrentTurn,
+                            turnActionText = if (leftOpponentSeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
+                            totalScore = leftOpponentSeat.totalScore,
+                            activeEmote = leftOpponentSeat.activeEmote,
                             is3DMode = appSettings.is3DMode
                         )
                     }
@@ -296,28 +292,22 @@ fun GamePlayScreen(
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     // Top Opponent(s) Row
-                    if (topOpponents.isNotEmpty()) {
+                    if (topOpponentSeats.isNotEmpty()) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            topOpponents.forEach { opponent ->
-                                val pState = uiState.playerStates.find { it.player.name == opponent.name }
-                                val isTurn = (uiState.phase == GamePhase.BIDDING || uiState.phase == GamePhase.PLAYING) &&
-                                        uiState.players.getOrNull(uiState.currentTurnIndex)?.name == opponent.name
-                                val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == opponent.name
-                                val activeEmote = uiState.activeEmotes[opponent.name] ?: uiState.activeEmotes[opponent.id]
-
+                            topOpponentSeats.forEach { seat ->
                                 PlayerSeatView(
-                                    player = opponent,
-                                    bid = pState?.bid,
-                                    tricksWon = pState?.tricksWon ?: 0,
-                                    isDealer = isDealer,
-                                    isCurrentTurn = isTurn,
-                                    turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                                    totalScore = pState?.totalScore ?: 0,
-                                    activeEmote = activeEmote,
+                                    player = seat.player,
+                                    bid = seat.bid,
+                                    tricksWon = seat.tricksWon,
+                                    isDealer = seat.isDealer,
+                                    isCurrentTurn = seat.isCurrentTurn,
+                                    turnActionText = if (seat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
+                                    totalScore = seat.totalScore,
+                                    activeEmote = seat.activeEmote,
                                     is3DMode = appSettings.is3DMode
                                 )
                             }
@@ -334,11 +324,11 @@ fun GamePlayScreen(
                     ) {
                         TrickTableView(
                             modifier = Modifier.fillMaxSize(),
-                            playedCards = uiState.currentTrick,
-                            trumpSuit = uiState.currentTrump,
-                            leadSuit = uiState.leadSuit,
-                            trickWinner = uiState.lastTrickWinner,
-                            isTrickFinished = uiState.phase == GamePhase.TRICK_FINISHED,
+                            playedCards = tableState.playedCards,
+                            trumpSuit = tableState.trumpSuit,
+                            leadSuit = tableState.leadSuit,
+                            trickWinner = tableState.trickWinner,
+                            isTrickFinished = tableState.isTrickFinished,
                             onNextTrickClick = { viewModel.continueNextTrick() },
                             is3DMode = appSettings.is3DMode
                         )
@@ -373,22 +363,16 @@ fun GamePlayScreen(
                     modifier = Modifier.width(if (isSmallScreen) 68.dp else 78.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (rightOpponent != null) {
-                        val pState = uiState.playerStates.find { it.player.name == rightOpponent.name }
-                        val isTurn = (uiState.phase == GamePhase.BIDDING || uiState.phase == GamePhase.PLAYING) &&
-                                uiState.players.getOrNull(uiState.currentTurnIndex)?.name == rightOpponent.name
-                        val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == rightOpponent.name
-                        val activeEmote = uiState.activeEmotes[rightOpponent.name] ?: uiState.activeEmotes[rightOpponent.id]
-
+                    if (rightOpponentSeat != null) {
                         PlayerSeatView(
-                            player = rightOpponent,
-                            bid = pState?.bid,
-                            tricksWon = pState?.tricksWon ?: 0,
-                            isDealer = isDealer,
-                            isCurrentTurn = isTurn,
-                            turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                            totalScore = pState?.totalScore ?: 0,
-                            activeEmote = activeEmote,
+                            player = rightOpponentSeat.player,
+                            bid = rightOpponentSeat.bid,
+                            tricksWon = rightOpponentSeat.tricksWon,
+                            isDealer = rightOpponentSeat.isDealer,
+                            isCurrentTurn = rightOpponentSeat.isCurrentTurn,
+                            turnActionText = if (rightOpponentSeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
+                            totalScore = rightOpponentSeat.totalScore,
+                            activeEmote = rightOpponentSeat.activeEmote,
                             is3DMode = appSettings.is3DMode
                         )
                     }
@@ -409,21 +393,16 @@ fun GamePlayScreen(
                     modifier = Modifier.width(if (isSmallScreen) 84.dp else 96.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    if (myPlayer != null) {
-                        val isTurn = (uiState.phase == GamePhase.BIDDING || uiState.phase == GamePhase.PLAYING) &&
-                                uiState.players.getOrNull(uiState.currentTurnIndex)?.name == myPlayer.name
-                        val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == myPlayer.name
-                        val myActiveEmote = uiState.activeEmotes[myPlayer.name] ?: uiState.activeEmotes[myPlayer.id] ?: uiState.activeEmotes["You"]
-
+                    if (mySeat != null) {
                         PlayerSeatView(
-                            player = myPlayer,
-                            bid = userState?.bid,
-                            tricksWon = userState?.tricksWon ?: 0,
-                            isDealer = isDealer,
-                            isCurrentTurn = isTurn,
-                            turnActionText = if (isTurn) (if (uiState.phase == GamePhase.BIDDING) "Bid!" else "Play!") else null,
-                            totalScore = userState?.totalScore ?: 0,
-                            activeEmote = myActiveEmote,
+                            player = mySeat.player,
+                            bid = mySeat.bid,
+                            tricksWon = mySeat.tricksWon,
+                            isDealer = mySeat.isDealer,
+                            isCurrentTurn = mySeat.isCurrentTurn,
+                            turnActionText = if (mySeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bid!" else "Play!") else null,
+                            totalScore = mySeat.totalScore,
+                            activeEmote = mySeat.activeEmote,
                             isBottomUser = true,
                             is3DMode = appSettings.is3DMode
                         )
@@ -439,11 +418,11 @@ fun GamePlayScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     val isMyTurnToPlay = uiState.phase == GamePhase.PLAYING &&
-                            uiState.players.getOrNull(uiState.currentTurnIndex)?.name == myPlayer?.name
+                            mySeat?.isCurrentTurn == true
 
-                    val playableCards = remember(uiState.userHand, uiState.leadSuit, isMyTurnToPlay) {
+                    val playableCards = remember(userHand, uiState.leadSuit, isMyTurnToPlay) {
                         if (isMyTurnToPlay) {
-                            KaachuPhoolEngine.getPlayableCards(uiState.userHand, uiState.leadSuit)
+                            KaachuPhoolEngine.getPlayableCards(userHand, uiState.leadSuit)
                         } else emptyList()
                     }
 
@@ -454,7 +433,7 @@ fun GamePlayScreen(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (uiState.userHand.isEmpty()) {
+                        if (userHand.isEmpty()) {
                             Text(
                                 text = if (uiState.phase == GamePhase.ROUND_FINISHED) "Round Finished"
                                        else if (uiState.phase == GamePhase.TRICK_FINISHED) "Trick Finished"
@@ -464,13 +443,13 @@ fun GamePlayScreen(
                                 fontSize = if (isSmallScreen) 11.sp else 13.sp
                             )
                         } else {
-                            uiState.userHand.forEach { card ->
+                            userHand.forEach { card ->
                                 val isPlayable = playableCards.contains(card)
                                 PlayingCardView(
                                     card = card,
                                     isPlayable = isPlayable,
                                     isSelected = false,
-                                    isTrump = card.suit == uiState.currentTrump,
+                                    isTrump = card.suit == tableState.trumpSuit,
                                     width = cardWidth,
                                     height = cardHeight,
                                     is3DMode = appSettings.is3DMode,
@@ -499,7 +478,7 @@ fun GamePlayScreen(
                             .padding(horizontal = 8.dp, vertical = 3.dp)
                     ) {
                         Text(
-                            text = "Score: ${userState?.totalScore ?: 0}",
+                            text = "Score: ${mySeat?.totalScore ?: 0}",
                             color = GoldLight,
                             fontSize = if (isSmallScreen) 11.sp else 13.sp,
                             fontWeight = FontWeight.Bold
@@ -517,7 +496,7 @@ fun GamePlayScreen(
 
         // Bidding Dialog
         if (uiState.isUserBiddingTurn) {
-            val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == myPlayer?.name
+            val isDealer = uiState.players.getOrNull(uiState.dealerIndex)?.name == mySeat?.player?.name
             BiddingDialog(
                 totalCards = uiState.currentRoundCardCount,
                 isDealer = isDealer,
