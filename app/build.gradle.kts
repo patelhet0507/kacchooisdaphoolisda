@@ -17,8 +17,8 @@ android {
     applicationId = "kachu.phool"
     minSdk = 24
     targetSdk = 36
-    versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
-    versionName = (project.findProperty("versionName") as? String) ?: "1.0.0"
+    versionCode = (project.findProperty("versionCode")?.toString())?.toIntOrNull() ?: 12
+    versionName = (project.findProperty("versionName")?.toString()) ?: "1.0.12"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }

@@ -143,14 +143,23 @@ class AuthManager private constructor() {
         phoneNumber: String,
         callbacks: com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks
     ) {
-        withContext(Dispatchers.Main) {
-            val options = com.google.firebase.auth.PhoneAuthOptions.newBuilder(auth)
-                .setPhoneNumber(phoneNumber.trim())
-                .setTimeout(60L, java.util.concurrent.TimeUnit.SECONDS)
-                .setActivity(activity)
-                .setCallbacks(callbacks)
-                .build()
-            com.google.firebase.auth.PhoneAuthProvider.verifyPhoneNumber(options)
+        try {
+            withContext(Dispatchers.Main) {
+                val options = com.google.firebase.auth.PhoneAuthOptions.newBuilder(auth)
+                    .setPhoneNumber(phoneNumber.trim())
+                    .setTimeout(60L, java.util.concurrent.TimeUnit.SECONDS)
+                    .setActivity(activity)
+                    .setCallbacks(callbacks)
+                    .build()
+                com.google.firebase.auth.PhoneAuthProvider.verifyPhoneNumber(options)
+            }
+        } catch (e: Exception) {
+            Log.e("AuthManager", "Failed to start phone verification", e)
+            // Trigger failure callback manually if the start fails
+            callbacks.onVerificationFailed(
+                if (e is com.google.firebase.FirebaseException) e 
+                else com.google.firebase.auth.FirebaseAuthException("internal-error", e.message ?: "Unknown error")
+            )
         }
     }
 
@@ -163,7 +172,7 @@ class AuthManager private constructor() {
             AuthResult.Success(userState)
         } catch (e: Exception) {
             Log.e("AuthManager", "Phone verification sign in error", e)
-            AuthResult.Error(e.localizedMessage ?: "Invalid verification code.")
+            AuthResult.Error(mapPhoneAuthException(e))
         }
     }
 
@@ -175,7 +184,27 @@ class AuthManager private constructor() {
             AuthResult.Success(userState)
         } catch (e: Exception) {
             Log.e("AuthManager", "Phone credential sign in error", e)
-            AuthResult.Error(e.localizedMessage ?: "Phone authentication failed.")
+            AuthResult.Error(mapPhoneAuthException(e))
+        }
+    }
+
+    private fun mapPhoneAuthException(e: Exception): String {
+        return when (e) {
+            is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException -> 
+                "The verification code entered is incorrect or has expired. Please check and try again."
+            is com.google.firebase.FirebaseTooManyRequestsException -> 
+                "Too many attempts. We have blocked all requests from this device due to unusual activity. Try again later."
+            is com.google.firebase.auth.FirebaseAuthException -> {
+                when (e.errorCode) {
+                    "ERROR_SESSION_EXPIRED" -> "Verification session expired. Please request a new code."
+                    "ERROR_QUOTA_EXCEEDED" -> "SMS quota exceeded for today. Please try another method or wait 24 hours."
+                    "ERROR_NETWORK_REQUEST_FAILED" -> "Network error. Please check your internet connection and try again."
+                    else -> e.localizedMessage ?: "Verification failed. Please retry."
+                }
+            }
+            is java.net.UnknownHostException, is java.net.ConnectException -> 
+                "No internet connection detected. Please check your data or Wi-Fi."
+            else -> e.localizedMessage ?: "Authentication failed. Please try again or re-trigger the SMS flow."
         }
     }
 

@@ -288,7 +288,7 @@ fun PhoneAuthScreen(
                                         if (res is AuthResult.Success) {
                                             onSuccess(res.user.displayName ?: "PhoneUser", res.user.email ?: "phone@firebase.auth")
                                         } else if (res is AuthResult.Error) {
-                                            errorMessage = "Authentication Failed: ${res.message}. Please double-check your code and try again."
+                                            errorMessage = res.message
                                             showErrorDialog = true
                                         }
                                     } catch (e: com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {

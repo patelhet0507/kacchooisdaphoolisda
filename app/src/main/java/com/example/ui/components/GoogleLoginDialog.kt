@@ -734,7 +734,7 @@ fun GoogleLoginDialog(
                                                     onLogin(phoneName, phoneEmail)
                                                     onDismiss()
                                                 } else if (res is AuthResult.Error) {
-                                                    errorMessage = "Authentication Failed: ${res.message}. Please double-check your code."
+                                                    errorMessage = res.message
                                                     showErrorDialog = true
                                                 }
                                             } catch (e: com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
