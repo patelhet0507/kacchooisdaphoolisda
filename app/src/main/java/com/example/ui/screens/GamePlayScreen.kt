@@ -99,7 +99,7 @@ fun GamePlayScreen(
     val appSettings by settingsManager.settings.collectAsStateWithLifecycle()
 
     LaunchedEffect(soundEffectsManager) {
-        viewModel.setSoundEffectsManager(soundEffectsManager)
+        viewModel.setSoundEffectsManager(soundEffectsManager, context.applicationContext as android.app.Application)
     }
 
     // Intercept hardware / system back gesture

@@ -1,5 +1,6 @@
 package com.example.viewmodel
 
+import android.app.Application
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,6 +25,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.example.data.KaachuPhoolDatabase
+import com.example.data.MatchHistoryRepository
+import com.example.data.MatchHistoryEntity
+import com.example.data.PlayedTrickHistory
+import com.example.data.PlayedCardHistory
+import com.google.gson.Gson
 
 data class TableState(
     val playedCards: List<PlayedCard> = emptyList(),
@@ -74,6 +81,7 @@ data class GameUiState(
 
 class GameViewModel : ViewModel() {
     private val roomManager = RoomManager()
+    private var matchHistoryRepository: MatchHistoryRepository? = null
     private var currentRoomId: String? = null
     private var localPlayerName: String = "You"
     private var isHost: Boolean = false
@@ -91,8 +99,12 @@ class GameViewModel : ViewModel() {
     private val _userHand = MutableStateFlow<List<Card>>(emptyList())
     val userHand: StateFlow<List<Card>> = _userHand.asStateFlow()
 
-    fun setSoundEffectsManager(manager: SoundEffectsManager) {
+    fun setSoundEffectsManager(manager: SoundEffectsManager, application: Application) {
         this.soundEffectsManager = manager
+        if (matchHistoryRepository == null) {
+            val db = KaachuPhoolDatabase.getDatabase(application)
+            matchHistoryRepository = MatchHistoryRepository(db.matchHistoryDao())
+        }
     }
 
     private val _uiState = MutableStateFlow(GameUiState())
@@ -357,6 +369,32 @@ class GameViewModel : ViewModel() {
                     roomManager.nextTrickOrRound(room.roomId)
                 }
             }
+        }
+
+        // In multiplayer game, if game is over, save to match history
+        if (phase == GamePhase.GAME_OVER) {
+            saveMatchHistory()
+        }
+    }
+
+    private fun saveMatchHistory() {
+        val state = _uiState.value
+        val repo = matchHistoryRepository ?: return
+        
+        viewModelScope.launch {
+            val winners = state.playerStates.sortedByDescending { it.totalScore }
+            val winner = winners.firstOrNull()
+            
+            val matchEntity = MatchHistoryEntity(
+                gameMode = state.gameMode.name,
+                scoringRule = state.scoringRule.name,
+                playerNames = state.players.joinToString(",") { it.name },
+                winnerName = winner?.player?.name ?: "Unknown",
+                winnerScore = winner?.totalScore ?: 0,
+                totalRounds = state.rounds.size,
+                playedTricksJson = "[]" // Placeholder for now as granular trick history requires more instrumentation
+            )
+            repo.saveMatch(matchEntity)
         }
     }
 
@@ -822,6 +860,9 @@ class GameViewModel : ViewModel() {
                     lastTrickWinner = null,
                     statusMessage = if (isGameOver) "Game Completed!" else "Round Completed!"
                 )
+            }
+            if (isGameOver) {
+                saveMatchHistory()
             }
         } else {
             _uiState.update {

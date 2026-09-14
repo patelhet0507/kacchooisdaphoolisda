@@ -116,6 +116,11 @@ import com.example.update.UpdateCheckState
 import com.example.data.SettingsManager
 import androidx.compose.ui.platform.LocalContext
 
+import com.example.viewmodel.MatchHistoryViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 @Composable
 fun HomeScreen(
     onStartGame: (userName: String, mode: GameMode, scoringRule: ScoringRule, difficulty: BotDifficulty) -> Unit,
@@ -125,6 +130,8 @@ fun HomeScreen(
     multiplayerViewModel: MultiplayerViewModel = viewModel()
 ) {
     val context = LocalContext.current
+    val matchHistoryViewModel: MatchHistoryViewModel = viewModel()
+    val lastMatches by matchHistoryViewModel.lastFiveMatches.collectAsStateWithLifecycle()
     val userProfileManager = remember { UserProfileManager(context) }
     val soundEffectsManager = remember { SoundEffectsManager.getInstance(context) }
     val settingsManager = remember { SettingsManager.getInstance(context) }
@@ -369,7 +376,8 @@ fun HomeScreen(
                         onSettings = {
                             soundEffectsManager.playButtonTap()
                             showSettingsDialog = true
-                        }
+                        },
+                        matches = lastMatches
                     )
                 }
 
@@ -1066,15 +1074,17 @@ private fun HorizontalGameModeSlider(
     onFriends: () -> Unit,
     onScorecard: () -> Unit,
     onRules: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    matches: List<com.example.data.MatchHistoryEntity>
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val pagerState = rememberPagerState(initialPage = 0) { 6 }
+    val pagerState = rememberPagerState(initialPage = 0) { 7 }
 
     val modeTabs = listOf(
         "🤖 vs AI",
         "🌐 Multiplayer",
         "👥 Friends",
+        "🕒 History",
         "🃏 Scorekeeper",
         "📖 Rules",
         "⚙️ Settings"
@@ -1154,9 +1164,10 @@ private fun HorizontalGameModeSlider(
                 0 -> AiPlaySlidePreview(onLaunch = onPlayVsAi)
                 1 -> MultiplayerSlidePreview(onLaunch = onMultiplayer)
                 2 -> FriendsSlidePreview(onLaunch = onFriends)
-                3 -> ScorekeeperSlidePreview(onLaunch = onScorecard)
-                4 -> RulesSlidePreview(onLaunch = onRules)
-                5 -> SettingsSlidePreview(onLaunch = onSettings)
+                3 -> MatchHistorySlide(matches = matches)
+                4 -> ScorekeeperSlidePreview(onLaunch = onScorecard)
+                5 -> RulesSlidePreview(onLaunch = onRules)
+                6 -> SettingsSlidePreview(onLaunch = onSettings)
             }
         }
 
@@ -1190,7 +1201,7 @@ private fun HorizontalGameModeSlider(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                repeat(6) { index ->
+                repeat(7) { index ->
                     val isActive = pagerState.currentPage == index
                     Box(
                         modifier = Modifier
@@ -1207,17 +1218,17 @@ private fun HorizontalGameModeSlider(
             // Next Button
             IconButton(
                 onClick = {
-                    if (pagerState.currentPage < 5) {
+                    if (pagerState.currentPage < 6) {
                         coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                     }
                 },
-                enabled = pagerState.currentPage < 5,
+                enabled = pagerState.currentPage < 6,
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = "Next Mode",
-                    tint = if (pagerState.currentPage < 5) GoldPrimary else TextMuted.copy(alpha = 0.3f)
+                    tint = if (pagerState.currentPage < 6) GoldPrimary else TextMuted.copy(alpha = 0.3f)
                 )
             }
         }
@@ -1630,6 +1641,81 @@ private fun ScorekeeperSlidePreview(onLaunch: () -> Unit) {
                 }
 
                 Text("⚠️ Auto Dealer Hook Check & Point Calculation", color = GoldLight, fontSize = 9.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MatchHistorySlide(matches: List<com.example.data.MatchHistoryEntity>) {
+    ModePreviewCard(
+        badge = "MATCH HISTORY",
+        badgeColor = EmeraldLight,
+        title = "Recent Matches & Statistics",
+        subtitle = "Review your last 5 match results, including winners, scores, and game modes played.",
+        buttonText = "VIEW FULL STATISTICS",
+        icon = Icons.Default.TableChart,
+        iconTint = EmeraldLight,
+        testTag = "menu_history",
+        onLaunch = { /* Could navigate to a more detailed history page later */ }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(115.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(DarkSurfaceElevated)
+                .border(1.dp, EmeraldLight.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                .padding(8.dp)
+        ) {
+            if (matches.isEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("No match history yet.", color = TextMuted, fontSize = 10.sp)
+                    Text("Play a game to see it here!", color = GoldLight, fontSize = 9.sp)
+                }
+            } else {
+                val dateFormat = remember { SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()) }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(matches.size) { index ->
+                        val match = matches[index]
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(DarkSurface.copy(alpha = 0.5f))
+                                .padding(6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "${match.gameMode} • ${dateFormat.format(Date(match.timestamp))}",
+                                    color = TextMuted,
+                                    fontSize = 8.sp
+                                )
+                                Text(
+                                    text = "Winner: ${match.winnerName}",
+                                    color = EmeraldLight,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Text(
+                                text = "${match.winnerScore} pts",
+                                color = GoldPrimary,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        }
+                    }
+                }
             }
         }
     }

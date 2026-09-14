@@ -17,8 +17,8 @@ android {
     applicationId = "kachu.phool"
     minSdk = 24
     targetSdk = 36
-    versionCode = (project.findProperty("versionCode")?.toString())?.toIntOrNull() ?: 110
-    versionName = (project.findProperty("versionName")?.toString()) ?: "1.1.0"
+    versionCode = (project.findProperty("versionCode")?.toString())?.toIntOrNull() ?: 111
+    versionName = (project.findProperty("versionName")?.toString()) ?: "1.1.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -110,6 +110,7 @@ dependencies {
   implementation(libs.androidx.credentials)
   implementation(libs.androidx.credentials.play.services)
   implementation(libs.googleid)
+  implementation(libs.gson)
   implementation(libs.firebase.appcheck.recaptcha)
   implementation(libs.firebase.appcheck.debug)
   implementation(libs.kotlinx.coroutines.android)
