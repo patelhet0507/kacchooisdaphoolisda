@@ -5,8 +5,6 @@ on:
     branches:
       - main
       - master
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       release_title:
@@ -72,12 +70,15 @@ jobs:
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || 'android' }}
         run: |
           # Extract version from app/build.gradle.kts
-          VERSION_NAME=$(grep "versionName =" app/build.gradle.kts | awk -F'"' '{print $2}')
-          VERSION_CODE=$(grep "versionCode =" app/build.gradle.kts | awk -F'?: ' '{print $2}')
+          BASE_VERSION=$(grep "versionName =" app/build.gradle.kts | awk -F'"' '{print $(NF-1)}')
+          VERSION_CODE=$(grep "versionCode =" app/build.gradle.kts | awk '{print $NF}')
           
           # Fallbacks if extraction fails
-          if [ -z "$VERSION_NAME" ]; then VERSION_NAME="1.1.1"; fi
+          if [ -z "$BASE_VERSION" ]; then BASE_VERSION="1.1.1"; fi
           if [ -z "$VERSION_CODE" ]; then VERSION_CODE="111"; fi
+          
+          # Append run number to ensure uniqueness and "it continues"
+          VERSION_NAME="${BASE_VERSION}.${{ github.run_number }}"
           
           echo "Building version $VERSION_NAME ($VERSION_CODE)"
           echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_ENV
