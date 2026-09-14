@@ -40,5 +40,7 @@ data class GameRoom(
     val statusMessage: String = "",
     val messages: Map<String, ChatMessage> = emptyMap(),
     val voiceNotes: Map<String, VoiceNote> = emptyMap(),
-    val activeSpeakers: Map<String, Boolean> = emptyMap()
+    val activeSpeakers: Map<String, Boolean> = emptyMap(),
+    val kickedPlayers: List<String> = emptyList(),
+    val completedAt: Long = 0L
 )

@@ -9,6 +9,7 @@ data class ScorecardGameEntity(
     val title: String,
     val createdAt: Long = System.currentTimeMillis(),
     val isCompleted: Boolean = false,
+    val completedAt: Long = 0L,
     val playerNamesRaw: String, // Comma-separated names
     val roundsConfigRaw: String, // Comma-separated card counts
     val currentRoundIndex: Int = 0,

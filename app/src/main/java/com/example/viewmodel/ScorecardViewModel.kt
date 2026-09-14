@@ -10,11 +10,14 @@ import com.example.data.ScorecardRoundEntity
 import com.example.engine.KaachuPhoolEngine
 import com.example.model.GameMode
 import com.example.model.ScoringRule
-import com.example.model.Suit
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -35,13 +38,26 @@ data class ScorecardActiveUiState(
 class ScorecardViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository: ScorecardRepository
+    private var gameObservationJob: Job? = null
 
     init {
         val db = KaachuPhoolDatabase.getDatabase(application)
         repository = ScorecardRepository(db.scorecardDao())
+        
+        // Clean any expired completed games on startup and periodically every 30s
+        viewModelScope.launch {
+            while (true) {
+                repository.cleanOldCompletedGames()
+                delay(30000)
+            }
+        }
     }
 
     val allSavedGames: StateFlow<List<ScorecardGameEntity>> = repository.allGames
+        .map { games ->
+            val now = System.currentTimeMillis()
+            games.filterNot { it.isCompleted && it.completedAt > 0 && (now - it.completedAt) > 5 * 60 * 1000L }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -76,50 +92,80 @@ class ScorecardViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun renamePlayer(playerIndex: Int, newName: String) {
         val game = _activeState.value.activeGame ?: return
-        if (newName.isBlank()) return
-        viewModelScope.launch {
-            repository.updatePlayerName(game.id, playerIndex, newName.trim())
+        val trimmed = newName.trim()
+        if (trimmed.isBlank()) return
+        
+        val names = game.getPlayerNames().toMutableList()
+        if (playerIndex in names.indices) {
+            names[playerIndex] = trimmed
+            val updatedGame = game.copy(playerNamesRaw = names.joinToString(","))
+            _activeState.update { it.copy(activeGame = updatedGame) }
+            viewModelScope.launch {
+                repository.updatePlayerName(game.id, playerIndex, trimmed)
+            }
         }
     }
 
-
     fun loadGame(gameId: Long) {
-        viewModelScope.launch {
-            repository.getGame(gameId).collect { game ->
-                if (game != null) {
-                    repository.getRounds(gameId).collect { roundsList ->
-                        val rule = runCatching { ScoringRule.valueOf(game.scoringRuleName) }.getOrDefault(ScoringRule.STANDARD)
-                        val currIndex = game.currentRoundIndex.coerceIn(0, maxOf(0, roundsList.size - 1))
-                        val currentRound = roundsList.getOrNull(currIndex)
+        gameObservationJob?.cancel()
+        gameObservationJob = viewModelScope.launch {
+            combine(
+                repository.getGame(gameId),
+                repository.getRounds(gameId)
+            ) { game, roundsList ->
+                Pair(game, roundsList)
+            }.collect { (game, roundsList) ->
+                if (game == null) {
+                    _activeState.update { ScorecardActiveUiState() }
+                    return@collect
+                }
 
-                        val playersCount = game.getPlayerNames().size
-                        val existingBids = currentRound?.getBids()?.take(playersCount) ?: emptyList()
-                        val existingTricks = currentRound?.getTricksWon()?.take(playersCount) ?: emptyList()
+                val rule = runCatching { ScoringRule.valueOf(game.scoringRuleName) }.getOrDefault(ScoringRule.STANDARD)
+                val currIndex = game.currentRoundIndex.coerceIn(0, maxOf(0, roundsList.size - 1))
+                val currentRound = roundsList.getOrNull(currIndex)
 
-                        val draftB = if (existingBids.size == playersCount) existingBids else List(playersCount) { null }
-                        val draftT = if (existingTricks.size == playersCount) existingTricks else List(playersCount) { null }
+                val playersCount = game.getPlayerNames().size
+                val existingBids = currentRound?.getBids()?.take(playersCount) ?: emptyList()
+                val existingTricks = currentRound?.getTricksWon()?.take(playersCount) ?: emptyList()
 
-                        val dealerIdx = currentRound?.dealerIndex ?: (currIndex % playersCount)
+                val currentDraftBids = _activeState.value.draftBids
+                val currentDraftTricks = _activeState.value.draftTricks
 
-                        val otherBids = draftB.mapIndexedNotNull { idx, b -> if (idx != dealerIdx) b else null }.sum()
-                        val forbidden = currentRound?.let {
-                            KaachuPhoolEngine.getForbiddenBidForDealer(otherBids, it.cardCount)
-                        }
+                val draftB = if (currentDraftBids.size == playersCount && _activeState.value.activeGame?.id == game.id && _activeState.value.currentRoundIndex == currIndex) {
+                    currentDraftBids
+                } else if (existingBids.size == playersCount) {
+                    existingBids
+                } else {
+                    List(playersCount) { null }
+                }
 
-                        _activeState.update {
-                            it.copy(
-                                activeGame = game,
-                                rounds = roundsList,
-                                currentRoundIndex = currIndex,
-                                draftBids = draftB,
-                                draftTricks = draftT,
-                                scoringRule = rule,
-                                dealerIndex = dealerIdx,
-                                forbiddenBid = forbidden,
-                                tricksSumError = null
-                            )
-                        }
-                    }
+                val draftT = if (currentDraftTricks.size == playersCount && _activeState.value.activeGame?.id == game.id && _activeState.value.currentRoundIndex == currIndex) {
+                    currentDraftTricks
+                } else if (existingTricks.size == playersCount) {
+                    existingTricks
+                } else {
+                    List(playersCount) { null }
+                }
+
+                val dealerIdx = currentRound?.dealerIndex ?: (currIndex % playersCount)
+                val otherBids = draftB.mapIndexedNotNull { idx, b -> if (idx != dealerIdx) b else null }.sum()
+                val forbidden = currentRound?.let {
+                    KaachuPhoolEngine.getForbiddenBidForDealer(otherBids, it.cardCount)
+                }
+
+                _activeState.update {
+                    it.copy(
+                        activeGame = game,
+                        rounds = roundsList,
+                        currentRoundIndex = currIndex,
+                        draftBids = draftB,
+                        draftTricks = draftT,
+                        scoringRule = rule,
+                        dealerIndex = dealerIdx,
+                        forbiddenBid = forbidden,
+                        tricksSumError = null,
+                        isRoundComplete = game.isCompleted
+                    )
                 }
             }
         }
@@ -133,7 +179,9 @@ class ScorecardViewModel(application: Application) : AndroidViewModel(applicatio
 
         val updatedBids = state.draftBids.toMutableList()
         while (updatedBids.size < totalPlayers) updatedBids.add(null)
-        updatedBids[playerIndex] = bid
+        if (playerIndex in updatedBids.indices) {
+            updatedBids[playerIndex] = bid
+        }
 
         val otherBids = updatedBids.mapIndexedNotNull { idx, b -> if (idx != state.dealerIndex) b else null }.sum()
         val forbidden = KaachuPhoolEngine.getForbiddenBidForDealer(otherBids, currentRound.cardCount)
@@ -154,7 +202,9 @@ class ScorecardViewModel(application: Application) : AndroidViewModel(applicatio
 
         val updatedTricks = state.draftTricks.toMutableList()
         while (updatedTricks.size < totalPlayers) updatedTricks.add(null)
-        updatedTricks[playerIndex] = tricks
+        if (playerIndex in updatedTricks.indices) {
+            updatedTricks[playerIndex] = tricks
+        }
 
         // Validate tricks sum if all entered
         val allEntered = updatedTricks.all { it != null }
@@ -198,10 +248,12 @@ class ScorecardViewModel(application: Application) : AndroidViewModel(applicatio
 
             val nextIndex = state.currentRoundIndex + 1
             val isCompleted = nextIndex >= state.rounds.size
+            val completedTime = if (isCompleted) System.currentTimeMillis() else 0L
 
             val updatedGame = game.copy(
                 currentRoundIndex = nextIndex.coerceAtMost(state.rounds.size - 1),
-                isCompleted = isCompleted
+                isCompleted = isCompleted,
+                completedAt = completedTime
             )
 
             repository.updateGameProgress(updatedGame)

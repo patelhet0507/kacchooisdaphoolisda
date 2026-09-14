@@ -57,6 +57,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -1033,26 +1034,88 @@ private fun NewScorecardGameDialog(
     onCreate: (title: String, players: List<String>, mode: GameMode, rule: ScoringRule, customRounds: List<Int>?) -> Unit
 ) {
     var title by remember { mutableStateOf("Game Night") }
-    var selectedMode by remember { mutableStateOf(GameMode.CLASSIC) }
     var selectedRule by remember { mutableStateOf(ScoringRule.STANDARD) }
-    var maxCardsChoice by remember { mutableIntStateOf(8) }
-    var roundTypeChoice by remember { mutableIntStateOf(0) } // 0: Ladder (1->Max->1), 1: Ascending (1->Max)
     val playersList = remember { mutableStateListOf("Player 1", "Player 2", "Player 3", "Player 4") }
     var newPlayerName by remember { mutableStateOf("") }
+
+    val maxDeckCards = remember(playersList.size) { (52 / playersList.size.coerceAtLeast(1)).coerceIn(1, 26) }
+    var maxCardsChoice by remember { mutableIntStateOf(8) }
+    var roundTypeChoice by remember { mutableIntStateOf(0) } // 0: Ladder Up-Down, 1: Ladder Down-Up, 2: Ascending, 3: Descending, 4: Custom
+    var customSequenceInput by remember { mutableStateOf("1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1") }
+
+    // Keep maxCardsChoice valid when players count changes
+    LaunchedEffect(maxDeckCards) {
+        if (maxCardsChoice > maxDeckCards) {
+            maxCardsChoice = maxDeckCards
+        }
+    }
+
+    val generatedRounds = remember(maxCardsChoice, roundTypeChoice, customSequenceInput) {
+        when (roundTypeChoice) {
+            0 -> {
+                // 1 -> Max -> 1
+                if (maxCardsChoice <= 1) listOf(1)
+                else (1..maxCardsChoice).toList() + ((maxCardsChoice - 1) downTo 1).toList()
+            }
+            1 -> {
+                // Max -> 1 -> Max
+                if (maxCardsChoice <= 1) listOf(1)
+                else (maxCardsChoice downTo 1).toList() + (2..maxCardsChoice).toList()
+            }
+            2 -> {
+                // 1 -> Max
+                (1..maxCardsChoice).toList()
+            }
+            3 -> {
+                // Max -> 1
+                (maxCardsChoice downTo 1).toList()
+            }
+            4 -> {
+                // Custom CSV
+                val parsed = customSequenceInput.split(",").mapNotNull { it.trim().toIntOrNull() }
+                if (parsed.isNotEmpty()) parsed else listOf(1, 2, 3, 4, 5, 6, 7, 8)
+            }
+            else -> (1..8).toList()
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = DarkSurface,
         shape = RoundedCornerShape(20.dp),
         title = {
-            Text(text = "Create Scorecard Match", color = GoldLight, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(GoldPrimary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = EmeraldDeep,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+                Text(
+                    text = "New Real Cards Match",
+                    color = GoldLight,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
         },
         text = {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Match Title
                 item {
@@ -1073,7 +1136,13 @@ private fun NewScorecardGameDialog(
 
                 // Players List
                 item {
-                    Text(text = "Players (${playersList.size}):", color = GoldLight, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        text = "Players (${playersList.size}):",
+                        color = GoldLight,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         playersList.forEachIndexed { idx, pName ->
                             Row(
@@ -1081,17 +1150,33 @@ private fun NewScorecardGameDialog(
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(DarkSurfaceElevated)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(text = "${idx + 1}. $pName", color = TextLight, fontSize = 13.sp)
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .clip(CircleShape)
+                                            .background(GoldPrimary.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("${idx + 1}", color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Text(text = pName, color = TextLight, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                                }
                                 if (playersList.size > 2) {
                                     IconButton(
                                         onClick = { playersList.removeAt(idx) },
                                         modifier = Modifier.size(24.dp)
                                     ) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Remove", tint = TextMuted, modifier = Modifier.size(16.dp))
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = "Remove",
+                                            tint = Color(0xFFEF4444).copy(alpha = 0.8f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                     }
                                 }
                             }
@@ -1135,7 +1220,240 @@ private fun NewScorecardGameDialog(
                     }
                 }
 
-                // Scoring Rules Selection (Options requested by user)
+                // Cards Per Player Count Customization Section
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated),
+                        shape = RoundedCornerShape(12.dp),
+                        border = CardDefaults.outlinedCardBorder().copy(
+                            brush = androidx.compose.ui.graphics.SolidColor(GoldPrimary.copy(alpha = 0.5f))
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Max Cards Per Player",
+                                        color = GoldLight,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Limit per player (${playersList.size} players = max $maxDeckCards cards/deck)",
+                                        color = TextMuted,
+                                        fontSize = 10.sp
+                                    )
+                                }
+
+                                // Numeric Counter Stepper
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (maxCardsChoice > 1) GoldPrimary.copy(alpha = 0.2f) else DarkSurface)
+                                            .border(1.dp, if (maxCardsChoice > 1) GoldPrimary else EmeraldBorder.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                            .clickable(enabled = maxCardsChoice > 1) {
+                                                if (maxCardsChoice > 1) maxCardsChoice--
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "-",
+                                            color = if (maxCardsChoice > 1) GoldLight else TextMuted,
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .width(42.dp)
+                                            .height(32.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(GoldPrimary.copy(alpha = 0.15f))
+                                            .border(1.dp, GoldPrimary, RoundedCornerShape(8.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "$maxCardsChoice",
+                                            color = GoldLight,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 16.sp
+                                        )
+                                    }
+
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (maxCardsChoice < maxDeckCards) GoldPrimary.copy(alpha = 0.2f) else DarkSurface)
+                                            .border(1.dp, if (maxCardsChoice < maxDeckCards) GoldPrimary else EmeraldBorder.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                            .clickable(enabled = maxCardsChoice < maxDeckCards) {
+                                                if (maxCardsChoice < maxDeckCards) maxCardsChoice++
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "+",
+                                            color = if (maxCardsChoice < maxDeckCards) GoldLight else TextMuted,
+                                            fontSize = 18.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Quick preset pills
+                            Text(text = "Quick Presets:", color = TextMuted, fontSize = 11.sp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                val presets = listOf(4, 7, 8, 10, 13, maxDeckCards).distinct().filter { it <= maxDeckCards }
+                                presets.forEach { count ->
+                                    val isSelected = maxCardsChoice == count && roundTypeChoice != 4
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) GoldPrimary else DarkSurface)
+                                            .border(1.dp, if (isSelected) GoldPrimary else EmeraldBorder.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                            .clickable { maxCardsChoice = count }
+                                            .padding(vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = if (count == maxDeckCards) "Max ($count)" else "$count",
+                                            color = if (isSelected) EmeraldDeep else TextLight,
+                                            fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Slider for exact card count
+                            if (maxDeckCards > 1) {
+                                Slider(
+                                    value = maxCardsChoice.toFloat(),
+                                    onValueChange = { maxCardsChoice = it.toInt() },
+                                    valueRange = 1f..maxDeckCards.toFloat(),
+                                    steps = maxDeckCards - 2,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = GoldPrimary,
+                                        activeTrackColor = GoldPrimary,
+                                        inactiveTrackColor = EmeraldBorder.copy(alpha = 0.4f)
+                                    )
+                                )
+                            }
+
+                            // Round Progression Pattern
+                            Text(text = "Progression Pattern:", color = GoldLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                val patterns = listOf(
+                                    "Ladder Up-Down (1 → $maxCardsChoice → 1)",
+                                    "Ladder Down-Up ($maxCardsChoice → 1 → $maxCardsChoice)",
+                                    "Ascending (1 → $maxCardsChoice)",
+                                    "Descending ($maxCardsChoice → 1)",
+                                    "Custom Sequence (CSV)"
+                                )
+                                patterns.forEachIndexed { pIdx, label ->
+                                    val isSelected = roundTypeChoice == pIdx
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(if (isSelected) GoldPrimary.copy(alpha = 0.15f) else DarkSurface)
+                                            .border(1.dp, if (isSelected) GoldPrimary else EmeraldBorder.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                            .clickable { roundTypeChoice = pIdx }
+                                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        RadioButton(
+                                            selected = isSelected,
+                                            onClick = { roundTypeChoice = pIdx },
+                                            colors = RadioButtonDefaults.colors(selectedColor = GoldPrimary, unselectedColor = TextMuted),
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = label,
+                                            color = if (isSelected) GoldLight else TextLight,
+                                            fontSize = 11.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                        )
+                                    }
+                                }
+                            }
+
+                            if (roundTypeChoice == 4) {
+                                OutlinedTextField(
+                                    value = customSequenceInput,
+                                    onValueChange = { customSequenceInput = it },
+                                    label = { Text("Custom Cards Sequence (e.g. 1, 2, 3, 4, 3, 2, 1)") },
+                                    placeholder = { Text("1, 2, 3, 4, 5, 6, 7, 8") },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = GoldPrimary,
+                                        unfocusedBorderColor = EmeraldBorder,
+                                        focusedTextColor = TextLight,
+                                        unfocusedTextColor = TextLight
+                                    ),
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            // Live Sequence Preview Box
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(DarkSurface)
+                                    .padding(8.dp)
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "Total: ${generatedRounds.size} Rounds",
+                                            color = GoldLight,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Peak: ${generatedRounds.maxOrNull() ?: maxCardsChoice} cards/player",
+                                            color = TextMuted,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                    Text(
+                                        text = generatedRounds.joinToString(" → ") { "${it}c" },
+                                        color = TextLight,
+                                        fontSize = 10.sp,
+                                        lineHeight = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Scoring Rules Selection
                 item {
                     Text(text = "Scoring Rule:", color = GoldLight, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1175,94 +1493,19 @@ private fun NewScorecardGameDialog(
                         }
                     }
                 }
-
-                // Rounds Generation (Starts from 1 up to 8 or 5 or whatever)
-                item {
-                    Text(text = "Rounds & Card Progression:", color = GoldLight, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        // Max cards selector
-                        Text(
-                            text = "Max Cards in Round: $maxCardsChoice cards",
-                            color = TextLight,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            listOf(5, 8, 10, 13).forEach { count ->
-                                val isSelected = maxCardsChoice == count
-                                Button(
-                                    onClick = { maxCardsChoice = count },
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isSelected) GoldPrimary else DarkSurfaceElevated,
-                                        contentColor = if (isSelected) EmeraldDeep else TextLight
-                                    ),
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("$count", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                }
-                            }
-                        }
-
-                        // Round Pattern
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Button(
-                                onClick = { roundTypeChoice = 0 },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (roundTypeChoice == 0) GoldPrimary else DarkSurfaceElevated,
-                                    contentColor = if (roundTypeChoice == 0) EmeraldDeep else TextLight
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Ladder (1→$maxCardsChoice→1)", fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                            }
-
-                            Button(
-                                onClick = { roundTypeChoice = 1 },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (roundTypeChoice == 1) GoldPrimary else DarkSurfaceElevated,
-                                    contentColor = if (roundTypeChoice == 1) EmeraldDeep else TextLight
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Ascending (1→$maxCardsChoice)", fontWeight = FontWeight.Bold, fontSize = 10.sp)
-                            }
-                        }
-
-                        val generatedRounds = remember(maxCardsChoice, roundTypeChoice) {
-                            if (roundTypeChoice == 0) {
-                                (1..maxCardsChoice).toList() + ((maxCardsChoice - 1) downTo 1).toList()
-                            } else {
-                                (1..maxCardsChoice).toList()
-                            }
-                        }
-
-                        Text(
-                            text = "Sequence (${generatedRounds.size} rounds): ${generatedRounds.joinToString(" → ")}",
-                            color = GoldLight,
-                            fontSize = 11.sp
-                        )
-                    }
-                }
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    val customRounds = if (roundTypeChoice == 0) {
-                        (1..maxCardsChoice).toList() + ((maxCardsChoice - 1) downTo 1).toList()
-                    } else {
-                        (1..maxCardsChoice).toList()
-                    }
-                    onCreate(title, playersList.toList(), selectedMode, selectedRule, customRounds)
+                    val finalRounds = if (generatedRounds.isNotEmpty()) generatedRounds else (1..8).toList()
+                    onCreate(
+                        title.ifBlank { "Game Night (${playersList.size} Players)" },
+                        playersList.toList(),
+                        GameMode.CLASSIC,
+                        selectedRule,
+                        finalRounds
+                    )
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
                 shape = RoundedCornerShape(10.dp),
@@ -1270,7 +1513,11 @@ private fun NewScorecardGameDialog(
                     .fillMaxWidth()
                     .testTag("confirm_create_scorecard_button")
             ) {
-                Text("Start Scorekeeper", color = EmeraldDeep, fontWeight = FontWeight.Black)
+                Text(
+                    text = "Start Scorekeeper (${generatedRounds.size} Rounds)",
+                    color = EmeraldDeep,
+                    fontWeight = FontWeight.Black
+                )
             }
         },
         dismissButton = {

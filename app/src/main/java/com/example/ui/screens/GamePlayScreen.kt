@@ -425,6 +425,35 @@ fun GamePlayScreen(
             )
         }
 
+        // Room Disbanded Dialog
+        if (uiState.isRoomDisbanded) {
+            AlertDialog(
+                onDismissRequest = {
+                    viewModel.exitGame()
+                    onBackClick()
+                },
+                title = {
+                    Text("Room Disbanded", color = GoldLight, fontWeight = FontWeight.Bold)
+                },
+                text = {
+                    Text("The host has left the match and the room has been disbanded.", color = TextLight)
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.exitGame()
+                            onBackClick()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)
+                    ) {
+                        Text("Return to Home", color = EmeraldDeep, fontWeight = FontWeight.Bold)
+                    }
+                },
+                containerColor = DarkSurfaceElevated,
+                shape = RoundedCornerShape(16.dp)
+            )
+        }
+
         // Leave Confirmation Dialog
         if (showQuitDialog) {
             AlertDialog(

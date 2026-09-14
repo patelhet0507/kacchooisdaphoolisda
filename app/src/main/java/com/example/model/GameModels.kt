@@ -91,8 +91,8 @@ enum class ScoringRule(val title: String, val description: String) {
         "Exact bid scores 10 + n (where n is the bid, e.g. Bid 3 made = 13 pts). Missed bid (Bid ≠ Won) scores 0 pts."
     ),
     PENALTY(
-        "Option 2: -10 + n Penalty on Miss",
-        "Exact bid scores 10 + n. Missed bid (Bid ≠ Won) scores -10 + n pts (where n is your bid, e.g. Bid 3 missed = -7 pts, Bid 0 missed = -10 pts)."
+        "Option 2: -10 - n Penalty on Miss",
+        "Exact bid scores 10 + n. Missed bid (Bid ≠ Won) scores -10 - n pts (where n is your bid, e.g. Bid 3 missed = -13 pts, Bid 0 missed = -10 pts)."
     ),
     BONUS(
         "Option 3: 1 pt/Trick + 10 Bonus",
@@ -102,7 +102,7 @@ enum class ScoringRule(val title: String, val description: String) {
     fun calculateScore(bid: Int, tricksWon: Int): Int {
         return when (this) {
             STANDARD -> if (bid == tricksWon) 10 + bid else 0
-            PENALTY -> if (bid == tricksWon) 10 + bid else -10 + bid
+            PENALTY -> if (bid == tricksWon) 10 + bid else -10 - bid
             BONUS -> {
                 val trickPts = tricksWon
                 val bonus = if (bid == tricksWon) 10 else 0

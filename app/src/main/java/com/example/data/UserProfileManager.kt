@@ -2,9 +2,14 @@ package com.example.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.example.auth.AuthManager
+import com.example.auth.AuthUserState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 data class UserProfileState(
     val isLoggedIn: Boolean = false,
@@ -16,8 +21,10 @@ data class UserProfileState(
     val selectedTableTheme: String = "emerald"
 )
 
-class UserProfileManager(context: Context) {
+class UserProfileManager(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("kaachu_phool_user_profile", Context.MODE_PRIVATE)
+    private val authManager = AuthManager.getInstance()
+    private val scope = CoroutineScope(Dispatchers.Main)
 
     private val _state = MutableStateFlow(
         UserProfileState(
@@ -32,9 +39,41 @@ class UserProfileManager(context: Context) {
     )
     val state: StateFlow<UserProfileState> = _state.asStateFlow()
 
+    init {
+        scope.launch {
+            authManager.authState.collect { authUser ->
+                if (authUser.isLoggedIn) {
+                    val name = authUser.displayName?.ifBlank { "Player" } ?: "Player"
+                    val email = authUser.email ?: ""
+                    val photo = authUser.photoUrl ?: ""
+                    prefs.edit()
+                        .putBoolean("is_logged_in", true)
+                        .putString("google_email", email)
+                        .putString("google_name", name)
+                        .putString("google_photo", photo)
+                        .apply()
+                    _state.value = _state.value.copy(
+                        isLoggedIn = true,
+                        googleEmail = email,
+                        googleName = name,
+                        googlePhotoUrl = photo
+                    )
+                } else if (!prefs.getBoolean("local_offline_auth", false)) {
+                    // Logged out
+                    _state.value = _state.value.copy(
+                        isLoggedIn = false,
+                        googleEmail = "",
+                        googleName = prefs.getString("local_custom_name", "Player 1") ?: "Player 1"
+                    )
+                }
+            }
+        }
+    }
+
     fun loginWithGoogle(email: String, name: String, photoUrl: String = "") {
         prefs.edit()
             .putBoolean("is_logged_in", true)
+            .putBoolean("local_offline_auth", true)
             .putString("google_email", email)
             .putString("google_name", name)
             .putString("google_photo", photoUrl)
@@ -48,9 +87,22 @@ class UserProfileManager(context: Context) {
         )
     }
 
+    fun updateName(name: String) {
+        if (name.isBlank()) return
+        prefs.edit()
+            .putString("local_custom_name", name)
+            .putString("google_name", name)
+            .apply()
+        _state.value = _state.value.copy(googleName = name)
+    }
+
     fun logout() {
+        scope.launch {
+            authManager.signOut(context)
+        }
         prefs.edit()
             .putBoolean("is_logged_in", false)
+            .putBoolean("local_offline_auth", false)
             .putString("google_email", "")
             .putString("google_name", "Player 1")
             .putString("google_photo", "")

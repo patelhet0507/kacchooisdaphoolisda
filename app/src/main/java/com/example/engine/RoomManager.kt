@@ -166,6 +166,7 @@ class RoomManager {
 
     suspend fun joinRoom(roomId: String, player: String): JoinRoomStatus = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
+        val safePlayer = player.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "Player" }
 
         try {
             val ref = roomsRef?.child(cleanRoomId)
@@ -177,18 +178,28 @@ class RoomManager {
                 if (snapshot != null && snapshot.exists()) {
                     val room = parseRoomFromSnapshot(snapshot)
                     if (room != null) {
-                        if (room.players.size >= 6 && !room.players.contains(player)) {
+                        if (room.players.size >= 6 && !room.players.contains(safePlayer)) {
                             return@withContext JoinRoomStatus.ROOM_FULL
                         }
-                        val updatedPlayers = (room.players + player).distinct()
-                        val updatedMessages = room.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
-                            id = "msg_${System.currentTimeMillis()}",
-                            senderName = "System",
-                            text = "$player joined the room!",
-                            timestamp = System.currentTimeMillis(),
-                            isSystem = true
-                        ))
-                        val updated = room.copy(players = updatedPlayers, messages = updatedMessages)
+                        val isAlreadyInRoom = room.players.contains(safePlayer)
+                        val updatedPlayers = if (isAlreadyInRoom) room.players else (room.players + safePlayer)
+                        val updatedKicked = room.kickedPlayers.filter { it != safePlayer }
+                        val updatedMessages = if (isAlreadyInRoom) {
+                            room.messages
+                        } else {
+                            room.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
+                                id = "msg_${System.currentTimeMillis()}",
+                                senderName = "System",
+                                text = "$safePlayer joined the room!",
+                                timestamp = System.currentTimeMillis(),
+                                isSystem = true
+                            ))
+                        }
+                        val updated = room.copy(
+                            players = updatedPlayers,
+                            kickedPlayers = updatedKicked,
+                            messages = updatedMessages
+                        )
 
                         getOrCreateLocalFlow(cleanRoomId).value = updated
 
@@ -207,18 +218,28 @@ class RoomManager {
 
         val currentLocal = getOrCreateLocalFlow(cleanRoomId).value
         if (currentLocal != null) {
-            if (currentLocal.players.size >= 6 && !currentLocal.players.contains(player)) {
+            if (currentLocal.players.size >= 6 && !currentLocal.players.contains(safePlayer)) {
                 return@withContext JoinRoomStatus.ROOM_FULL
             }
-            val updatedPlayers = (currentLocal.players + player).distinct()
-            val updatedMessages = currentLocal.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
-                id = "msg_${System.currentTimeMillis()}",
-                senderName = "System",
-                text = "$player joined the room!",
-                timestamp = System.currentTimeMillis(),
-                isSystem = true
-            ))
-            val updated = currentLocal.copy(players = updatedPlayers, messages = updatedMessages)
+            val isAlreadyInRoom = currentLocal.players.contains(safePlayer)
+            val updatedPlayers = if (isAlreadyInRoom) currentLocal.players else (currentLocal.players + safePlayer)
+            val updatedKicked = currentLocal.kickedPlayers.filter { it != safePlayer }
+            val updatedMessages = if (isAlreadyInRoom) {
+                currentLocal.messages
+            } else {
+                currentLocal.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
+                    id = "msg_${System.currentTimeMillis()}",
+                    senderName = "System",
+                    text = "$safePlayer joined the room!",
+                    timestamp = System.currentTimeMillis(),
+                    isSystem = true
+                ))
+            }
+            val updated = currentLocal.copy(
+                players = updatedPlayers,
+                kickedPlayers = updatedKicked,
+                messages = updatedMessages
+            )
             getOrCreateLocalFlow(cleanRoomId).value = updated
 
             try {
@@ -232,8 +253,8 @@ class RoomManager {
         // If room does not exist yet (e.g. friend gave this code or first time joining code), initialize it seamlessly
         val autoCreatedRoom = GameRoom(
             roomId = cleanRoomId,
-            hostName = player,
-            players = listOf(player),
+            hostName = safePlayer,
+            players = listOf(safePlayer),
             gameState = "WAITING",
             messages = mapOf(
                 "msg_welcome" to ChatMessage(
@@ -257,22 +278,112 @@ class RoomManager {
 
     suspend fun leaveRoom(roomId: String, player: String) = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
-        val current = getOrCreateLocalFlow(cleanRoomId).value ?: return@withContext
-        val updatedPlayers = current.players.filter { it != player }
+        val current = getOrCreateLocalFlow(cleanRoomId).value ?: run {
+            val ref = roomsRef?.child(cleanRoomId)
+            val snap = if (ref != null) fetchRoomSnapshot(ref) else null
+            if (snap != null && snap.exists()) parseRoomFromSnapshot(snap) else null
+        } ?: return@withContext
+
+        val isHostLeaving = (current.hostName == player) || (current.players.firstOrNull() == player)
+
+        if (isHostLeaving) {
+            // Disband the room: Notify remaining players that room is disbanded and delete from Firebase
+            val disbandedRoom = current.copy(
+                gameState = "DISBANDED",
+                statusMessage = "Room has been disbanded by host ($player)."
+            )
+            getOrCreateLocalFlow(cleanRoomId).value = disbandedRoom
+
+            try {
+                // First push DISBANDED state so active listeners get notified immediately
+                roomsRef?.child(cleanRoomId)?.child("gameState")?.setValue("DISBANDED")
+                roomsRef?.child(cleanRoomId)?.child("statusMessage")?.setValue("Room has been disbanded by host ($player).")
+                // Delete the room node from Firebase
+                roomsRef?.child(cleanRoomId)?.removeValue()
+            } catch (e: Exception) {
+                Log.w("RoomManager", "Failed to disband room: ${e.message}")
+            }
+        } else {
+            // Guest leaving: remove guest from player list
+            val updatedPlayers = current.players.filter { it != player }
+            if (updatedPlayers.isEmpty()) {
+                getOrCreateLocalFlow(cleanRoomId).value = null
+                try {
+                    roomsRef?.child(cleanRoomId)?.removeValue()
+                } catch (e: Exception) {}
+            } else {
+                val updatedMessages = current.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
+                    id = "msg_${System.currentTimeMillis()}",
+                    senderName = "System",
+                    text = "$player left the room.",
+                    timestamp = System.currentTimeMillis(),
+                    isSystem = true
+                ))
+                val updated = current.copy(players = updatedPlayers, messages = updatedMessages)
+                getOrCreateLocalFlow(cleanRoomId).value = updated
+
+                try {
+                    roomsRef?.child(cleanRoomId)?.setValue(updated)
+                } catch (e: Exception) {
+                    Log.w("RoomManager", "Failed to sync leaveRoom: ${e.message}")
+                }
+            }
+        }
+    }
+
+    suspend fun kickPlayerFromRoom(roomId: String, playerToKick: String): Boolean = withContext(Dispatchers.IO) {
+        val cleanRoomId = roomId.trim()
+        val current = getOrCreateLocalFlow(cleanRoomId).value ?: run {
+            val ref = roomsRef?.child(cleanRoomId)
+            val snap = if (ref != null) fetchRoomSnapshot(ref) else null
+            if (snap != null && snap.exists()) parseRoomFromSnapshot(snap) else null
+        } ?: return@withContext false
+
+        if (current.hostName == playerToKick) return@withContext false // Cannot kick host
+
+        val updatedPlayers = current.players.filter { it != playerToKick }
+        val updatedKicked = (current.kickedPlayers + playerToKick).distinct()
         val updatedMessages = current.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
             id = "msg_${System.currentTimeMillis()}",
             senderName = "System",
-            text = "$player left the room.",
+            text = "$playerToKick was kicked from the room by the host.",
             timestamp = System.currentTimeMillis(),
             isSystem = true
         ))
-        val updated = current.copy(players = updatedPlayers, messages = updatedMessages)
+
+        val updated = current.copy(
+            players = updatedPlayers,
+            kickedPlayers = updatedKicked,
+            messages = updatedMessages
+        )
         getOrCreateLocalFlow(cleanRoomId).value = updated
 
         try {
             roomsRef?.child(cleanRoomId)?.setValue(updated)
         } catch (e: Exception) {
-            Log.w("RoomManager", "Failed to sync leaveRoom: ${e.message}")
+            Log.w("RoomManager", "Failed to sync kickPlayer: ${e.message}")
+        }
+        true
+    }
+
+    suspend fun cleanExpiredCompletedRooms() = withContext(Dispatchers.IO) {
+        try {
+            val ref = roomsRef ?: return@withContext
+            val snap = fetchRoomSnapshot(ref) ?: return@withContext
+            val cutoff = System.currentTimeMillis() - 5 * 60 * 1000L // 5 minutes
+            for (child in snap.children) {
+                val gState = child.child("gameState").value?.toString()
+                val compAt = (child.child("completedAt").value as? Number)?.toLong()
+                    ?: child.child("completedAt").value?.toString()?.toLongOrNull() ?: 0L
+                if (gState == "GAME_OVER" && compAt > 0L && compAt <= cutoff) {
+                    val rId = child.key ?: continue
+                    ref.child(rId).removeValue()
+                    localRooms.remove(rId)
+                    Log.d("RoomManager", "Auto-deleted completed room after 5 minutes: $rId")
+                }
+            }
+        } catch (e: Exception) {
+            Log.w("RoomManager", "cleanExpiredCompletedRooms notice: ${e.message}")
         }
     }
 
@@ -344,14 +455,15 @@ class RoomManager {
 
     suspend fun setSpeakerStatus(roomId: String, playerName: String, isSpeaking: Boolean) = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
+        val safePlayer = playerName.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "Player" }
         val current = getOrCreateLocalFlow(cleanRoomId).value
         if (current != null) {
-            val updatedSpeakers = current.activeSpeakers + (playerName to isSpeaking)
+            val updatedSpeakers = current.activeSpeakers + (safePlayer to isSpeaking)
             getOrCreateLocalFlow(cleanRoomId).value = current.copy(activeSpeakers = updatedSpeakers)
         }
 
         try {
-            roomsRef?.child(cleanRoomId)?.child("activeSpeakers")?.child(playerName)?.setValue(isSpeaking)
+            roomsRef?.child(cleanRoomId)?.child("activeSpeakers")?.child(safePlayer)?.setValue(isSpeaking)
         } catch (e: Exception) {
             // non-critical
         }
@@ -573,6 +685,7 @@ class RoomManager {
                 trickCards = emptyMap(),
                 trickOrder = emptyList(),
                 leadSuit = null,
+                completedAt = if (isGameOver) System.currentTimeMillis() else current.completedAt,
                 statusMessage = if (isGameOver) "Game Completed!" else "Round ${current.currentRoundIndex + 1} completed!"
             )
         }
@@ -590,7 +703,7 @@ class RoomManager {
         val current = getOrCreateLocalFlow(cleanRoomId).value ?: return@withContext
         val nextRoundIdx = current.currentRoundIndex + 1
         if (nextRoundIdx >= current.rounds.size) {
-            val updated = current.copy(gameState = "GAME_OVER")
+            val updated = current.copy(gameState = "GAME_OVER", completedAt = System.currentTimeMillis())
             getOrCreateLocalFlow(cleanRoomId).value = updated
             roomsRef?.child(cleanRoomId)?.setValue(updated)
             return@withContext
@@ -646,9 +759,24 @@ class RoomManager {
                 if (snapshot.exists()) {
                     val room = parseRoomFromSnapshot(snapshot)
                     if (room != null) {
+                        // Check if game completed more than 5 minutes ago -> auto delete
+                        if (room.gameState == "GAME_OVER" && room.completedAt > 0L &&
+                            System.currentTimeMillis() - room.completedAt >= 5 * 60 * 1000L
+                        ) {
+                            try {
+                                roomsRef?.child(cleanRoomId)?.removeValue()
+                            } catch (e: Exception) {}
+                            localFlow.value = null
+                            trySend(null)
+                            return
+                        }
                         localFlow.value = room
                         trySend(room)
                     }
+                } else {
+                    // Room deleted or disbanded from Firebase
+                    localFlow.value = null
+                    trySend(null)
                 }
             }
 
@@ -663,9 +791,7 @@ class RoomManager {
         val scope = CoroutineScope(Dispatchers.Default)
         val localJob = scope.launch {
             localFlow.collect { localRoom ->
-                if (localRoom != null) {
-                    trySend(localRoom)
-                }
+                trySend(localRoom)
             }
         }
 
@@ -676,22 +802,18 @@ class RoomManager {
     }
 
     private fun parseRoomFromSnapshot(snapshot: DataSnapshot): GameRoom? {
-        try {
-            val direct = snapshot.getValue(GameRoom::class.java)
-            if (direct != null && direct.roomId.isNotEmpty()) return direct
-        } catch (e: Exception) {
-            // Fallback to manual parsing
-        }
-
         return try {
             val roomId = snapshot.child("roomId").value?.toString() ?: snapshot.key ?: return null
             val hostName = snapshot.child("hostName").value?.toString() ?: "Host"
             val gameState = snapshot.child("gameState").value?.toString() ?: "WAITING"
             val gameMode = snapshot.child("gameMode").value?.toString() ?: "QUICK"
             val scoringRule = snapshot.child("scoringRule").value?.toString() ?: "STANDARD"
-            val currentRoundIndex = (snapshot.child("currentRoundIndex").value as? Number)?.toInt() ?: 0
-            val currentTurnIndex = (snapshot.child("currentTurnIndex").value as? Number)?.toInt() ?: 0
-            val dealerIndex = (snapshot.child("dealerIndex").value as? Number)?.toInt() ?: 0
+            val currentRoundIndex = (snapshot.child("currentRoundIndex").value as? Number)?.toInt()
+                ?: snapshot.child("currentRoundIndex").value?.toString()?.toIntOrNull() ?: 0
+            val currentTurnIndex = (snapshot.child("currentTurnIndex").value as? Number)?.toInt()
+                ?: snapshot.child("currentTurnIndex").value?.toString()?.toIntOrNull() ?: 0
+            val dealerIndex = (snapshot.child("dealerIndex").value as? Number)?.toInt()
+                ?: snapshot.child("dealerIndex").value?.toString()?.toIntOrNull() ?: 0
             val trumpSuit = snapshot.child("trumpSuit").value?.toString()
             val leadSuit = snapshot.child("leadSuit").value?.toString()
             val lastTrickWinner = snapshot.child("lastTrickWinner").value?.toString()
@@ -701,11 +823,18 @@ class RoomManager {
             val playersList = mutableListOf<String>()
             val playersVal = snapshot.child("players").value
             when (playersVal) {
-                is List<*> -> playersVal.forEach { (it as? String)?.let { s -> playersList.add(s) } }
-                is Map<*, *> -> playersVal.values.forEach { (it as? String)?.let { s -> playersList.add(s) } }
+                is List<*> -> playersVal.forEach { item ->
+                    val s = item?.toString()
+                    if (!s.isNullOrBlank()) playersList.add(s)
+                }
+                is Map<*, *> -> playersVal.values.forEach { item ->
+                    val s = item?.toString()
+                    if (!s.isNullOrBlank()) playersList.add(s)
+                }
                 else -> {
                     snapshot.child("players").children.forEach { child ->
-                        (child.value as? String ?: child.getValue(String::class.java))?.let { playersList.add(it) }
+                        val p = child.value?.toString()
+                        if (!p.isNullOrBlank()) playersList.add(p)
                     }
                 }
             }
@@ -713,11 +842,18 @@ class RoomManager {
             val roundsList = mutableListOf<Int>()
             val roundsVal = snapshot.child("rounds").value
             when (roundsVal) {
-                is List<*> -> roundsVal.forEach { (it as? Number)?.toInt()?.let { r -> roundsList.add(r) } }
-                is Map<*, *> -> roundsVal.values.forEach { (it as? Number)?.toInt()?.let { r -> roundsList.add(r) } }
+                is List<*> -> roundsVal.forEach { item ->
+                    val num = (item as? Number)?.toInt() ?: item?.toString()?.toIntOrNull()
+                    if (num != null) roundsList.add(num)
+                }
+                is Map<*, *> -> roundsVal.values.forEach { item ->
+                    val num = (item as? Number)?.toInt() ?: item?.toString()?.toIntOrNull()
+                    if (num != null) roundsList.add(num)
+                }
                 else -> {
                     snapshot.child("rounds").children.forEach { child ->
-                        ((child.value as? Number)?.toInt())?.let { roundsList.add(it) }
+                        val num = (child.value as? Number)?.toInt() ?: child.value?.toString()?.toIntOrNull()
+                        if (num != null) roundsList.add(num)
                     }
                 }
             }
@@ -732,11 +868,18 @@ class RoomManager {
             val trickOrderList = mutableListOf<String>()
             val trickOrderVal = snapshot.child("trickOrder").value
             when (trickOrderVal) {
-                is List<*> -> trickOrderVal.forEach { (it as? String)?.let { s -> trickOrderList.add(s) } }
-                is Map<*, *> -> trickOrderVal.values.forEach { (it as? String)?.let { s -> trickOrderList.add(s) } }
+                is List<*> -> trickOrderVal.forEach { item ->
+                    val s = item?.toString()
+                    if (!s.isNullOrBlank()) trickOrderList.add(s)
+                }
+                is Map<*, *> -> trickOrderVal.values.forEach { item ->
+                    val s = item?.toString()
+                    if (!s.isNullOrBlank()) trickOrderList.add(s)
+                }
                 else -> {
                     snapshot.child("trickOrder").children.forEach { child ->
-                        child.value?.toString()?.let { trickOrderList.add(it) }
+                        val s = child.value?.toString()
+                        if (!s.isNullOrBlank()) trickOrderList.add(s)
                     }
                 }
             }
@@ -746,11 +889,14 @@ class RoomManager {
                 val id = child.child("id").value?.toString() ?: child.key ?: ""
                 val sender = child.child("senderName").value?.toString() ?: ""
                 val text = child.child("text").value?.toString() ?: ""
-                val timestamp = (child.child("timestamp").value as? Number)?.toLong() ?: 0L
-                val isSystem = (child.child("isSystem").value as? Boolean) ?: (child.child("isSystem").value?.toString() == "true")
-                if (id.isNotEmpty() || text.isNotEmpty()) {
-                    messagesMap[id.ifEmpty { "msg_${System.currentTimeMillis()}" }] = ChatMessage(
-                        id = id,
+                val timestamp = (child.child("timestamp").value as? Number)?.toLong()
+                    ?: child.child("timestamp").value?.toString()?.toLongOrNull() ?: System.currentTimeMillis()
+                val isSysVal = child.child("isSystem").value
+                val isSystem = (isSysVal as? Boolean) ?: (isSysVal?.toString() == "true")
+                if (id.isNotBlank() || text.isNotBlank()) {
+                    val safeId = id.ifBlank { "msg_${timestamp}_${child.key ?: ""}" }
+                    messagesMap[safeId] = ChatMessage(
+                        id = safeId,
                         senderName = sender,
                         text = text,
                         timestamp = timestamp,
@@ -764,9 +910,11 @@ class RoomManager {
                 val id = child.child("id").value?.toString() ?: child.key ?: ""
                 val sender = child.child("senderName").value?.toString() ?: ""
                 val audio = child.child("audioBase64").value?.toString() ?: ""
-                val dur = (child.child("durationMs").value as? Number)?.toLong() ?: 0L
-                val timestamp = (child.child("timestamp").value as? Number)?.toLong() ?: 0L
-                if (id.isNotEmpty()) {
+                val dur = (child.child("durationMs").value as? Number)?.toLong()
+                    ?: child.child("durationMs").value?.toString()?.toLongOrNull() ?: 0L
+                val timestamp = (child.child("timestamp").value as? Number)?.toLong()
+                    ?: child.child("timestamp").value?.toString()?.toLongOrNull() ?: System.currentTimeMillis()
+                if (id.isNotBlank() && audio.isNotBlank()) {
                     voiceMap[id] = VoiceNote(id, sender, audio, dur, timestamp)
                 }
             }
@@ -781,21 +929,24 @@ class RoomManager {
             val bidsMap = mutableMapOf<String, Int>()
             snapshot.child("bids").children.forEach { child ->
                 val key = child.key ?: return@forEach
-                val value = (child.value as? Number)?.toInt() ?: 0
+                val value = (child.value as? Number)?.toInt()
+                    ?: child.value?.toString()?.toIntOrNull() ?: 0
                 bidsMap[key] = value
             }
 
             val tricksWonMap = mutableMapOf<String, Int>()
             snapshot.child("tricksWon").children.forEach { child ->
                 val key = child.key ?: return@forEach
-                val value = (child.value as? Number)?.toInt() ?: 0
+                val value = (child.value as? Number)?.toInt()
+                    ?: child.value?.toString()?.toIntOrNull() ?: 0
                 tricksWonMap[key] = value
             }
 
             val scoresMap = mutableMapOf<String, Int>()
             snapshot.child("scores").children.forEach { child ->
                 val key = child.key ?: return@forEach
-                val value = (child.value as? Number)?.toInt() ?: 0
+                val value = (child.value as? Number)?.toInt()
+                    ?: child.value?.toString()?.toIntOrNull() ?: 0
                 scoresMap[key] = value
             }
 
@@ -806,10 +957,32 @@ class RoomManager {
                 activeSpeakersMap[pName] = isSpk
             }
 
+            val kickedPlayersList = mutableListOf<String>()
+            val kickedVal = snapshot.child("kickedPlayers").value
+            when (kickedVal) {
+                is List<*> -> kickedVal.forEach { item ->
+                    val s = item?.toString()
+                    if (!s.isNullOrBlank()) kickedPlayersList.add(s)
+                }
+                is Map<*, *> -> kickedVal.values.forEach { item ->
+                    val s = item?.toString()
+                    if (!s.isNullOrBlank()) kickedPlayersList.add(s)
+                }
+                else -> {
+                    snapshot.child("kickedPlayers").children.forEach { child ->
+                        val p = child.value?.toString()
+                        if (!p.isNullOrBlank()) kickedPlayersList.add(p)
+                    }
+                }
+            }
+
+            val completedAt = (snapshot.child("completedAt").value as? Number)?.toLong()
+                ?: snapshot.child("completedAt").value?.toString()?.toLongOrNull() ?: 0L
+
             GameRoom(
                 roomId = roomId,
                 hostName = hostName,
-                players = if (playersList.isEmpty()) listOf(hostName) else playersList,
+                players = if (playersList.isEmpty()) listOf(hostName) else playersList.distinct(),
                 gameState = gameState,
                 gameMode = gameMode,
                 scoringRule = scoringRule,
@@ -830,7 +1003,9 @@ class RoomManager {
                 statusMessage = statusMessage,
                 messages = messagesMap,
                 voiceNotes = voiceMap,
-                activeSpeakers = activeSpeakersMap
+                activeSpeakers = activeSpeakersMap,
+                kickedPlayers = kickedPlayersList,
+                completedAt = completedAt
             )
         } catch (e: Exception) {
             Log.e("RoomManager", "Error in manual DataSnapshot parsing", e)

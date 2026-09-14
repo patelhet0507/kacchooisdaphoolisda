@@ -41,12 +41,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.PersonRemove
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -59,6 +65,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -117,11 +124,14 @@ fun MultiplayerLobbyScreen(
         onBackClick()
     }
     val currentRoom by viewModel.currentRoom.collectAsStateWithLifecycle()
+    val isRoomDisbanded by viewModel.isRoomDisbanded.collectAsStateWithLifecycle()
+    val isKicked by viewModel.isKicked.collectAsStateWithLifecycle()
     val localPlayerName by viewModel.localPlayerName.collectAsStateWithLifecycle()
     val isRecording by viewModel.isRecording.collectAsStateWithLifecycle()
     val isPlaying by viewModel.isPlaying.collectAsStateWithLifecycle()
 
     var chatInputText by remember { mutableStateOf("") }
+    var playerToKick by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -176,6 +186,145 @@ fun MultiplayerLobbyScreen(
             }
             onStartGame(localPlayerName, mode, rule, players.size)
         }
+    }
+
+    if (isRoomDisbanded) {
+        AlertDialog(
+            onDismissRequest = {
+                viewModel.acknowledgeDisband()
+                onBackClick()
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Info,
+                        contentDescription = null,
+                        tint = GoldPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Room Disbanded",
+                        color = GoldLight,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = "The host has left or closed the room. You are being returned to the home screen.",
+                    color = TextLight,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.acknowledgeDisband()
+                        onBackClick()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)
+                ) {
+                    Text("Return to Home", color = EmeraldDeep, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = DarkSurfaceElevated,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    if (isKicked) {
+        AlertDialog(
+            onDismissRequest = {
+                viewModel.acknowledgeKicked()
+                onBackClick()
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFEF5350),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Removed from Room",
+                        color = GoldLight,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = "You have been removed from the room by the host.",
+                    color = TextLight,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.acknowledgeKicked()
+                        onBackClick()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)
+                ) {
+                    Text("OK", color = EmeraldDeep, fontWeight = FontWeight.Bold)
+                }
+            },
+            containerColor = DarkSurfaceElevated,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    if (playerToKick != null) {
+        val target = playerToKick!!
+        AlertDialog(
+            onDismissRequest = { playerToKick = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Default.PersonRemove,
+                        contentDescription = null,
+                        tint = Color(0xFFEF5350),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Kick Player?",
+                        color = GoldLight,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to kick $target from the room?",
+                    color = TextLight,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.kickPlayer(target)
+                        playerToKick = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                ) {
+                    Text("Kick Player", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { playerToKick = null }) {
+                    Text("Cancel", color = TextMuted)
+                }
+            },
+            containerColor = DarkSurfaceElevated,
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 
     Scaffold(
@@ -320,11 +469,14 @@ fun MultiplayerLobbyScreen(
                 items(players) { playerName ->
                     val isPlayerHost = playerName == room?.hostName || playerName == players.firstOrNull()
                     val isSpeaking = room?.activeSpeakers?.get(playerName) == true
+                    val canKickPlayer = isHost && !isPlayerHost && playerName != localPlayerName
                     PlayerLobbyChip(
                         name = playerName,
                         isHost = isPlayerHost,
                         isSelf = playerName == localPlayerName,
-                        isSpeaking = isSpeaking
+                        isSpeaking = isSpeaking,
+                        canKick = canKickPlayer,
+                        onKickClick = { playerToKick = playerName }
                     )
                 }
 
@@ -561,7 +713,9 @@ private fun PlayerLobbyChip(
     name: String,
     isHost: Boolean,
     isSelf: Boolean,
-    isSpeaking: Boolean
+    isSpeaking: Boolean,
+    canKick: Boolean = false,
+    onKickClick: () -> Unit = {}
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "speaking_wave")
     val pulseScale by infiniteTransition.animateFloat(
@@ -638,6 +792,27 @@ private fun PlayerLobbyChip(
                 fontWeight = if (isHost || isSelf) FontWeight.Bold else FontWeight.Normal,
                 maxLines = 1
             )
+        }
+
+        if (canKick) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 2.dp, y = (-2).dp)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE53935))
+                    .clickable { onKickClick() }
+                    .testTag("kick_player_button_$name"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Kick $name",
+                    tint = Color.White,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
         }
     }
 }

@@ -45,6 +45,7 @@ data class GameUiState(
     val isProcessingBot: Boolean = false,
     val statusMessage: String = "",
     val isMultiplayer: Boolean = false,
+    val isRoomDisbanded: Boolean = false,
     val localPlayerName: String = "You",
     val roomCode: String? = null,
     val botDifficulty: BotDifficulty = BotDifficulty.MEDIUM
@@ -100,7 +101,7 @@ class GameViewModel : ViewModel() {
         roomJob = null
         val code = currentRoomId
         val player = localPlayerName
-        if (code != null && player != null) {
+        if (!code.isNullOrBlank() && player.isNotBlank()) {
             viewModelScope.launch {
                 try {
                     roomManager.leaveRoom(code, player)
@@ -114,6 +115,7 @@ class GameViewModel : ViewModel() {
         _uiState.update {
             it.copy(
                 isMultiplayer = false,
+                isRoomDisbanded = false,
                 roomCode = null,
                 phase = GamePhase.GAME_OVER,
                 players = emptyList(),
@@ -126,8 +128,17 @@ class GameViewModel : ViewModel() {
         roomJob?.cancel()
         roomJob = viewModelScope.launch {
             roomManager.getRoomUpdates(roomId).collect { room ->
-                if (room != null) {
-                    applyMultiplayerRoomState(room)
+                if (room == null || room.gameState == "DISBANDED") {
+                    if (_uiState.value.isMultiplayer) {
+                        _uiState.update { it.copy(isRoomDisbanded = true) }
+                    }
+                } else {
+                    val myName = localPlayerName
+                    if (room.kickedPlayers.contains(myName)) {
+                        _uiState.update { it.copy(isRoomDisbanded = true) }
+                    } else {
+                        applyMultiplayerRoomState(room)
+                    }
                 }
             }
         }

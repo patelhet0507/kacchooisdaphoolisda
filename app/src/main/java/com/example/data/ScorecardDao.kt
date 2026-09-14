@@ -44,4 +44,10 @@ interface ScorecardDao {
 
     @Query("DELETE FROM scorecard_rounds WHERE gameId = :gameId")
     suspend fun deleteRoundsForGame(gameId: Long)
+
+    @Query("DELETE FROM scorecard_rounds WHERE gameId IN (SELECT id FROM scorecard_games WHERE isCompleted = 1 AND completedAt > 0 AND completedAt <= :thresholdTime)")
+    suspend fun deleteOldCompletedRounds(thresholdTime: Long)
+
+    @Query("DELETE FROM scorecard_games WHERE isCompleted = 1 AND completedAt > 0 AND completedAt <= :thresholdTime")
+    suspend fun deleteOldCompletedGames(thresholdTime: Long)
 }

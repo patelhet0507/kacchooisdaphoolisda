@@ -34,14 +34,20 @@ class MultiplayerViewModel(application: Application) : AndroidViewModel(applicat
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
+    private val _isRoomDisbanded = MutableStateFlow(false)
+    val isRoomDisbanded: StateFlow<Boolean> = _isRoomDisbanded.asStateFlow()
+
+    private val _isKicked = MutableStateFlow(false)
+    val isKicked: StateFlow<Boolean> = _isKicked.asStateFlow()
+
     private var roomObservationJob: Job? = null
 
     val isRecording = audioVoiceManager.isRecording
     val isPlaying = audioVoiceManager.isPlaying
 
     fun createRoom(hostName: String) {
-        val trimmed = hostName.ifBlank { "Host" }
-        _localPlayerName.value = trimmed
+        val sanitized = hostName.replace(Regex("[.#$\\[\\]/]"), "").trim().ifBlank { "Host" }
+        _localPlayerName.value = sanitized
         _isLoading.value = true
         _errorMessage.value = null
 
@@ -50,7 +56,7 @@ class MultiplayerViewModel(application: Application) : AndroidViewModel(applicat
                 val code = (100000..999999).random().toString()
                 _roomCode.value = code
                 observeRoom(code)
-                val success = roomManager.createRoom(code, trimmed)
+                val success = roomManager.createRoom(code, sanitized)
                 if (success) {
                     Log.d("MultiplayerViewModel", "Room created successfully: $code")
                 } else {
@@ -72,14 +78,14 @@ class MultiplayerViewModel(application: Application) : AndroidViewModel(applicat
             return
         }
 
-        val trimmedName = playerName.ifBlank { "Player" }
-        _localPlayerName.value = trimmedName
+        val sanitizedName = playerName.replace(Regex("[.#$\\[\\]/]"), "").trim().ifBlank { "Player" }
+        _localPlayerName.value = sanitizedName
         _isLoading.value = true
         _errorMessage.value = null
 
         viewModelScope.launch {
             try {
-                when (val result = roomManager.joinRoom(cleanRoomId, trimmedName)) {
+                when (val result = roomManager.joinRoom(cleanRoomId, sanitizedName)) {
                     com.example.engine.JoinRoomStatus.SUCCESS -> {
                         _roomCode.value = cleanRoomId
                         observeRoom(cleanRoomId)
@@ -104,13 +110,35 @@ class MultiplayerViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-
     private fun observeRoom(roomId: String) {
+        _isRoomDisbanded.value = false
+        _isKicked.value = false
         roomObservationJob?.cancel()
         roomObservationJob = viewModelScope.launch {
             roomManager.getRoomUpdates(roomId).collect { room ->
-                _currentRoom.value = room
+                if (room == null || room.gameState == "DISBANDED") {
+                    if (_roomCode.value != null && _currentRoom.value != null) {
+                        _isRoomDisbanded.value = true
+                    }
+                    _currentRoom.value = null
+                } else {
+                    val myName = _localPlayerName.value
+                    val isKickedFromList = room.kickedPlayers.contains(myName)
+                    if (isKickedFromList) {
+                        _isKicked.value = true
+                        _currentRoom.value = null
+                        return@collect
+                    }
+                    _currentRoom.value = room
+                }
             }
+        }
+    }
+
+    fun kickPlayer(playerName: String) {
+        val code = _roomCode.value ?: return
+        viewModelScope.launch {
+            roomManager.kickPlayerFromRoom(code, playerName)
         }
     }
 
@@ -181,8 +209,36 @@ class MultiplayerViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun leaveRoom() {
+        val code = _roomCode.value
+        val player = _localPlayerName.value
+        if (!code.isNullOrBlank() && player.isNotBlank()) {
+            viewModelScope.launch {
+                try {
+                    roomManager.leaveRoom(code, player)
+                } catch (e: Exception) {
+                    Log.w("MultiplayerViewModel", "Error in leaveRoom: ${e.message}")
+                }
+            }
+        }
         roomObservationJob?.cancel()
         audioVoiceManager.release()
+        _currentRoom.value = null
+        _roomCode.value = null
+        _errorMessage.value = null
+        _isRoomDisbanded.value = false
+    }
+
+    fun acknowledgeDisband() {
+        _isRoomDisbanded.value = false
+        _isKicked.value = false
+        _currentRoom.value = null
+        _roomCode.value = null
+        _errorMessage.value = null
+    }
+
+    fun acknowledgeKicked() {
+        _isKicked.value = false
+        _isRoomDisbanded.value = false
         _currentRoom.value = null
         _roomCode.value = null
         _errorMessage.value = null

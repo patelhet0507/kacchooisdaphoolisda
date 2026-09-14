@@ -101,6 +101,16 @@ class ScorecardRepository(private val dao: ScorecardDao) {
         dao.updateGame(game)
     }
 
+    suspend fun cleanOldCompletedGames() {
+        try {
+            val cutoff = System.currentTimeMillis() - 5 * 60 * 1000L // 5 minutes
+            dao.deleteOldCompletedRounds(cutoff)
+            dao.deleteOldCompletedGames(cutoff)
+        } catch (e: Exception) {
+            // non-critical
+        }
+    }
+
     suspend fun deleteGame(gameId: Long) {
         dao.deleteRoundsForGame(gameId)
         dao.deleteGame(gameId)
