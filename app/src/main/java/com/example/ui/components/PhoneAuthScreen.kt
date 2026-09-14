@@ -46,6 +46,23 @@ fun PhoneAuthScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+
+    if (showErrorDialog && errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { Text("Authentication Error", color = ErrorRed) },
+            text = { Text(errorMessage!!, color = TextLight) },
+            confirmButton = {
+                TextButton(onClick = { showErrorDialog = false }) {
+                    Text("Dismiss", color = GoldPrimary)
+                }
+            },
+            containerColor = DarkSurface,
+            titleContentColor = ErrorRed,
+            textContentColor = TextLight
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -136,13 +153,18 @@ fun PhoneAuthScreen(
                             onClick = {
                                 if (phoneNumber.isBlank() || phoneNumber.length < 8) {
                                     errorMessage = "Please enter a valid phone number with country code."
+                                    showErrorDialog = true
+                                    
                                     return@Button
                                 }
                                 if (activity == null) {
                                     errorMessage = "Activity context required for reCAPTCHA flow."
+                                    showErrorDialog = true
+                                    
                                     return@Button
                                 }
                                 errorMessage = null
+                                    
                                 statusMessage = "Initiating reCAPTCHA verification & sending SMS..."
                                 isLoading = true
 
@@ -162,6 +184,8 @@ fun PhoneAuthScreen(
                                         override fun onVerificationFailed(e: com.google.firebase.FirebaseException) {
                                             isLoading = false
                                             errorMessage = "SMS Service Notice: ${e.localizedMessage ?: "Verification failed."}"
+                                            showErrorDialog = true
+                                    
                                             // Enable verification code input so user can verify with test code 123456
                                             verificationIdState = "test_id_${System.currentTimeMillis()}"
                                         }
@@ -182,6 +206,8 @@ fun PhoneAuthScreen(
                                     } catch (e: Exception) {
                                         isLoading = false
                                         errorMessage = "Error: ${e.localizedMessage}"
+                                        showErrorDialog = true
+                                    
                                     }
                                 }
                             },
@@ -225,16 +251,21 @@ fun PhoneAuthScreen(
                             onClick = {
                                 if (smsCode.length < 6) {
                                     errorMessage = "Please enter the 6-digit SMS code."
+                                    showErrorDialog = true
+                                    
                                     return@Button
                                 }
                                 val verId = verificationIdState
                                 if (verId == null) {
                                     errorMessage = "Verification ID missing. Please resend code."
+                                    showErrorDialog = true
+                                    
                                     return@Button
                                 }
 
                                 isLoading = true
                                 errorMessage = null
+                                    
                                 coroutineScope.launch {
                                     try {
                                         val res = if (verId.startsWith("test_id_")) {
@@ -252,11 +283,15 @@ fun PhoneAuthScreen(
                                                 onSuccess(fallbackRes.user.displayName ?: "PhoneUser", fallbackRes.user.email ?: "phone@firebase.auth")
                                             } else {
                                                 errorMessage = res.message
+                                                showErrorDialog = true
+                                    
                                             }
                                         }
                                     } catch (e: Exception) {
                                         isLoading = false
                                         errorMessage = "Auth Error: ${e.localizedMessage ?: "Verification failed."}"
+                                        showErrorDialog = true
+                                    
                                     }
                                 }
                             },

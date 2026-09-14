@@ -72,7 +72,7 @@ class AppUpdateManager private constructor(private val context: Context) {
     /**
      * Checks the GitHub repository releases API for newer APK builds.
      */
-    suspend fun checkForUpdates(repoOwnerAndName: String = "patelhet0507/Kaachu-Phool"): UpdateCheckState {
+    suspend fun checkForUpdates(repoOwnerAndName: String = "patelhet0507/kacchooisdaphoolisda"): UpdateCheckState {
         _updateState.value = UpdateCheckState.Checking
         return withContext(Dispatchers.IO) {
             try {
@@ -280,7 +280,7 @@ class AppUpdateManager private constructor(private val context: Context) {
     /**
      * Opens the GitHub releases page directly in the user's browser.
      */
-    fun openReleasesPageInBrowser(repo: String = "patelhet0507/Kaachu-Phool") {
+    fun openReleasesPageInBrowser(repo: String = "patelhet0507/kacchooisdaphoolisda") {
         try {
             val cleanRepo = repo.trim().removePrefix("https://github.com/").removeSuffix("/")
             val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/$cleanRepo/releases"))

@@ -15,7 +15,7 @@ data class AppSettingsState(
     val fastBotTurns: Boolean = false,
     val is3DMode: Boolean = false,
     val autoCheckUpdates: Boolean = true,
-    val githubRepo: String = "patelhet0507/Kaachu-Phool"
+    val githubRepo: String = "patelhet0507/kacchooisdaphoolisda"
 )
 
 class SettingsManager private constructor(context: Context) {
@@ -34,7 +34,7 @@ class SettingsManager private constructor(context: Context) {
             fastBotTurns = prefs.getBoolean("fast_bot_turns", false),
             is3DMode = prefs.getBoolean("is_3d_mode", false),
             autoCheckUpdates = prefs.getBoolean("auto_check_updates", true),
-            githubRepo = prefs.getString("github_repo", "patelhet0507/Kaachu-Phool") ?: "patelhet0507/Kaachu-Phool"
+            githubRepo = prefs.getString("github_repo", "patelhet0507/kacchooisdaphoolisda") ?: "patelhet0507/kacchooisdaphoolisda"
         )
     )
     val settings: StateFlow<AppSettingsState> = _settings.asStateFlow()

@@ -66,6 +66,24 @@ fun GoogleLoginDialog(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+
+    if (showErrorDialog && errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = { showErrorDialog = false },
+            title = { Text("Authentication Error", color = ErrorRed) },
+            text = { Text(errorMessage!!, color = TextLight) },
+            confirmButton = {
+                TextButton(onClick = { showErrorDialog = false }) {
+                    Text("Dismiss", color = GoldPrimary)
+                }
+            },
+            containerColor = DarkSurface,
+            titleContentColor = ErrorRed,
+            textContentColor = TextLight
+        )
+    }
+
     var phoneInput by remember { mutableStateOf("") }
     var smsCodeInput by remember { mutableStateOf("") }
     var phoneCodeSent by remember { mutableStateOf(false) }
@@ -622,10 +640,12 @@ fun GoogleLoginDialog(
                                     val activity = context as? android.app.Activity
                                     if (phoneInput.isBlank() || phoneInput.length < 10) {
                                         errorMessage = "Please enter a valid phone number with country code (e.g. +1 555-0199)."
+                                        showErrorDialog = true
                                         return@Button
                                     }
                                     if (activity == null) {
                                         errorMessage = "Activity context missing. Cannot verify."
+                                        showErrorDialog = true
                                         return@Button
                                     }
 
@@ -646,6 +666,7 @@ fun GoogleLoginDialog(
                                                             onDismiss()
                                                         } else if (res is AuthResult.Error) {
                                                             errorMessage = res.message
+                                                            showErrorDialog = true
                                                         }
                                                     }
                                                 }
@@ -653,6 +674,7 @@ fun GoogleLoginDialog(
                                                 override fun onVerificationFailed(e: com.google.firebase.FirebaseException) {
                                                     isLoading = false
                                                     errorMessage = "SMS failed: ${e.localizedMessage ?: "Verification failed."}"
+                                                    showErrorDialog = true
                                                     // Enable verification code input so user can verify with test code 123456
                                                     verificationIdState = "test_id_${System.currentTimeMillis()}"
                                                     phoneCodeSent = true
@@ -675,6 +697,7 @@ fun GoogleLoginDialog(
                                             } catch (e: Exception) {
                                                 isLoading = false
                                                 errorMessage = "Verification failed: ${e.localizedMessage}"
+                                                showErrorDialog = true
                                                 verificationIdState = "test_id_${System.currentTimeMillis()}"
                                                 phoneCodeSent = true
                                                 statusMessage = "Failsafe Demo mode enabled. Enter any 6 digits (e.g. 123456)!"
@@ -682,6 +705,7 @@ fun GoogleLoginDialog(
                                         } else {
                                             if (smsCodeInput.length < 6) {
                                                 errorMessage = "Please enter the 6-digit verification code."
+                                                showErrorDialog = true
                                                 isLoading = false
                                                 return@launch
                                             }
@@ -689,25 +713,32 @@ fun GoogleLoginDialog(
                                             val phoneName = "PhoneUser_${phoneInput.takeLast(4)}"
                                             val phoneEmail = "${phoneInput.filter { it.isDigit() }}@phoneauth.firebase"
 
-                                            val res = if (verId == null || verId.startsWith("test_id_")) {
-                                                authManager.connectGoogleProfile(phoneName, phoneEmail)
-                                            } else {
-                                                authManager.signInWithPhoneCredential(verId, smsCodeInput)
-                                            }
+                                            try {
+                                                val res = if (verId == null || verId.startsWith("test_id_")) {
+                                                    authManager.connectGoogleProfile(phoneName, phoneEmail)
+                                                } else {
+                                                    authManager.signInWithPhoneCredential(verId, smsCodeInput)
+                                                }
 
-                                            isLoading = false
-                                            if (res is AuthResult.Success) {
-                                                onLogin(phoneName, phoneEmail)
-                                                onDismiss()
-                                            } else if (res is AuthResult.Error) {
-                                                // Try demo fallback if Firebase verification failed
-                                                val fallbackRes = authManager.connectGoogleProfile(phoneName, phoneEmail)
-                                                if (fallbackRes is AuthResult.Success) {
+                                                isLoading = false
+                                                if (res is AuthResult.Success) {
                                                     onLogin(phoneName, phoneEmail)
                                                     onDismiss()
-                                                } else {
-                                                    errorMessage = res.message
+                                                } else if (res is AuthResult.Error) {
+                                                    // Try demo fallback if Firebase verification failed
+                                                    val fallbackRes = authManager.connectGoogleProfile(phoneName, phoneEmail)
+                                                    if (fallbackRes is AuthResult.Success) {
+                                                        onLogin(phoneName, phoneEmail)
+                                                        onDismiss()
+                                                    } else {
+                                                        errorMessage = res.message
+                                                        showErrorDialog = true
+                                                    }
                                                 }
+                                            } catch (e: Exception) {
+                                                isLoading = false
+                                                errorMessage = "Sign in failed: ${e.localizedMessage ?: "Verification failed."}"
+                                                showErrorDialog = true
                                             }
                                         }
                                     }

@@ -774,7 +774,7 @@ fun SettingsDialog(
                         value = tempRepoText,
                         onValueChange = { tempRepoText = it },
                         singleLine = true,
-                        placeholder = { Text("e.g. patelhet0507/Kaachu-Phool", color = TextMuted) },
+                        placeholder = { Text("e.g. patelhet0507/kacchooisdaphoolisda", color = TextMuted) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = GoldPrimary,
                             unfocusedBorderColor = GoldPrimary.copy(alpha = 0.4f),
