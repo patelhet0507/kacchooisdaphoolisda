@@ -938,4 +938,11 @@ class GameViewModel : ViewModel() {
             }
         }
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        exitGame()
+        botTurnJob?.cancel()
+        roomJob?.cancel()
+    }
 }

@@ -43,6 +43,7 @@ class RoomManager {
     companion object {
         private val localRooms = ConcurrentHashMap<String, MutableStateFlow<GameRoom?>>()
         private val roomFlows = ConcurrentHashMap<String, Flow<GameRoom?>>()
+        private val activeRoomListeners = ConcurrentHashMap<String, ValueEventListener>()
 
         fun gameRoomToMap(room: GameRoom): Map<String, Any?> = mapOf(
             "roomId" to room.roomId,
@@ -828,7 +829,15 @@ class RoomManager {
                 val ref = roomsRef?.child(cleanRoomId)
                 if (ref != null) {
                     try {
+                        // Ensure any existing listener for this path is removed before adding a new one
+                        val existing = activeRoomListeners.remove(cleanRoomId)
+                        if (existing != null) {
+                            ref.removeEventListener(existing)
+                        }
+                        
+                        activeRoomListeners[cleanRoomId] = listener
                         ref.addValueEventListener(listener)
+                        Log.d("RoomManager", "Attached listener for room: $cleanRoomId")
                     } catch (t: Throwable) {
                         Log.w("RoomManager", "Error registering Firebase listener", t)
                     }
@@ -844,10 +853,21 @@ class RoomManager {
                 awaitClose {
                     if (ref != null) {
                         try {
-                            ref.removeEventListener(listener)
-                        } catch (t: Throwable) {}
+                            val active = activeRoomListeners[cleanRoomId]
+                            if (active == listener) {
+                                ref.removeEventListener(listener)
+                                activeRoomListeners.remove(cleanRoomId)
+                                Log.d("RoomManager", "Removed listener for room: $cleanRoomId")
+                            }
+                            // Also clear persistence sync when leaving room observation
+                            ref.keepSynced(false)
+                        } catch (t: Throwable) {
+                            Log.w("RoomManager", "Error removing Firebase listener", t)
+                        }
                     }
                     localJob.cancel()
+                    // Remove from flow cache to ensure fresh start on next observation
+                    roomFlows.remove(cleanRoomId)
                 }
             }.shareIn(
                 scope = CoroutineScope(Dispatchers.Default + SupervisorJob()),

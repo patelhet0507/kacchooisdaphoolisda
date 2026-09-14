@@ -54,10 +54,10 @@ class MultiplayerViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             try {
                 val code = (100000..999999).random().toString()
-                _roomCode.value = code
-                observeRoom(code)
                 val success = roomManager.createRoom(code, sanitized)
                 if (success) {
+                    _roomCode.value = code
+                    observeRoom(code)
                     Log.d("MultiplayerViewModel", "Room created successfully: $code")
                 } else {
                     _errorMessage.value = "Failed to create room. Please try again."
@@ -117,7 +117,8 @@ class MultiplayerViewModel(application: Application) : AndroidViewModel(applicat
         roomObservationJob = viewModelScope.launch {
             roomManager.getRoomUpdates(roomId).collect { room ->
                 if (room == null || room.gameState == "DISBANDED") {
-                    if (_roomCode.value != null && _currentRoom.value != null) {
+                    val hadActiveRoom = _currentRoom.value != null
+                    if (hadActiveRoom) {
                         _isRoomDisbanded.value = true
                     }
                     _currentRoom.value = null
@@ -250,6 +251,8 @@ class MultiplayerViewModel(application: Application) : AndroidViewModel(applicat
 
     override fun onCleared() {
         super.onCleared()
+        leaveRoom()
+        roomObservationJob?.cancel()
         audioVoiceManager.release()
     }
 }
