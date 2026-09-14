@@ -62,6 +62,7 @@ fun PlayingCardView(
     isSelected: Boolean = false,
     width: Dp = 68.dp,
     height: Dp = 98.dp,
+    is3DMode: Boolean = false,
     onClick: (() -> Unit)? = null
 ) {
     val yOffset by animateDpAsState(
@@ -69,8 +70,11 @@ fun PlayingCardView(
         animationSpec = spring(dampingRatio = 0.65f, stiffness = 400f),
         label = "card_offset"
     )
-
-    val elevation = if (isSelected) 12.dp else if (isPlayable) 5.dp else 1.dp
+    val elevation = if (is3DMode) {
+        if (isSelected) 18.dp else if (isPlayable) 8.dp else 2.dp
+    } else {
+        if (isSelected) 12.dp else if (isPlayable) 5.dp else 1.dp
+    }
     val shape = RoundedCornerShape(10.dp)
 
     Box(
@@ -78,20 +82,32 @@ fun PlayingCardView(
             .offset(y = yOffset)
             .width(width)
             .height(height)
-            .shadow(elevation, shape, spotColor = if (isTrump) GoldPrimary else Color.Black)
+            .shadow(
+                elevation = elevation,
+                shape = shape,
+                spotColor = if (isTrump) GoldPrimary else if (is3DMode) Color.Black else Color.DarkGray
+            )
             .clip(shape)
             .alpha(if (isPlayable) 1f else 0.45f)
             .background(
                 Brush.verticalGradient(
-                    listOf(
-                        CardWhite,
-                        Color(0xFFFBFBFB),
-                        Color(0xFFF3F4F6)
-                    )
+                    if (is3DMode) {
+                        listOf(
+                            Color(0xFFFFFFFF),
+                            Color(0xFFEBEBEB),
+                            Color(0xFFD4D4D4)
+                        )
+                    } else {
+                        listOf(
+                            CardWhite,
+                            Color(0xFFFBFBFB),
+                            Color(0xFFF3F4F6)
+                        )
+                    }
                 )
             )
             .border(
-                width = if (isTrump) 2.5.dp else 1.dp,
+                width = if (is3DMode) (if (isTrump) 3.5.dp else 1.5.dp) else (if (isTrump) 2.5.dp else 1.dp),
                 brush = if (isTrump) Brush.linearGradient(listOf(GoldLight, GoldPrimary, GoldDark)) else Brush.linearGradient(listOf(CardBorder, Color(0xFFD1D5DB))),
                 shape = shape
             )

@@ -192,7 +192,8 @@ fun TrickTableView(
                             isPlayable = false,
                             isSelected = isWinner && isTrickFinished,
                             width = if (isSmallScreen) 38.dp else 56.dp,
-                            height = if (isSmallScreen) 54.dp else 80.dp
+                            height = if (isSmallScreen) 54.dp else 80.dp,
+                            is3DMode = is3DMode
                         )
 
                         // Name of player who played this card

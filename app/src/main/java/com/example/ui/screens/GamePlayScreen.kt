@@ -473,6 +473,7 @@ fun GamePlayScreen(
                                     isTrump = card.suit == uiState.currentTrump,
                                     width = cardWidth,
                                     height = cardHeight,
+                                    is3DMode = appSettings.is3DMode,
                                     onClick = {
                                         if (isMyTurnToPlay && isPlayable) {
                                             viewModel.playUserCard(card)
