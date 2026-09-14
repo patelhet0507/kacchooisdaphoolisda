@@ -34,6 +34,10 @@ import com.example.data.UserProfileManager
 import com.example.engine.SoundEffectsManager
 import com.example.model.CustomizationData
 import com.example.ui.theme.*
+import com.example.update.AppUpdateManager
+import com.example.update.DownloadStatus
+import com.example.update.GithubReleaseInfo
+import com.example.update.UpdateCheckState
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,13 +54,19 @@ fun SettingsDialog(
     val coroutineScope = rememberCoroutineScope()
     val settingsManager = remember { SettingsManager.getInstance(context) }
     val soundEffectsManager = remember { SoundEffectsManager.getInstance(context) }
+    val appUpdateManager = remember { AppUpdateManager.getInstance(context) }
 
     val appSettings by settingsManager.settings.collectAsStateWithLifecycle()
     val userProfile by userProfileManager.state.collectAsStateWithLifecycle()
+    val updateState by appUpdateManager.updateState.collectAsStateWithLifecycle()
+    val downloadStatus by appUpdateManager.downloadStatus.collectAsStateWithLifecycle()
 
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showLogoutConfirmDialog by remember { mutableStateOf(false) }
+    var showUpdateModal by remember { mutableStateOf<GithubReleaseInfo?>(null) }
     var statusNotification by remember { mutableStateOf<String?>(null) }
+    var showRepoEditDialog by remember { mutableStateOf(false) }
+    var tempRepoText by remember { mutableStateOf(appSettings.githubRepo) }
 
     val configuration = LocalConfiguration.current
     val maxDialogHeight = (configuration.screenHeightDp * 0.88f).dp
@@ -483,7 +493,157 @@ fun SettingsDialog(
                 }
 
                 // ====================================================
-                // 4. ABOUT APP
+                // 4. UPDATES & GITHUB RELEASES
+                // ====================================================
+                SettingsSectionCard(title = "APP UPDATES & RELEASES", icon = Icons.Default.SystemUpdate) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "GitHub Repository",
+                                color = TextLight,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = appSettings.githubRepo,
+                                color = GoldLight,
+                                fontSize = 11.sp
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                tempRepoText = appSettings.githubRepo
+                                showRepoEditDialog = true
+                            },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit Repo", tint = GoldLight, modifier = Modifier.size(18.dp))
+                        }
+                    }
+
+                    SettingsToggleRow(
+                        title = "Auto-Check Updates on Launch",
+                        subtitle = "Alert when a new release or APK is published to GitHub",
+                        checked = appSettings.autoCheckUpdates,
+                        onCheckedChange = { settingsManager.setAutoCheckUpdates(it) }
+                    )
+
+                    // Current Update Status Display
+                    when (val state = updateState) {
+                        is UpdateCheckState.Checking -> {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    strokeWidth = 2.dp,
+                                    color = GoldPrimary
+                                )
+                                Text("Checking GitHub for latest release...", color = GoldLight, fontSize = 11.sp)
+                            }
+                        }
+                        is UpdateCheckState.UpdateAvailable -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(EmeraldDeep)
+                                    .border(1.dp, EmeraldLight.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                    .padding(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text("✨ New Update: ${state.release.tagName}", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        if (state.release.apkFileName != null) {
+                                            Text(state.release.apkFileName, color = TextLight, fontSize = 10.sp)
+                                        }
+                                    }
+                                    Button(
+                                        onClick = { showUpdateModal = state.release },
+                                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldLight),
+                                        shape = RoundedCornerShape(6.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Text("View / Download", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        }
+                        is UpdateCheckState.UpToDate -> {
+                            Text(
+                                text = "✓ App is up to date (Version ${state.currentVersion})",
+                                color = EmeraldLight,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        is UpdateCheckState.Error -> {
+                            Text(
+                                text = "Notice: ${state.message}",
+                                color = Color(0xFFFCA5A5),
+                                fontSize = 11.sp
+                            )
+                        }
+                        UpdateCheckState.Idle -> Unit
+                    }
+
+                    // Action Buttons for Update
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    val res = appUpdateManager.checkForUpdates(appSettings.githubRepo)
+                                    if (res is UpdateCheckState.UpdateAvailable) {
+                                        showUpdateModal = res.release
+                                    }
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .testTag("btn_check_updates"),
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Check for Updates", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                appUpdateManager.openReleasesPageInBrowser(appSettings.githubRepo)
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkSurfaceElevated),
+                            border = ButtonDefaults.outlinedButtonBorder.copy(
+                                brush = androidx.compose.ui.graphics.SolidColor(GoldPrimary.copy(alpha = 0.5f))
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.OpenInBrowser, contentDescription = null, tint = GoldLight, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Releases", color = GoldLight, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+                    }
+                }
+
+                // ====================================================
+                // 5. ABOUT APP
                 // ====================================================
                 Column(
                     modifier = Modifier
@@ -492,7 +652,7 @@ fun SettingsDialog(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Kaachu Phool • Version 1.0.0",
+                        text = "Kaachu Phool • Version ${appUpdateManager.currentVersionName}",
                         color = TextMuted,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
@@ -580,6 +740,66 @@ fun SettingsDialog(
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("Cancel", color = TextMuted)
+                }
+            }
+        )
+    }
+
+    // Modal when Update is Available
+    showUpdateModal?.let { release ->
+        UpdateAvailableDialog(
+            release = release,
+            appUpdateManager = appUpdateManager,
+            onDismiss = { showUpdateModal = null }
+        )
+    }
+
+    // Repository Config Dialog
+    if (showRepoEditDialog) {
+        AlertDialog(
+            onDismissRequest = { showRepoEditDialog = false },
+            containerColor = DarkSurfaceElevated,
+            title = {
+                Text("GitHub Repository", color = GoldLight, fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "Set the GitHub owner/repo to check for APK releases (format: owner/repo):",
+                        color = TextLight,
+                        fontSize = 12.sp
+                    )
+                    OutlinedTextField(
+                        value = tempRepoText,
+                        onValueChange = { tempRepoText = it },
+                        singleLine = true,
+                        placeholder = { Text("e.g. patelhet0507/Kaachu-Phool", color = TextMuted) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = GoldPrimary,
+                            unfocusedBorderColor = GoldPrimary.copy(alpha = 0.4f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (tempRepoText.isNotBlank()) {
+                            settingsManager.setGithubRepo(tempRepoText)
+                        }
+                        showRepoEditDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary)
+                ) {
+                    Text("Save", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRepoEditDialog = false }) {
                     Text("Cancel", color = TextMuted)
                 }
             }

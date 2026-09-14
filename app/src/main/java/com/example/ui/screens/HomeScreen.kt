@@ -109,6 +109,11 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Palette
 import com.example.ui.components.SettingsDialog
 import com.example.ui.components.FriendsDialog
+import com.example.ui.components.UpdateAvailableDialog
+import com.example.update.AppUpdateManager
+import com.example.update.GithubReleaseInfo
+import com.example.update.UpdateCheckState
+import com.example.data.SettingsManager
 import androidx.compose.ui.platform.LocalContext
 
 @Composable
@@ -122,7 +127,11 @@ fun HomeScreen(
     val context = LocalContext.current
     val userProfileManager = remember { UserProfileManager(context) }
     val soundEffectsManager = remember { SoundEffectsManager.getInstance(context) }
+    val settingsManager = remember { SettingsManager.getInstance(context) }
+    val appUpdateManager = remember { AppUpdateManager.getInstance(context) }
+
     val userState by userProfileManager.state.collectAsStateWithLifecycle()
+    val appSettings by settingsManager.settings.collectAsStateWithLifecycle()
 
     var showQuickStartDialog by remember { mutableStateOf(false) }
     var showMultiplayerDialog by remember { mutableStateOf(false) }
@@ -130,10 +139,21 @@ fun HomeScreen(
     var showProfileDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showFriendsDialog by remember { mutableStateOf(false) }
+    var startupUpdateRelease by remember { mutableStateOf<GithubReleaseInfo?>(null) }
 
     val roomCode by multiplayerViewModel.roomCode.collectAsStateWithLifecycle()
     val isLoading by multiplayerViewModel.isLoading.collectAsStateWithLifecycle()
     val errorMessage by multiplayerViewModel.errorMessage.collectAsStateWithLifecycle()
+
+    // Automatically check for updates on app startup if enabled in settings
+    LaunchedEffect(Unit) {
+        if (appSettings.autoCheckUpdates) {
+            val result = appUpdateManager.checkForUpdates(appSettings.githubRepo)
+            if (result is UpdateCheckState.UpdateAvailable) {
+                startupUpdateRelease = result.release
+            }
+        }
+    }
 
     LaunchedEffect(roomCode) {
         if (roomCode != null) {
@@ -463,6 +483,14 @@ fun HomeScreen(
                 Toast.makeText(context, "Copied game invite for $friendName to clipboard!", Toast.LENGTH_SHORT).show()
             },
             onDismiss = { showFriendsDialog = false }
+        )
+    }
+
+    startupUpdateRelease?.let { release ->
+        UpdateAvailableDialog(
+            release = release,
+            appUpdateManager = appUpdateManager,
+            onDismiss = { startupUpdateRelease = null }
         )
     }
 }

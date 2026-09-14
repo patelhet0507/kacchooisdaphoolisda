@@ -13,7 +13,9 @@ data class AppSettingsState(
     val autoSortHand: Boolean = true,
     val dealerHookWarning: Boolean = true,
     val fastBotTurns: Boolean = false,
-    val is3DMode: Boolean = false
+    val is3DMode: Boolean = false,
+    val autoCheckUpdates: Boolean = true,
+    val githubRepo: String = "patelhet0507/Kaachu-Phool"
 )
 
 class SettingsManager private constructor(context: Context) {
@@ -30,7 +32,9 @@ class SettingsManager private constructor(context: Context) {
             autoSortHand = prefs.getBoolean("auto_sort_hand", true),
             dealerHookWarning = prefs.getBoolean("dealer_hook_warning", true),
             fastBotTurns = prefs.getBoolean("fast_bot_turns", false),
-            is3DMode = prefs.getBoolean("is_3d_mode", false)
+            is3DMode = prefs.getBoolean("is_3d_mode", false),
+            autoCheckUpdates = prefs.getBoolean("auto_check_updates", true),
+            githubRepo = prefs.getString("github_repo", "patelhet0507/Kaachu-Phool") ?: "patelhet0507/Kaachu-Phool"
         )
     )
     val settings: StateFlow<AppSettingsState> = _settings.asStateFlow()
@@ -69,6 +73,17 @@ class SettingsManager private constructor(context: Context) {
     fun set3DMode(enabled: Boolean) {
         prefs.edit().putBoolean("is_3d_mode", enabled).apply()
         _settings.value = _settings.value.copy(is3DMode = enabled)
+    }
+
+    fun setAutoCheckUpdates(enabled: Boolean) {
+        prefs.edit().putBoolean("auto_check_updates", enabled).apply()
+        _settings.value = _settings.value.copy(autoCheckUpdates = enabled)
+    }
+
+    fun setGithubRepo(repo: String) {
+        val trimmed = repo.trim().removePrefix("https://github.com/").removeSuffix("/")
+        prefs.edit().putString("github_repo", trimmed).apply()
+        _settings.value = _settings.value.copy(githubRepo = trimmed)
     }
 
     companion object {
