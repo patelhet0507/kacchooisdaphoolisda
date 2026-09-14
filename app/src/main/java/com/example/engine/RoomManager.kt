@@ -43,7 +43,6 @@ class RoomManager {
     companion object {
         private val localRooms = ConcurrentHashMap<String, MutableStateFlow<GameRoom?>>()
         private val roomFlows = ConcurrentHashMap<String, Flow<GameRoom?>>()
-        private val activeListeners = ConcurrentHashMap<String, ValueEventListener>()
 
         fun gameRoomToMap(room: GameRoom): Map<String, Any?> = mapOf(
             "roomId" to room.roomId,
@@ -792,14 +791,7 @@ class RoomManager {
 
                 val ref = roomsRef?.child(cleanRoomId)
                 if (ref != null) {
-                    val oldListener = activeListeners.remove(cleanRoomId)
-                    if (oldListener != null) {
-                        try {
-                            ref.removeEventListener(oldListener)
-                        } catch (t: Throwable) {}
-                    }
                     try {
-                        activeListeners[cleanRoomId] = listener
                         ref.addValueEventListener(listener)
                     } catch (t: Throwable) {
                         Log.w("RoomManager", "Error registering Firebase listener", t)
@@ -818,7 +810,6 @@ class RoomManager {
                         try {
                             ref.removeEventListener(listener)
                         } catch (t: Throwable) {}
-                        activeListeners.remove(cleanRoomId, listener)
                     }
                     localJob.cancel()
                 }
