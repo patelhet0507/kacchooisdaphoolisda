@@ -234,19 +234,27 @@ fun UpdateAvailableDialog(
                         }
                     }
                     is DownloadStatus.Failed -> {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color(0xFF7F1D1D).copy(alpha = 0.3f))
                                 .border(1.dp, Color(0xFFEF4444), RoundedCornerShape(8.dp))
                                 .padding(8.dp),
-                            contentAlignment = Alignment.Center
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "Download notice: ${status.reason}. You can download directly via browser.",
+                                text = "Download notice: ${status.reason}",
                                 color = Color(0xFFFCA5A5),
                                 fontSize = 11.sp,
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "💡 Tip: If you see a 'Package Conflict' error, you must UNINSTALL the current app version before installing the update, as the signing keys may differ.",
+                                color = GoldLight,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center
                             )
                         }
