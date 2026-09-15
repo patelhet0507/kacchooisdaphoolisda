@@ -72,8 +72,22 @@ class AppUpdateManager private constructor(private val context: Context) {
 
     /**
      * Checks the GitHub repository releases API for newer APK builds.
+     * Implements a 24-hour cache for successful checks to avoid rate limiting.
      */
-    suspend fun checkForUpdates(repoOwnerAndName: String = "patelhet0507/kacchooisdaphoolisda"): UpdateCheckState {
+    suspend fun checkForUpdates(
+        repoOwnerAndName: String = "patelhet0507/kacchooisdaphoolisda",
+        force: Boolean = false
+    ): UpdateCheckState {
+        val prefs = context.getSharedPreferences("app_update_prefs", Context.MODE_PRIVATE)
+        val lastCheckTime = prefs.getLong("last_check_time", 0L)
+        val currentTime = System.currentTimeMillis()
+        val oneDayMillis = 24 * 60 * 60 * 1000L
+
+        if (!force && (currentTime - lastCheckTime < oneDayMillis)) {
+            Log.d("AppUpdateManager", "Skipping update check: last check was less than 24h ago.")
+            return UpdateCheckState.Idle
+        }
+
         _updateState.value = UpdateCheckState.Checking
         return withContext(Dispatchers.IO) {
             try {
@@ -97,10 +111,19 @@ class AppUpdateManager private constructor(private val context: Context) {
                         } else {
                             "GitHub API HTTP ${response.code}: ${response.message}"
                         }
+                        
+                        // We still update last check time even on 403 to back off
+                        if (response.code == 403) {
+                            prefs.edit().putLong("last_check_time", currentTime).apply()
+                        }
+                        
                         val errorState = UpdateCheckState.Error(msg)
                         _updateState.value = errorState
                         return@withContext errorState
                     }
+
+                    // Successful check, update timestamp
+                    prefs.edit().putLong("last_check_time", currentTime).apply()
 
                     val body = response.body?.string() ?: throw IllegalStateException("Empty response from GitHub")
                     val json = JSONObject(body)

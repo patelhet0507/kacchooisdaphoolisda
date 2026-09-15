@@ -164,48 +164,18 @@ class AuthManager private constructor() {
     }
 
     suspend fun signInWithPhoneCredential(verificationId: String, smsCode: String): AuthResult = withContext(Dispatchers.IO) {
-        try {
-            val credential = com.google.firebase.auth.PhoneAuthProvider.getCredential(verificationId, smsCode.trim())
-            val result = auth.signInWithCredential(credential).await()
-            val userState = mapFirebaseUser(result.user)
-            _authState.value = userState
-            AuthResult.Success(userState)
-        } catch (e: Exception) {
-            Log.e("AuthManager", "Phone verification sign in error", e)
-            AuthResult.Error(mapPhoneAuthException(e))
-        }
+        val credential = com.google.firebase.auth.PhoneAuthProvider.getCredential(verificationId, smsCode.trim())
+        val result = auth.signInWithCredential(credential).await()
+        val userState = mapFirebaseUser(result.user)
+        _authState.value = userState
+        AuthResult.Success(userState)
     }
 
     suspend fun signInWithPhoneAuthCredential(credential: com.google.firebase.auth.PhoneAuthCredential): AuthResult = withContext(Dispatchers.IO) {
-        try {
-            val result = auth.signInWithCredential(credential).await()
-            val userState = mapFirebaseUser(result.user)
-            _authState.value = userState
-            AuthResult.Success(userState)
-        } catch (e: Exception) {
-            Log.e("AuthManager", "Phone credential sign in error", e)
-            AuthResult.Error(mapPhoneAuthException(e))
-        }
-    }
-
-    private fun mapPhoneAuthException(e: Exception): String {
-        return when (e) {
-            is com.google.firebase.auth.FirebaseAuthInvalidCredentialsException -> 
-                "The verification code entered is incorrect or has expired. Please check and try again."
-            is com.google.firebase.FirebaseTooManyRequestsException -> 
-                "Too many attempts. We have blocked all requests from this device due to unusual activity. Try again later."
-            is com.google.firebase.auth.FirebaseAuthException -> {
-                when (e.errorCode) {
-                    "ERROR_SESSION_EXPIRED" -> "Verification session expired. Please request a new code."
-                    "ERROR_QUOTA_EXCEEDED" -> "SMS quota exceeded for today. Please try another method or wait 24 hours."
-                    "ERROR_NETWORK_REQUEST_FAILED" -> "Network error. Please check your internet connection and try again."
-                    else -> e.localizedMessage ?: "Verification failed. Please retry."
-                }
-            }
-            is java.net.UnknownHostException, is java.net.ConnectException -> 
-                "No internet connection detected. Please check your data or Wi-Fi."
-            else -> e.localizedMessage ?: "Authentication failed. Please try again or re-trigger the SMS flow."
-        }
+        val result = auth.signInWithCredential(credential).await()
+        val userState = mapFirebaseUser(result.user)
+        _authState.value = userState
+        AuthResult.Success(userState)
     }
 
     suspend fun connectGoogleProfile(name: String, email: String): AuthResult = withContext(Dispatchers.IO) {

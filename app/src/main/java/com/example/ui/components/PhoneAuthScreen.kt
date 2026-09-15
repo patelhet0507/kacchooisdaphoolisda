@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.auth.AuthManager
 import com.example.auth.AuthResult
+import com.example.auth.AuthResultHandler
 import com.example.ui.theme.*
 import com.google.firebase.auth.PhoneAuthProvider
 import kotlinx.coroutines.launch
@@ -49,6 +50,19 @@ fun PhoneAuthScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var showErrorDialog by remember { mutableStateOf(false) }
+
+    val authResultHandler = remember {
+        AuthResultHandler(
+            authManager = authManager,
+            onError = { msg: String ->
+                errorMessage = msg
+                showErrorDialog = true
+                isLoading = false
+            },
+            onStatus = { msg: String -> statusMessage = msg },
+            onLoading = { loading: Boolean -> isLoading = loading }
+        )
+    }
 
     if (showErrorDialog && errorMessage != null) {
         AlertDialog(
@@ -166,60 +180,22 @@ fun PhoneAuthScreen(
                                 }
                                 errorMessage = null
                                     
-                                statusMessage = "Initiating reCAPTCHA verification & sending SMS..."
-                                isLoading = true
-
                                 coroutineScope.launch {
-                                    val callbacks = object : PhoneAuthProvider.OnVerificationStateChangedCallbacks() {
-                                        override fun onVerificationCompleted(credential: com.google.firebase.auth.PhoneAuthCredential) {
-                                            isLoading = false
-                                            statusMessage = "Auto-verification successful!"
+                                    authResultHandler.verifyPhoneNumber(
+                                        activity = activity,
+                                        phoneNumber = phoneNumber,
+                                        onCodeSent = { id: String, token: PhoneAuthProvider.ForceResendingToken ->
+                                            verificationIdState = id
+                                            resendTokenState = token
+                                        },
+                                        onVerificationCompleted = { credential: com.google.firebase.auth.PhoneAuthCredential ->
                                             coroutineScope.launch {
-                                                try {
-                                                    val res = authManager.signInWithPhoneAuthCredential(credential)
-                                                    if (res is AuthResult.Success) {
-                                                        onSuccess(res.user.displayName ?: "PhoneUser", res.user.email ?: "phone@firebase.auth")
-                                                    } else if (res is AuthResult.Error) {
-                                                        errorMessage = "Auto-verification failed: ${res.message}. Please enter the code manually."
-                                                        showErrorDialog = true
-                                                    }
-                                                } catch (e: Exception) {
-                                                    errorMessage = "Auth process encountered an unexpected error: ${e.localizedMessage ?: "Unknown error"}. Please retry."
-                                                    showErrorDialog = true
+                                                authResultHandler.signInWithCredential(credential) { user: com.example.auth.AuthUserState ->
+                                                    onSuccess(user.displayName ?: "PhoneUser", user.email ?: "phone@firebase.auth")
                                                 }
                                             }
                                         }
-
-                                        override fun onVerificationFailed(e: com.google.firebase.FirebaseException) {
-                                            isLoading = false
-                                            errorMessage = "Verification Failed: ${e.localizedMessage ?: "SMS service unavailable"}. \n\nCheck if your number is correct or if you have reached the daily limit. You can try again in a few minutes."
-                                            showErrorDialog = true
-                                    
-                                            // Enable verification code input for test mode if needed
-                                            if (verificationIdState == null) {
-                                                verificationIdState = "test_id_${System.currentTimeMillis()}"
-                                            }
-                                        }
-
-                                        override fun onCodeSent(
-                                            verificationId: String,
-                                            token: PhoneAuthProvider.ForceResendingToken
-                                        ) {
-                                            isLoading = false
-                                            verificationIdState = verificationId
-                                            resendTokenState = token
-                                            statusMessage = "Verification code sent via SMS!"
-                                        }
-                                    }
-
-                                    try {
-                                        authManager.verifyPhoneNumber(activity, phoneNumber, callbacks)
-                                    } catch (e: Exception) {
-                                        isLoading = false
-                                        errorMessage = "Error: ${e.localizedMessage}"
-                                        showErrorDialog = true
-                                    
-                                    }
+                                    )
                                 }
                             },
                             modifier = Modifier
@@ -274,31 +250,21 @@ fun PhoneAuthScreen(
                                     return@Button
                                 }
 
-                                isLoading = true
                                 errorMessage = null
                                     
                                 coroutineScope.launch {
-                                    try {
-                                        val res = if (verId.startsWith("test_id_")) {
-                                            authManager.connectGoogleProfile("PhoneUser_${phoneNumber.takeLast(4)}", "${phoneNumber.filter { it.isDigit() }}@phone.auth")
-                                        } else {
-                                            authManager.signInWithPhoneCredential(verId, smsCode)
-                                        }
-                                        isLoading = false
+                                    if (verId.startsWith("test_id_")) {
+                                        val res = authManager.connectGoogleProfile("PhoneUser_${phoneNumber.takeLast(4)}", "${phoneNumber.filter { it.isDigit() }}@phone.auth")
                                         if (res is AuthResult.Success) {
                                             onSuccess(res.user.displayName ?: "PhoneUser", res.user.email ?: "phone@firebase.auth")
                                         } else if (res is AuthResult.Error) {
                                             errorMessage = res.message
                                             showErrorDialog = true
                                         }
-                                    } catch (e: com.google.firebase.auth.FirebaseAuthInvalidCredentialsException) {
-                                        isLoading = false
-                                        errorMessage = "Invalid Code: The verification code entered is incorrect or has expired. Please request a new one."
-                                        showErrorDialog = true
-                                    } catch (e: Exception) {
-                                        isLoading = false
-                                        errorMessage = "System Error: ${e.localizedMessage ?: "Verification could not be completed at this time"}. Please ensure you have a stable network connection and try again."
-                                        showErrorDialog = true
+                                    } else {
+                                        authResultHandler.signInWithPhone(verId, smsCode) { user: com.example.auth.AuthUserState ->
+                                            onSuccess(user.displayName ?: "PhoneUser", user.email ?: "phone@firebase.auth")
+                                        }
                                     }
                                 }
                             },

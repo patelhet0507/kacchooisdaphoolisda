@@ -215,21 +215,30 @@ fun UpdateAvailableDialog(
                         }
                     }
                     is DownloadStatus.ReadyToInstall -> {
-                        Box(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color(0xFF065F46).copy(alpha = 0.4f))
                                 .border(1.dp, EmeraldLight, RoundedCornerShape(8.dp))
                                 .padding(8.dp),
-                            contentAlignment = Alignment.Center
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                text = "✓ APK downloaded successfully! Tap 'Install Update' below.",
+                                text = "✓ APK downloaded successfully!",
                                 color = EmeraldLight,
-                                fontSize = 11.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
+                            )
+                            Divider(color = EmeraldLight.copy(alpha = 0.2f), thickness = 0.5.dp)
+                            Text(
+                                text = "💡 Note: If install fails with 'Package Conflict', uninstall the current app first, then come back here to install.",
+                                color = TextLight.copy(alpha = 0.9f),
+                                fontSize = 10.sp,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 13.sp
                             )
                         }
                     }
@@ -237,24 +246,56 @@ fun UpdateAvailableDialog(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(12.dp))
                                 .background(Color(0xFF7F1D1D).copy(alpha = 0.3f))
-                                .border(1.dp, Color(0xFFEF4444), RoundedCornerShape(8.dp))
-                                .padding(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                                .border(1.dp, Color(0xFFEF4444), RoundedCornerShape(12.dp))
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = Color(0xFFFCA5A5), modifier = Modifier.size(20.dp))
+                                Text(
+                                    text = "Update Problem",
+                                    color = Color(0xFFFCA5A5),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            
                             Text(
-                                text = "Download notice: ${status.reason}",
-                                color = Color(0xFFFCA5A5),
+                                text = status.reason,
+                                color = Color(0xFFFCA5A5).copy(alpha = 0.9f),
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.Center
                             )
+
+                            Divider(color = Color(0xFFEF4444).copy(alpha = 0.3f), thickness = 0.5.dp)
+
                             Text(
-                                text = "💡 Tip: If you see a 'Package Conflict' error, you must UNINSTALL the current app version before installing the update, as the signing keys may differ.",
+                                text = "⚠️ If you see 'Package Conflict':",
                                 color = GoldLight,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+                            
+                            Text(
+                                text = "This happens if the new version has a different security key than your current one (common if you're switching from a Debug to Release version).",
+                                color = TextLight,
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Center,
+                                lineHeight = 15.sp
+                            )
+
+                            Text(
+                                text = "FIX: Manually UNINSTALL the app from your home screen, then click 'Install Update' again.",
+                                color = GoldPrimary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
                                 textAlign = TextAlign.Center
                             )
                         }

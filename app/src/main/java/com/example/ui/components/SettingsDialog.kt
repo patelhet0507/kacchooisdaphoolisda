@@ -607,7 +607,7 @@ fun SettingsDialog(
                         Button(
                             onClick = {
                                 coroutineScope.launch {
-                                    val res = appUpdateManager.checkForUpdates(appSettings.githubRepo)
+                                    val res = appUpdateManager.checkForUpdates(appSettings.githubRepo, force = true)
                                     if (res is UpdateCheckState.UpdateAvailable) {
                                         showUpdateModal = res.release
                                     }
