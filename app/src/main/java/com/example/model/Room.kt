@@ -35,6 +35,7 @@ data class GameRoom(
     val scores: Map<String, Int> = emptyMap(), // playerName -> cumulative score
     val trickCards: Map<String, String> = emptyMap(), // playerName -> cardId in current trick
     val trickOrder: List<String> = emptyList(), // "playerName:cardId" in play order
+    val playedCardsInRound: List<String> = emptyList(), // "cardId" list for AI tracking
     val lastTrickWinner: String? = null,
     val lastWinningCard: String? = null,
     val statusMessage: String = "",

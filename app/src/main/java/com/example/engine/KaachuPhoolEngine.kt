@@ -155,6 +155,7 @@ object KaachuPhoolEngine {
 
     /**
      * AI Bot Card Selection Logic
+     * Improved with card tracking and heuristics.
      */
     fun chooseBotCard(
         hand: List<Card>,
@@ -163,33 +164,56 @@ object KaachuPhoolEngine {
         currentTrick: List<PlayedCard>,
         tricksWon: Int,
         targetBid: Int,
+        playedCardsInRound: List<Card>,
         difficulty: BotDifficulty = BotDifficulty.MEDIUM
     ): Card {
         val playableCards = getPlayableCards(hand, leadSuit)
         if (playableCards.size == 1) return playableCards.first()
 
+        // Easy difficulty still has some randomness
         if (difficulty == BotDifficulty.EASY && (0..99).random() < 35) {
             return playableCards.random()
         }
 
         val needsTricks = tricksWon < targetBid
+        val hasEnoughTricks = tricksWon >= targetBid
+        
         val currentWinningCard = if (currentTrick.isNotEmpty() && leadSuit != null) {
             determineTrickWinner(currentTrick, trumpSuit, leadSuit).card
         } else null
 
+        // Tracking: What's still out there?
+        val cardsNotSeen = Card.createStandardDeck().filter { card ->
+            !playedCardsInRound.contains(card) && !hand.contains(card)
+        }
+
+        // Helper to check if a card is currently the highest of its suit in the game
+        fun isHighestRemaining(card: Card): Boolean {
+            return cardsNotSeen.none { it.suit == card.suit && it.rank.value > card.rank.value }
+        }
+
         // If bot is leading the trick (first to play)
         if (leadSuit == null) {
             return if (needsTricks) {
-                // Try to lead a high non-trump Ace/King or high trump to win
-                playableCards.filter { it.suit != trumpSuit && it.rank >= Rank.KING }
-                    .maxByOrNull { it.rank.value }
-                    ?: playableCards.filter { it.suit == trumpSuit && it.rank >= Rank.JACK }
+                // 1. Try to lead a "Master" card (highest remaining in its suit)
+                val masterCards = playableCards.filter { isHighestRemaining(it) }
+                
+                // Prefer non-trump masters first to save trumps
+                masterCards.filter { it.suit != trumpSuit }.maxByOrNull { it.rank.value }
+                    ?: masterCards.maxByOrNull { it.rank.value }
+                    // 2. Otherwise lead a high non-trump
+                    ?: playableCards.filter { it.suit != trumpSuit && it.rank >= Rank.TEN }
                         .maxByOrNull { it.rank.value }
+                    // 3. Otherwise lead a trump
+                    ?: playableCards.filter { it.suit == trumpSuit }.maxByOrNull { it.rank.value }
+                    // 4. Default to highest card
                     ?: playableCards.maxByOrNull { it.rank.value }!!
             } else {
-                // Bot already has enough tricks! Lead lowest card to duck
+                // Already have enough tricks! Avoid winning.
+                // 1. Lead a low non-trump card
                 playableCards.filter { it.suit != trumpSuit }
                     .minByOrNull { it.rank.value }
+                    // 2. If only trumps, lead the lowest
                     ?: playableCards.minByOrNull { it.rank.value }!!
             }
         }
@@ -199,14 +223,20 @@ object KaachuPhoolEngine {
 
         if (canFollowSuit) {
             if (needsTricks) {
-                // Try to win with smallest card that beats current winning card
+                // Try to win the trick
                 val winningCards = playableCards.filter { card ->
                     isCardBetterThan(card, currentWinningCard, trumpSuit, leadSuit)
                 }
-                return winningCards.minByOrNull { it.rank.value }
-                    ?: playableCards.minByOrNull { it.rank.value }!!
+                
+                if (winningCards.isNotEmpty()) {
+                    // Strategy: Win with the SMALLEST card possible to save high cards
+                    return winningCards.minByOrNull { it.rank.value }!!
+                } else {
+                    // Cannot win: play lowest card to save higher cards for later
+                    return playableCards.minByOrNull { it.rank.value }!!
+                }
             } else {
-                // Do not want to win: play highest card that still loses, or lowest card
+                // Do not want to win: play the highest card that still LOSES (to bleed high cards safely)
                 val losingCards = playableCards.filter { card ->
                     !isCardBetterThan(card, currentWinningCard, trumpSuit, leadSuit)
                 }
@@ -214,24 +244,33 @@ object KaachuPhoolEngine {
                     ?: playableCards.minByOrNull { it.rank.value }!!
             }
         } else {
-            // Cannot follow suit: can play trump or discard other suit
+            // Cannot follow suit: can play trump or discard
             val trumps = playableCards.filter { it.suit == trumpSuit }
             val nonTrumps = playableCards.filter { it.suit != trumpSuit }
 
             if (needsTricks && trumps.isNotEmpty()) {
-                // Check if current trick is already trumped
-                val winningCards = trumps.filter { card ->
+                // Strategic Trumping
+                val winningTrumps = trumps.filter { card ->
                     isCardBetterThan(card, currentWinningCard, trumpSuit, leadSuit)
                 }
-                if (winningCards.isNotEmpty()) {
-                    // Win with lowest winning trump!
-                    return winningCards.minByOrNull { it.rank.value }!!
+                
+                if (winningTrumps.isNotEmpty()) {
+                    // Only trump if the trick is "valuable" or we are desperate
+                    // For now, if we need tricks, we just take it with the lowest winning trump
+                    return winningTrumps.minByOrNull { it.rank.value }!!
                 }
             }
 
-            // Otherwise discard lowest non-trump card or lowest card overall
-            return nonTrumps.minByOrNull { it.rank.value }
-                ?: playableCards.minByOrNull { it.rank.value }!!
+            // Discard Strategy
+            if (hasEnoughTricks) {
+                // Discard highest non-trump to get rid of risky winners
+                return nonTrumps.maxByOrNull { it.rank.value }
+                    ?: playableCards.minByOrNull { it.rank.value }!!
+            } else {
+                // Discard lowest non-trump
+                return nonTrumps.minByOrNull { it.rank.value }
+                    ?: playableCards.minByOrNull { it.rank.value }!!
+            }
         }
     }
 

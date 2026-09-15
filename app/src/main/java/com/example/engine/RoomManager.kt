@@ -64,6 +64,7 @@ class RoomManager {
             "scores" to room.scores,
             "trickCards" to room.trickCards,
             "trickOrder" to room.trickOrder,
+            "playedCardsInRound" to room.playedCardsInRound,
             "lastTrickWinner" to room.lastTrickWinner,
             "lastWinningCard" to room.lastWinningCard,
             "statusMessage" to room.statusMessage,
@@ -573,6 +574,7 @@ class RoomManager {
             scores = initialScores,
             trickCards = emptyMap(),
             trickOrder = emptyList(),
+            playedCardsInRound = emptyList(),
             lastTrickWinner = null,
             lastWinningCard = null,
             statusMessage = "Bidding Phase: ${players[firstBidderIdx]} bids first"
@@ -626,6 +628,7 @@ class RoomManager {
 
         val updatedTrickCards = current.trickCards + (playerName to cardId)
         val updatedTrickOrder = current.trickOrder + "$playerName:$cardId"
+        val updatedPlayedInRound = current.playedCardsInRound + cardId
         val leadSuit = current.leadSuit ?: card.suit.name
 
         val isTrickComplete = updatedTrickCards.size >= players.size
@@ -660,6 +663,7 @@ class RoomManager {
                 dealtHands = updatedDealtHands,
                 trickCards = updatedTrickCards,
                 trickOrder = updatedTrickOrder,
+                playedCardsInRound = updatedPlayedInRound,
                 leadSuit = leadSuit,
                 tricksWon = updatedTricksWon,
                 lastTrickWinner = winnerName,
@@ -673,6 +677,7 @@ class RoomManager {
                 dealtHands = updatedDealtHands,
                 trickCards = updatedTrickCards,
                 trickOrder = updatedTrickOrder,
+                playedCardsInRound = updatedPlayedInRound,
                 leadSuit = leadSuit,
                 currentTurnIndex = nextIdx,
                 statusMessage = "${players[nextIdx]}'s turn"
@@ -772,6 +777,7 @@ class RoomManager {
             tricksWon = players.associateWith { 0 },
             trickCards = emptyMap(),
             trickOrder = emptyList(),
+            playedCardsInRound = emptyList(),
             lastTrickWinner = null,
             lastWinningCard = null,
             statusMessage = "Round ${nextRoundIdx + 1}: ${players[firstBidderIdx]} bids first"
@@ -960,6 +966,25 @@ class RoomManager {
                 }
             }
 
+            val playedInRoundList = mutableListOf<String>()
+            val playedInRoundVal = snapshot.child("playedCardsInRound").value
+            when (playedInRoundVal) {
+                is List<*> -> playedInRoundVal.forEach { item ->
+                    val s = item?.toString()
+                    if (!s.isNullOrBlank()) playedInRoundList.add(s)
+                }
+                is Map<*, *> -> playedInRoundVal.values.forEach { item ->
+                    val s = item?.toString()
+                    if (!s.isNullOrBlank()) playedInRoundList.add(s)
+                }
+                else -> {
+                    snapshot.child("playedCardsInRound").children.forEach { child ->
+                        val s = child.value?.toString()
+                        if (!s.isNullOrBlank()) playedInRoundList.add(s)
+                    }
+                }
+            }
+
             val messagesMap = mutableMapOf<String, ChatMessage>()
             snapshot.child("messages").children.forEach { child ->
                 val id = child.child("id").value?.toString() ?: child.key ?: ""
@@ -1083,6 +1108,7 @@ class RoomManager {
                 scores = scoresMap,
                 trickCards = trickCardsMap,
                 trickOrder = trickOrderList,
+                playedCardsInRound = playedInRoundList,
                 lastTrickWinner = lastTrickWinner,
                 lastWinningCard = lastWinningCard,
                 statusMessage = statusMessage,

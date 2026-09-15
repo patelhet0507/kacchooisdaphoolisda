@@ -71,6 +71,7 @@ data class GameUiState(
     val userForbiddenBid: Int? = null,
     val isProcessingBot: Boolean = false,
     val statusMessage: String = "",
+    val playedCardsInRound: List<Card> = emptyList(),
     val isMultiplayer: Boolean = false,
     val isRoomDisbanded: Boolean = false,
     val localPlayerName: String = "You",
@@ -289,6 +290,8 @@ class GameViewModel : ViewModel() {
         val isBotTurn = currentTurnPlayerName != null &&
                 (currentTurnPlayerName.startsWith("Bot ") || currentTurnPlayerName.contains("(Bot)"))
 
+        val playedCardsInRound = room.playedCardsInRound.mapNotNull { Card.fromId(it) }
+
         // Update Granular Table State
         _tableState.update {
             it.copy(
@@ -350,6 +353,7 @@ class GameViewModel : ViewModel() {
                         GamePhase.GAME_OVER -> "Game Completed!"
                     }
                 },
+                playedCardsInRound = playedCardsInRound,
                 activeEmotes = room.activeEmotes
             )
         }
@@ -434,6 +438,7 @@ class GameViewModel : ViewModel() {
                 }
                 val tricksWon = currentFlowRoom.tricksWon[botName] ?: 0
                 val targetBid = currentFlowRoom.bids[botName] ?: 0
+                val playedCardsInRound = currentFlowRoom.playedCardsInRound.mapNotNull { Card.fromId(it) }
 
                 val chosenCard = KaachuPhoolEngine.chooseBotCard(
                     hand = botCards,
@@ -441,7 +446,8 @@ class GameViewModel : ViewModel() {
                     trumpSuit = trump,
                     currentTrick = currentPlayedCards,
                     tricksWon = tricksWon,
-                    targetBid = targetBid
+                    targetBid = targetBid,
+                    playedCardsInRound = playedCardsInRound
                 )
                 roomManager.playCard(room.roomId, botName, chosenCard.id)
             }
@@ -536,6 +542,7 @@ class GameViewModel : ViewModel() {
                 playerStates = newPlayerStates,
                 userHand = userHand,
                 currentTrick = emptyList(),
+                playedCardsInRound = emptyList(),
                 leadSuit = null,
                 lastTrickWinner = null,
                 statusMessage = "Bidding Phase: ${state.players[firstBidderIdx].name} bids first"
@@ -731,6 +738,7 @@ class GameViewModel : ViewModel() {
                 userHand = updatedHand,
                 playerStates = updatedStates,
                 currentTrick = updatedTrick,
+                playedCardsInRound = it.playedCardsInRound + card,
                 leadSuit = leadSuit
             )
         }
@@ -756,6 +764,7 @@ class GameViewModel : ViewModel() {
             currentTrick = state.currentTrick,
             tricksWon = botState.tricksWon,
             targetBid = botState.bid ?: 0,
+            playedCardsInRound = state.playedCardsInRound,
             difficulty = state.botDifficulty
         )
 
@@ -775,6 +784,7 @@ class GameViewModel : ViewModel() {
             it.copy(
                 playerStates = updatedStates,
                 currentTrick = updatedTrick,
+                playedCardsInRound = it.playedCardsInRound + chosenCard,
                 leadSuit = leadSuit,
                 isProcessingBot = false
             )
