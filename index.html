@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -79,44 +80,26 @@
     .cta:hover { background: var(--green-dark); }
     .cta:active { transform: scale(0.97); }
 
-    /* Card Carousel */
-    .carousel-wrap { display: flex; justify-content: center; align-items: center; position: relative; height: 400px; }
-    .carousel { position: relative; width: 260px; height: 380px; }
-    .card {
-      position: absolute; inset: 0; border-radius: 20px;
+    /* Hero horizontal card strip */
+    .hero-right { position: relative; overflow: hidden; height: 440px; perspective: 900px; }
+    .card-track { display: flex; gap: 24px; position: absolute; top: 50%; left: 0; transform: translateY(-50%); }
+    .hcard {
+      flex-shrink: 0; width: 200px; height: 300px; border-radius: 20px;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.32,0.72,0,1);
       border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-      padding: 32px; text-align: center;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+      padding: 24px; text-align: center;
+      transform-style: preserve-3d;
     }
-    .card svg { width: 56px; height: 56px; margin-bottom: 16px; }
-    .card h3 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
-    .card p { font-size: 12px; font-family: monospace; text-transform: uppercase; letter-spacing: 0.15em; color: rgba(255,255,255,0.4); }
-    .card-0 { opacity: 1; transform: translateZ(0) scale(1); z-index: 4; }
-    .card-1 { opacity: 0; transform: translateX(30px) scale(0.95); z-index: 3; }
-    .card-2 { opacity: 0; transform: translateX(60px) scale(0.9); z-index: 2; }
-    .card-3 { opacity: 0; transform: translateX(90px) scale(0.85); z-index: 1; }
-
-    .carousel.show-1 .card-0 { opacity: 0; transform: translateX(-30px) scale(0.95); z-index: 1; }
-    .carousel.show-1 .card-1 { opacity: 1; transform: translateZ(0) scale(1); z-index: 4; }
-    .carousel.show-1 .card-2 { opacity: 0; transform: translateX(30px) scale(0.95); z-index: 3; }
-    .carousel.show-1 .card-3 { opacity: 0; transform: translateX(60px) scale(0.9); z-index: 2; }
-
-    .carousel.show-2 .card-0 { opacity: 0; transform: translateX(-60px) scale(0.9); z-index: 1; }
-    .carousel.show-2 .card-1 { opacity: 0; transform: translateX(-30px) scale(0.95); z-index: 2; }
-    .carousel.show-2 .card-2 { opacity: 1; transform: translateZ(0) scale(1); z-index: 4; }
-    .carousel.show-2 .card-3 { opacity: 0; transform: translateX(30px) scale(0.95); z-index: 3; }
-
-    .carousel.show-3 .card-0 { opacity: 0; transform: translateX(-90px) scale(0.85); z-index: 1; }
-    .carousel.show-3 .card-1 { opacity: 0; transform: translateX(-60px) scale(0.9); z-index: 2; }
-    .carousel.show-3 .card-2 { opacity: 0; transform: translateX(-30px) scale(0.95); z-index: 3; }
-    .carousel.show-3 .card-3 { opacity: 1; transform: translateZ(0) scale(1); z-index: 4; }
-
-    .card-0 { background: linear-gradient(145deg, #166534, #14532d); }
-    .card-1 { background: linear-gradient(145deg, #1a5c3a, #0f4a2a); }
-    .card-2 { background: linear-gradient(145deg, #166534, #14532d); }
-    .card-3 { background: linear-gradient(145deg, #7f1d1d, #6b1c1c); }
+    .hcard svg { width: 48px; height: 48px; margin-bottom: 14px; }
+    .hcard h3 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .hcard p { font-size: 11px; font-family: monospace; text-transform: uppercase; letter-spacing: 0.15em; color: rgba(255,255,255,0.4); }
+    .hcard-0 { background: linear-gradient(145deg, #166534, #14532d); }
+    .hcard-1 { background: linear-gradient(145deg, #1a5c3a, #0f4a2a); }
+    .hcard-2 { background: linear-gradient(145deg, #166534, #14532d); }
+    .hcard-3 { background: linear-gradient(145deg, #7f1d1d, #6b1c1c); }
+    .hcard-4 { background: linear-gradient(145deg, #166534, #14532d); }
+    .hcard-5 { background: linear-gradient(145deg, #1a5c3a, #0f4a2a); }
 
     /* Sections */
     section { padding: 80px 0; border-top: 1px solid var(--border); }
@@ -218,8 +201,8 @@
     @media (max-width: 768px) {
       .hero-grid { grid-template-columns: 1fr; text-align: center; }
       .hero-sub { margin-left: auto; margin-right: auto; }
-      .carousel-wrap { height: 320px; }
-      .carousel { width: 220px; height: 320px; }
+      .hero-right { height: 320px; }
+      .hcard { width: 160px; height: 240px; }
       .suit-grid { grid-template-columns: repeat(2, 1fr); }
       .feat-grid { grid-template-columns: 1fr; }
       .steps { grid-template-columns: 1fr; gap: 24px; }
@@ -229,7 +212,7 @@
 
     @media (prefers-reduced-motion: reduce) {
       .reveal { opacity: 1; transform: none; transition: none; }
-      .card { transition: none; }
+      .hcard { transform: none !important; }
     }
   </style>
 </head>
@@ -255,27 +238,37 @@
           <p class="hero-meta">Android 7.0+ · ~20 MB · No ads</p>
         </div>
 
-        <div class="carousel-wrap reveal d2">
-          <div class="carousel" id="carousel">
-            <div class="card card-0">
+        <div class="hero-right reveal d2">
+          <div class="card-track" id="cardTrack">
+            <div class="hcard hcard-0">
               <svg viewBox="0 0 24 24" fill="currentColor" style="color:#fff"><path d="M12 2L8 8h3v4H8l4 8 4-8h-3V8h3z"/></svg>
               <h3>Spades</h3>
               <p>Kali</p>
             </div>
-            <div class="card card-1">
+            <div class="hcard hcard-1">
               <svg viewBox="0 0 24 24" fill="currentColor" style="color:var(--gold)"><path d="M12 2L4 12l8 10 8-10z"/></svg>
               <h3>Diamonds</h3>
               <p>Chokat</p>
             </div>
-            <div class="card card-2">
+            <div class="hcard hcard-2">
               <svg viewBox="0 0 24 24" fill="currentColor" style="color:#fff"><circle cx="12" cy="7" r="3"/><circle cx="8" cy="13" r="3"/><circle cx="16" cy="13" r="3"/><rect x="11" y="12" width="2" height="8" rx="1"/></svg>
               <h3>Clubs</h3>
               <p>Fuli</p>
             </div>
-            <div class="card card-3">
+            <div class="hcard hcard-3">
               <svg viewBox="0 0 24 24" fill="currentColor" style="color:#fca5a5"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
               <h3>Hearts</h3>
               <p>Laal</p>
+            </div>
+            <div class="hcard hcard-4">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="color:#fff"><path d="M12 2L8 8h3v4H8l4 8 4-8h-3V8h3z"/></svg>
+              <h3>Spades</h3>
+              <p>Kali</p>
+            </div>
+            <div class="hcard hcard-5">
+              <svg viewBox="0 0 24 24" fill="currentColor" style="color:var(--gold)"><path d="M12 2L4 12l8 10 8-10z"/></svg>
+              <h3>Diamonds</h3>
+              <p>Chokat</p>
             </div>
           </div>
         </div>
@@ -497,13 +490,46 @@
     }, { threshold: 0.1 });
     document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 
-    // Card carousel
-    const c = document.getElementById('carousel');
-    let idx = 0;
-    setInterval(() => {
-      idx = (idx + 1) % 4;
-      c.className = 'carousel' + (idx ? ' show-' + idx : '');
-    }, 2800);
+    // GSAP horizontal card slide
+    const track = document.getElementById('cardTrack');
+    const cards = track.querySelectorAll('.hcard');
+    const cardW = 200 + 24; // width + gap
+    const totalW = cardW * 4; // 4 unique cards
+
+    // 3D tilt on each card based on position
+    function updateTilt() {
+      const trackRect = track.getBoundingClientRect();
+      const heroRight = track.parentElement.getBoundingClientRect();
+      const center = heroRight.left + heroRight.width / 2;
+      cards.forEach(card => {
+        const cardCenter = card.getBoundingClientRect().left + card.offsetWidth / 2;
+        const dist = (cardCenter - center) / heroRight.width;
+        const rotateY = dist * 25;
+        const scale = 1 - Math.abs(dist) * 0.15;
+        const opacity = 1 - Math.abs(dist) * 0.6;
+        gsap.set(card, {
+          rotateY: rotateY,
+          scale: Math.max(scale, 0.8),
+          opacity: Math.max(opacity, 0.3),
+          transformOrigin: 'center center'
+        });
+      });
+    }
+
+    // Auto-slide left
+    let xPos = 0;
+    function slide() {
+      xPos -= 0.8;
+      if (Math.abs(xPos) >= totalW) xPos = 0;
+      gsap.set(track, { x: xPos });
+      updateTilt();
+      requestAnimationFrame(slide);
+    }
+
+    // Start after reveal
+    setTimeout(() => {
+      requestAnimationFrame(slide);
+    }, 800);
   </script>
 
 </body>
