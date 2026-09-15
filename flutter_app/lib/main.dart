@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 
 void main() => runApp(const KaachuPhoolApp());
@@ -94,106 +93,74 @@ class _HeroSection extends StatefulWidget {
   State<_HeroSection> createState() => _HeroSectionState();
 }
 
-class _HeroSectionState extends State<_HeroSection>
-    with TickerProviderStateMixin {
-  late AnimationController _shuffleCtrl;
-  late AnimationController _dealCtrl;
-  late AnimationController _idleCtrl;
-  int _phase = 0; // 0=shuffle, 1=deal, 2=idle
+class _HeroSectionState extends State<_HeroSection> {
+  final ScrollController _scrollCtrl = ScrollController();
+  double _scrollProgress = 0;
 
   @override
   void initState() {
     super.initState();
-    _shuffleCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
-    _dealCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1600));
-    _idleCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 3000));
-
-    _shuffleCtrl.addStatusListener((s) {
-      if (s == AnimationStatus.completed) {
-        setState(() => _phase = 1);
-        _dealCtrl.forward();
-      }
-    });
-    _dealCtrl.addStatusListener((s) {
-      if (s == AnimationStatus.completed) {
-        setState(() => _phase = 2);
-        _idleCtrl.forward();
-      }
-    });
-    _idleCtrl.addStatusListener((s) {
-      if (s == AnimationStatus.completed) {
-        setState(() => _phase = 0);
-        _shuffleCtrl.reset();
-        _dealCtrl.reset();
-        _idleCtrl.reset();
-        _shuffleCtrl.forward();
-      }
-    });
-
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _shuffleCtrl.forward();
+    _scrollCtrl.addListener(() {
+      // Map scroll 0..300px → 0..1 progress
+      final p = (_scrollCtrl.offset / 300).clamp(0.0, 1.0);
+      if (p != _scrollProgress) setState(() => _scrollProgress = p);
     });
   }
 
   @override
   void dispose() {
-    _shuffleCtrl.dispose();
-    _dealCtrl.dispose();
-    _idleCtrl.dispose();
+    _scrollCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 700),
-      padding: EdgeInsets.symmetric(
-          horizontal: widget.isMobile ? 24 : 64, vertical: 100),
-      decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment(-0.6, -0.3),
-          radius: 1.2,
-          colors: [Color(0x4D166534), Colors.transparent],
-        ),
-      ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1100),
-          child: widget.isMobile
-              ? Column(
-                  children: [
-                    _HeroCopy(),
-                    const SizedBox(height: 48),
-                    SizedBox(
-                        height: 360,
-                        child: _CardShuffle(
-                          shuffleAnim: _shuffleCtrl,
-                          dealAnim: _dealCtrl,
-                          idleAnim: _idleCtrl,
-                          phase: _phase,
-                        )),
-                  ],
-                )
-              : Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(child: _HeroCopy()),
-                    const SizedBox(width: 64),
-                    SizedBox(
-                      width: 460,
-                      height: 400,
-                      child: _CardShuffle(
-                        shuffleAnim: _shuffleCtrl,
-                        dealAnim: _dealCtrl,
-                        idleAnim: _idleCtrl,
-                        phase: _phase,
-                      ),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (_) => false,
+      child: SingleChildScrollView(
+        controller: _scrollCtrl,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 700),
+          padding: EdgeInsets.symmetric(
+              horizontal: widget.isMobile ? 24 : 64, vertical: 100),
+          decoration: const BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment(-0.6, -0.3),
+              radius: 1.2,
+              colors: [Color(0x4D166534), Colors.transparent],
+            ),
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1100),
+              child: widget.isMobile
+                  ? Column(
+                      children: [
+                        _HeroCopy(),
+                        const SizedBox(height: 48),
+                        SizedBox(
+                            height: 360,
+                            child: _CardFan(
+                              progress: _scrollProgress,
+                            )),
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Expanded(child: _HeroCopy()),
+                        const SizedBox(width: 64),
+                        SizedBox(
+                          width: 460,
+                          height: 400,
+                          child: _CardFan(
+                            progress: _scrollProgress,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+            ),
+          ),
         ),
       ),
     );
@@ -254,24 +221,15 @@ class _HeroCopy extends StatelessWidget {
   }
 }
 
-// ─── CARD SHUFFLE ANIMATION ─────────────────────────────────────────
-class _CardShuffle extends StatelessWidget {
-  final AnimationController shuffleAnim;
-  final AnimationController dealAnim;
-  final AnimationController idleAnim;
-  final int phase;
-
-  const _CardShuffle({
-    required this.shuffleAnim,
-    required this.dealAnim,
-    required this.idleAnim,
-    required this.phase,
-  });
+// ─── CARD FAN (scroll-driven) ───────────────────────────────────────
+class _CardFan extends StatelessWidget {
+  final double progress; // 0 = stacked, 1 = fanned
+  const _CardFan({required this.progress});
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([shuffleAnim, dealAnim, idleAnim]),
+      animation: AlwaysStoppedAnimation(progress),
       builder: (context, _) {
         return Stack(
           alignment: Alignment.center,
@@ -290,40 +248,23 @@ class _CardShuffle extends StatelessWidget {
     ];
     final data = suits[index];
 
-    double x = 0, y = 0, rot = 0, scale = 1, opacity = 1;
+    // Stacked positions (center)
+    const stackX = 0.0;
+    const stackY = 0.0;
+    const stackRot = 0.0;
+    const stackScale = 1.0;
 
-    if (phase == 0) {
-      // Shuffle: cards stack on top of each other with slight flutter
-      final progress = shuffleAnim.value;
-      final flutter = sin(progress * pi * 6 + index * 0.8) * 8;
-      x = flutter;
-      y = -index * 2.0;
-      rot = flutter * 0.005;
-      scale = 1.0 - index * 0.02;
-      opacity = 1.0;
-    } else if (phase == 1) {
-      // Deal: cards fan out to final positions
-      final progress = Curves.easeOutCubic.transform(dealAnim.value);
-      final targetX = (index - 1.5) * 100.0;
-      final targetY = (index % 2 == 0 ? -20.0 : 20.0);
-      final targetRot = (index - 1.5) * 0.08;
-      x = Curves.easeOutCubic.transform(progress) * targetX;
-      y = Curves.easeOutCubic.transform(progress) * targetY;
-      rot = Curves.easeOutCubic.transform(progress) * targetRot;
-      scale = 0.85 + Curves.easeOutCubic.transform(progress) * 0.15;
-      opacity = Curves.easeIn.transform(progress);
-    } else {
-      // Idle: gentle float
-      final t = idleAnim.value;
-      final targetX = (index - 1.5) * 100.0;
-      final targetY = (index % 2 == 0 ? -20.0 : 20.0);
-      final targetRot = (index - 1.5) * 0.08;
-      x = targetX + sin(t * pi * 2 + index) * 4;
-      y = targetY + cos(t * pi * 2 + index * 0.7) * 6;
-      rot = targetRot + sin(t * pi * 2 + index) * 0.01;
-      scale = 1.0;
-      opacity = 1.0;
-    }
+    // Fanned positions
+    final fanX = (index - 1.5) * 110.0;
+    final fanY = (index % 2 == 0 ? -20.0 : 20.0);
+    final fanRot = (index - 1.5) * 0.09;
+    const fanScale = 1.0;
+
+    // Interpolate
+    final x = stackX + (fanX - stackX) * progress;
+    final y = stackY + (fanY - stackY) * progress;
+    final rot = stackRot + (fanRot - stackRot) * progress;
+    final scale = stackScale + (fanScale - stackScale) * progress;
 
     return Transform(
       alignment: Alignment.center,
@@ -331,64 +272,58 @@ class _CardShuffle extends StatelessWidget {
         ..translate(x, y)
         ..rotateZ(rot)
         ..scale(scale),
-      child: Opacity(
-        opacity: opacity,
-        child: Container(
-          width: 180,
-          height: 260,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [data.color, data.color.withValues(alpha: 0.7)],
+      child: Container(
+        width: 160,
+        height: 230,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [data.color, data.color.withValues(alpha: 0.7)],
+          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.4),
+              blurRadius: 30,
+              offset: const Offset(0, 15),
             ),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
-                blurRadius: 30,
-                offset: const Offset(0, 15),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Inner border
-              Positioned.fill(
-                margin: const EdgeInsets.all(8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border:
-                        Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                  ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              margin: const EdgeInsets.all(8),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
                 ),
               ),
-              // Content
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(data.icon, size: 44, color: Colors.white70),
-                    const SizedBox(height: 12),
-                    Text(data.name,
-                        style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white)),
-                    const SizedBox(height: 4),
-                    Text(data.gujarati,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontFamily: 'monospace',
-                            letterSpacing: 1.5,
-                            color: Colors.white.withValues(alpha: 0.4))),
-                  ],
-                ),
+            ),
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(data.icon, size: 40, color: Colors.white70),
+                  const SizedBox(height: 10),
+                  Text(data.name,
+                      style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Text(data.gujarati,
+                      style: TextStyle(
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                          letterSpacing: 1.5,
+                          color: Colors.white.withValues(alpha: 0.4))),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
