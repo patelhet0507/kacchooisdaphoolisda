@@ -83,13 +83,12 @@
     .hero-right { display: flex; align-items: center; justify-content: center; height: 360px; }
     .card-deck { position: relative; width: 540px; height: 260px; }
     .dcard {
-      position: absolute; width: 140px; height: 210px; top: 25px; left: 0;
+      position: absolute; width: 140px; height: 210px; top: 25px;
       border-radius: 16px;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       border: 1px solid rgba(255,255,255,0.08);
       box-shadow: 0 12px 35px rgba(0,0,0,0.4);
       padding: 16px; text-align: center;
-      will-change: transform;
     }
     .dcard svg { width: 32px; height: 32px; margin-bottom: 8px; }
     .dcard h3 { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
@@ -100,18 +99,18 @@
     .dcard-2 { background: linear-gradient(145deg, #166534, #14532d); }
     .dcard-3 { background: linear-gradient(145deg, #7f1d1d, #6b1c1c); }
 
-    /* Stacked: all at center */
-    .deck-stack .dcard { transform: translateX(200px) rotate(0deg); }
-    .deck-stack .dcard-0 { transform: translateX(200px) rotate(-1deg); }
-    .deck-stack .dcard-1 { transform: translateX(200px) rotate(0.5deg) translateY(-2px); }
-    .deck-stack .dcard-2 { transform: translateX(200px) rotate(-0.5deg) translateY(-4px); }
-    .deck-stack .dcard-3 { transform: translateX(200px) rotate(1deg) translateY(-6px); }
+    /* Stacked */
+    .deck-stack .dcard { left: 200px; top: 25px; opacity: 1; }
+    .deck-stack .dcard-0 { margin-top: 0; }
+    .deck-stack .dcard-1 { margin-top: -2px; }
+    .deck-stack .dcard-2 { margin-top: -4px; }
+    .deck-stack .dcard-3 { margin-top: -6px; }
 
-    /* Dealt: fanned out — transform only */
-    .deck-dealt .dcard-0 { transform: translateX(0px) rotate(-8deg); transition: transform 0.9s cubic-bezier(0.34,1.56,0.64,1); }
-    .deck-dealt .dcard-1 { transform: translateX(140px) rotate(-2.5deg) translateY(-6px); transition: transform 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.1s; }
-    .deck-dealt .dcard-2 { transform: translateX(280px) rotate(2.5deg) translateY(-6px); transition: transform 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.2s; }
-    .deck-dealt .dcard-3 { transform: translateX(400px) rotate(8deg); transition: transform 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.3s; }
+    /* Dealt — left/top/margin animated on CPU */
+    .deck-dealt .dcard-0 { left: 0px; top: 40px; margin-top: 0; transition: left 0.8s ease-out, top 0.8s ease-out; }
+    .deck-dealt .dcard-1 { left: 140px; top: 18px; margin-top: -6px; transition: left 0.8s ease-out 0.12s, top 0.8s ease-out 0.12s; }
+    .deck-dealt .dcard-2 { left: 280px; top: 18px; margin-top: -6px; transition: left 0.8s ease-out 0.24s, top 0.8s ease-out 0.24s; }
+    .deck-dealt .dcard-3 { left: 400px; top: 40px; margin-top: 0; transition: left 0.8s ease-out 0.36s, top 0.8s ease-out 0.36s; }
 
     /* Sections */
     section { padding: 80px 0; border-top: 1px solid var(--border); }
@@ -219,11 +218,11 @@
       .dcard svg { width: 26px; height: 26px; margin-bottom: 6px; }
       .dcard h3 { font-size: 13px; }
       .dcard p { font-size: 8px; }
-      .deck-stack .dcard, .deck-stack .dcard-0, .deck-stack .dcard-1, .deck-stack .dcard-2, .deck-stack .dcard-3 { transform: translateX(135px); }
-      .deck-dealt .dcard-0 { transform: translateX(0px) rotate(-6deg); }
-      .deck-dealt .dcard-1 { transform: translateX(100px) rotate(-2deg) translateY(-4px); }
-      .deck-dealt .dcard-2 { transform: translateX(200px) rotate(2deg) translateY(-4px); }
-      .deck-dealt .dcard-3 { transform: translateX(270px) rotate(6deg); }
+      .deck-stack .dcard { left: 135px; }
+      .deck-dealt .dcard-0 { left: 0px; top: 25px; }
+      .deck-dealt .dcard-1 { left: 100px; top: 10px; }
+      .deck-dealt .dcard-2 { left: 200px; top: 10px; }
+      .deck-dealt .dcard-3 { left: 270px; top: 25px; }
       .suit-grid { grid-template-columns: repeat(2, 1fr); }
       .feat-grid { grid-template-columns: 1fr; }
       .steps { grid-template-columns: 1fr; gap: 24px; }
