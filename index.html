@@ -79,45 +79,40 @@
     .cta:hover { background: var(--green-dark); }
     .cta:active { transform: scale(0.97); }
 
-    /* Hero horizontal card strip */
-    .hero-right { position: relative; overflow: hidden; height: 400px; perspective: 1000px; display: flex; align-items: center; justify-content: center; }
-    .card-deck { position: relative; width: 200px; height: 280px; }
+    /* Hero card deal */
+    .hero-right { display: flex; align-items: center; justify-content: center; height: 360px; }
+    .card-deck { position: relative; width: 540px; height: 260px; }
     .dcard {
-      position: absolute; inset: 0; border-radius: 18px;
+      position: absolute; width: 140px; height: 210px; top: 25px;
+      border-radius: 16px;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 20px 50px rgba(0,0,0,0.4);
-      padding: 24px; text-align: center;
-      transition: transform 1.2s cubic-bezier(0.32,0.72,0,1), opacity 0.8s ease;
-      transform-origin: center bottom;
+      box-shadow: 0 12px 35px rgba(0,0,0,0.4);
+      padding: 16px; text-align: center;
+      will-change: transform, left;
+      transition: left 1s cubic-bezier(0.32,0.72,0,1), transform 1s cubic-bezier(0.32,0.72,0,1);
     }
-    .dcard svg { width: 44px; height: 44px; margin-bottom: 12px; }
-    .dcard h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-    .dcard p { font-size: 11px; font-family: monospace; text-transform: uppercase; letter-spacing: 0.15em; color: rgba(255,255,255,0.4); }
+    .dcard svg { width: 32px; height: 32px; margin-bottom: 8px; }
+    .dcard h3 { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+    .dcard p { font-size: 9px; font-family: monospace; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.4); }
 
     .dcard-0 { background: linear-gradient(145deg, #166534, #14532d); }
     .dcard-1 { background: linear-gradient(145deg, #1a5c3a, #0f4a2a); }
     .dcard-2 { background: linear-gradient(145deg, #166534, #14532d); }
     .dcard-3 { background: linear-gradient(145deg, #7f1d1d, #6b1c1c); }
 
-    /* Shuffle state: stacked */
-    .deck-shuffle .dcard { transform: translateX(0) translateY(0) rotateZ(0deg) scale(1); }
-    .deck-shuffle .dcard-0 { transform: translateX(0) translateY(0) rotateZ(-2deg); }
-    .deck-shuffle .dcard-1 { transform: translateX(3px) translateY(-2px) rotateZ(1deg); }
-    .deck-shuffle .dcard-2 { transform: translateX(-2px) translateY(-4px) rotateZ(-1deg); }
-    .deck-shuffle .dcard-3 { transform: translateX(1px) translateY(-6px) rotateZ(2deg); }
+    /* Stacked */
+    .deck-stack .dcard { left: 200px; }
+    .deck-stack .dcard-0 { transform: rotate(-1deg); }
+    .deck-stack .dcard-1 { transform: rotate(0.5deg) translateY(-2px); }
+    .deck-stack .dcard-2 { transform: rotate(-0.5deg) translateY(-4px); }
+    .deck-stack .dcard-3 { transform: rotate(1deg) translateY(-6px); }
 
-    /* Deal state: fanned out */
-    .deck-deal .dcard-0 { transform: translateX(-120px) translateY(15px) rotateZ(-12deg) scale(0.95); opacity: 1; }
-    .deck-deal .dcard-1 { transform: translateX(-40px) translateY(-10px) rotateZ(-4deg) scale(0.98); opacity: 1; }
-    .deck-deal .dcard-2 { transform: translateX(40px) translateY(-10px) rotateZ(4deg) scale(0.98); opacity: 1; }
-    .deck-deal .dcard-3 { transform: translateX(120px) translateY(15px) rotateZ(12deg) scale(0.95); opacity: 1; }
-
-    /* Idle: gentle float */
-    .deck-idle .dcard-0 { transform: translateX(-120px) translateY(12px) rotateZ(-12deg) scale(0.95); }
-    .deck-idle .dcard-1 { transform: translateX(-40px) translateY(-12px) rotateZ(-4deg) scale(0.98); }
-    .deck-idle .dcard-2 { transform: translateX(40px) translateY(-8px) rotateZ(4deg) scale(0.98); }
-    .deck-idle .dcard-3 { transform: translateX(120px) translateY(18px) rotateZ(12deg) scale(0.95); }
+    /* Dealt */
+    .deck-dealt .dcard-0 { left: 0; transform: rotate(-8deg); }
+    .deck-dealt .dcard-1 { left: 140px; transform: rotate(-2.5deg) translateY(-6px); }
+    .deck-dealt .dcard-2 { left: 280px; transform: rotate(2.5deg) translateY(-6px); }
+    .deck-dealt .dcard-3 { left: 400px; transform: rotate(8deg); }
 
     /* Sections */
     section { padding: 80px 0; border-top: 1px solid var(--border); }
@@ -219,12 +214,17 @@
     @media (max-width: 768px) {
       .hero-grid { grid-template-columns: 1fr; text-align: center; }
       .hero-sub { margin-left: auto; margin-right: auto; }
-      .hero-right { height: 300px; }
-      .dcard { width: 150px; height: 220px; }
-      .deck-deal .dcard-0, .deck-idle .dcard-0 { transform: translateX(-80px) translateY(10px) rotateZ(-12deg) scale(0.9); }
-      .deck-deal .dcard-1, .deck-idle .dcard-1 { transform: translateX(-28px) translateY(-8px) rotateZ(-4deg) scale(0.95); }
-      .deck-deal .dcard-2, .deck-idle .dcard-2 { transform: translateX(28px) translateY(-6px) rotateZ(4deg) scale(0.95); }
-      .deck-deal .dcard-3, .deck-idle .dcard-3 { transform: translateX(80px) translateY(12px) rotateZ(12deg) scale(0.9); }
+      .hero-right { height: 280px; }
+      .card-deck { width: 380px; height: 200px; }
+      .dcard { width: 110px; height: 165px; top: 18px; padding: 12px; }
+      .dcard svg { width: 26px; height: 26px; margin-bottom: 6px; }
+      .dcard h3 { font-size: 13px; }
+      .dcard p { font-size: 8px; }
+      .deck-stack .dcard { left: 135px; }
+      .deck-dealt .dcard-0 { left: 0; transform: rotate(-6deg); }
+      .deck-dealt .dcard-1 { left: 100px; transform: rotate(-2deg) translateY(-4px); }
+      .deck-dealt .dcard-2 { left: 200px; transform: rotate(2deg) translateY(-4px); }
+      .deck-dealt .dcard-3 { left: 270px; transform: rotate(6deg); }
       .suit-grid { grid-template-columns: repeat(2, 1fr); }
       .feat-grid { grid-template-columns: 1fr; }
       .steps { grid-template-columns: 1fr; gap: 24px; }
@@ -502,15 +502,9 @@
     }, { threshold: 0.1 });
     document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 
-    // Card shuffle/deal cycle
+    // Card deal once on load
     const deck = document.getElementById('cardDeck');
-    function cycle() {
-      deck.className = 'card-deck deck-shuffle';
-      setTimeout(() => { deck.className = 'card-deck deck-deal'; }, 1200);
-      setTimeout(() => { deck.className = 'card-deck deck-idle'; }, 2800);
-      setTimeout(cycle, 6000);
-    }
-    setTimeout(cycle, 800);
+    setTimeout(() => { deck.className = 'card-deck deck-dealt'; }, 600);
   </script>
 
 </body>
