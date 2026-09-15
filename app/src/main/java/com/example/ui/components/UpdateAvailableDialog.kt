@@ -221,8 +221,8 @@ fun UpdateAvailableDialog(
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color(0xFF065F46).copy(alpha = 0.4f))
                                 .border(1.dp, EmeraldLight, RoundedCornerShape(8.dp))
-                                .padding(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
@@ -232,13 +232,11 @@ fun UpdateAvailableDialog(
                                 fontWeight = FontWeight.Bold,
                                 textAlign = TextAlign.Center
                             )
-                            Divider(color = EmeraldLight.copy(alpha = 0.2f), thickness = 0.5.dp)
                             Text(
-                                text = "💡 Note: If install fails with 'Package Conflict', uninstall the current app first, then come back here to install.",
+                                text = "Ready to install. Tap the button below to update your game.",
                                 color = TextLight.copy(alpha = 0.9f),
-                                fontSize = 10.sp,
-                                textAlign = TextAlign.Center,
-                                lineHeight = 13.sp
+                                fontSize = 11.sp,
+                                textAlign = TextAlign.Center
                             )
                         }
                     }
@@ -259,7 +257,7 @@ fun UpdateAvailableDialog(
                             ) {
                                 Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = Color(0xFFFCA5A5), modifier = Modifier.size(20.dp))
                                 Text(
-                                    text = "Update Problem",
+                                    text = "Download Failed",
                                     color = Color(0xFFFCA5A5),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold
@@ -270,32 +268,6 @@ fun UpdateAvailableDialog(
                                 text = status.reason,
                                 color = Color(0xFFFCA5A5).copy(alpha = 0.9f),
                                 fontSize = 11.sp,
-                                textAlign = TextAlign.Center
-                            )
-
-                            Divider(color = Color(0xFFEF4444).copy(alpha = 0.3f), thickness = 0.5.dp)
-
-                            Text(
-                                text = "⚠️ If you see 'Package Conflict':",
-                                color = GoldLight,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center
-                            )
-                            
-                            Text(
-                                text = "This happens if the new version has a different security key than your current one (common if you're switching from a Debug to Release version).",
-                                color = TextLight,
-                                fontSize = 11.sp,
-                                textAlign = TextAlign.Center,
-                                lineHeight = 15.sp
-                            )
-
-                            Text(
-                                text = "FIX: Manually UNINSTALL the app from your home screen, then click 'Install Update' again.",
-                                color = GoldPrimary,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Black,
                                 textAlign = TextAlign.Center
                             )
                         }

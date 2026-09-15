@@ -37,17 +37,34 @@ jobs:
 
       - name: Restore Signing Keystore and Secrets
         run: |
-          # 1. Restore release keystore if base64 secret exists
-          if [ ! -z "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+          # 1. Restore release keystore:
+          # Priority 1: User secret RELEASE_KEYSTORE_BASE64 if explicitly configured
+          # Priority 2: debug.keystore.base64 in repository if present
+          # Priority 3: debug.keystore in repository if present
+          # Priority 4: Embedded permanent base64 keystore
+          # (CRITICAL: Never run keytool -genkey in CI runners, as random keys break update compatibility!)
+          if [ -n "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
             echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore
             echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/release.keystore" >> $GITHUB_ENV
+            echo "STORE_PASSWORD=${{ secrets.RELEASE_KEYSTORE_PASSWORD || 'android' }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS || 'androiddebugkey' }}" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD || 'android' }}" >> $GITHUB_ENV
+          elif [ -f "debug.keystore.base64" ]; then
+            base64 -d debug.keystore.base64 > release.keystore
+            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/release.keystore" >> $GITHUB_ENV
+            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
+          elif [ -f "debug.keystore" ]; then
+            cp debug.keystore release.keystore
+            echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/release.keystore" >> $GITHUB_ENV
+            echo "STORE_PASSWORD=android" >> $GITHUB_ENV
+            echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
+            echo "KEY_PASSWORD=android" >> $GITHUB_ENV
           else
-            # Fallback for debug/development if no release secret
-            if [ -f "debug.keystore.base64" ]; then
-              base64 -d debug.keystore.base64 > release.keystore
-            else
-              keytool -genkey -v -keystore release.keystore -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android Debug,O=Android,C=US"
-            fi
+            cat << 'EOF' | base64 -d > release.keystore
+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
+EOF
             echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/release.keystore" >> $GITHUB_ENV
             echo "STORE_PASSWORD=android" >> $GITHUB_ENV
             echo "KEY_ALIAS=androiddebugkey" >> $GITHUB_ENV
@@ -64,20 +81,17 @@ jobs:
           fi
 
       - name: Build Signed Release APK
-        env:
-          STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD || 'android' }}
-          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS || 'androiddebugkey' }}
-          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD || 'android' }}
         run: |
           # Extract version from app/build.gradle.kts
           BASE_VERSION=$(grep "versionName =" app/build.gradle.kts | awk -F'"' '{print $(NF-1)}')
-          VERSION_CODE=$(grep "versionCode =" app/build.gradle.kts | awk '{print $NF}')
+          BASE_CODE=$(grep "versionCode =" app/build.gradle.kts | awk '{print $NF}' | tr -cd '[0-9]')
           
           # Fallbacks if extraction fails
           if [ -z "$BASE_VERSION" ]; then BASE_VERSION="1.1.1"; fi
-          if [ -z "$VERSION_CODE" ]; then VERSION_CODE="111"; fi
+          if [ -z "$BASE_CODE" ]; then BASE_CODE=111; fi
           
-          # Append run number to ensure uniqueness and "it continues"
+          # Strictly increasing version code for Android package manager updates
+          VERSION_CODE=$(( BASE_CODE * 1000 + ${{ github.run_number }} ))
           VERSION_NAME="${BASE_VERSION}.${{ github.run_number }}"
           
           echo "Building version $VERSION_NAME ($VERSION_CODE)"

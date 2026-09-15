@@ -365,6 +365,13 @@ class AppUpdateManager private constructor(private val context: Context) {
                 setDataAndType(uri, "application/vnd.android.package-archive")
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
             }
+            val resolveInfos = context.packageManager.queryIntentActivities(installIntent, 0)
+            for (resolveInfo in resolveInfos) {
+                val pkgName = resolveInfo.activityInfo.packageName
+                try {
+                    context.grantUriPermission(pkgName, uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } catch (_: Exception) {}
+            }
             context.startActivity(installIntent)
             true
         } catch (e: Exception) {
