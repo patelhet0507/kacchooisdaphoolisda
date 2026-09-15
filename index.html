@@ -13,13 +13,6 @@
       theme: {
         extend: {
           colors: {
-            emerald: {
-              950: '#022c22',
-              900: '#064e3b',
-              800: '#065f46',
-              700: '#047857',
-              600: '#059669',
-            },
             gold: {
               400: '#d4a843',
               500: '#c9952a',
@@ -38,26 +31,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
-    }
-    .card-float { animation: cardFloat 4s ease-in-out infinite; }
-    @keyframes cardFloat {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-10px); }
-    }
     .glow-ring { box-shadow: 0 0 60px rgba(5, 150, 105, 0.15), 0 0 120px rgba(5, 150, 105, 0.05); }
     .gold-glow { box-shadow: 0 0 40px rgba(201, 149, 42, 0.2); }
     .hero-gradient { background: radial-gradient(ellipse at 30% 20%, rgba(6,78,59,0.5) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(201,149,42,0.08) 0%, transparent 50%); }
-    .download-pulse { animation: downloadPulse 2s ease-in-out infinite; }
-    @keyframes downloadPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.4); }
-      50% { box-shadow: 0 0 0 12px rgba(5, 150, 105, 0); }
-    }
-    .suit-bg { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Ctext x='30' y='38' text-anchor='middle' font-size='28' fill='rgba(255,255,255,0.03)'%3E%E2%99%A0%3C/text%3E%3C/svg%3E"); }
   </style>
 </head>
-<body class="bg-emerald-950 text-gray-100 font-body antialiased suit-bg">
+<body class="bg-emerald-950 text-gray-100 font-body antialiased">
 
   <!-- Nav -->
   <nav class="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-emerald-950/80 backdrop-blur-xl">
@@ -96,7 +75,7 @@
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
           <a href="#download"
-             class="download-pulse inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-display font-semibold text-base transition-all duration-200 hover:-translate-y-0.5">
+             class="inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-display font-semibold text-base transition-colors duration-200 hover:-translate-y-0.5">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             Download Free
           </a>
@@ -110,7 +89,7 @@
 
       <!-- Right: card stack visual -->
       <div class="relative flex items-center justify-center h-[420px] lg:h-[500px]">
-        <div class="card-float relative w-48 h-72 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-900 border border-emerald-600/30 shadow-2xl flex items-center justify-center gold-glow">
+        <div class="relative w-48 h-72 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-900 border border-emerald-600/30 shadow-2xl flex items-center justify-center gold-glow">
           <div class="absolute inset-3 rounded-xl border border-gold-500/20"></div>
           <div class="text-center">
             <div class="text-6xl mb-2">🃏</div>
@@ -323,7 +302,7 @@
         </p>
 
         <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases/download/v1.1.1.24/app-release.apk"
-           class="download-pulse inline-flex items-center gap-3 px-10 py-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-lg transition-all duration-200 hover:-translate-y-1 glow-ring">
+           class="inline-flex items-center gap-3 px-10 py-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-lg transition-colors duration-200 hover:-translate-y-1 glow-ring">
           <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           Download Latest APK
         </a>
