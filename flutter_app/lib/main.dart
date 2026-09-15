@@ -248,31 +248,27 @@ class _CardFan extends StatelessWidget {
     ];
     final data = suits[index];
 
-    // Stacked positions (center)
-    const stackX = 0.0;
-    const stackY = 0.0;
-    const stackRot = 0.0;
-    const stackScale = 1.0;
-
-    // Fanned positions
+    // Fanned positions (default — always visible)
     final fanX = (index - 1.5) * 110.0;
     final fanY = (index % 2 == 0 ? -20.0 : 20.0);
     final fanRot = (index - 1.5) * 0.09;
-    const fanScale = 1.0;
 
-    // Interpolate
-    final x = stackX + (fanX - stackX) * progress;
-    final y = stackY + (fanY - stackY) * progress;
-    final rot = stackRot + (fanRot - stackRot) * progress;
-    final scale = stackScale + (fanScale - stackScale) * progress;
+    // Subtle scroll parallax
+    final scrollOffset = progress * 40;
+    final x = fanX;
+    final y = fanY - scrollOffset;
+    final rot = fanRot;
+    final opacity = (1.0 - progress * 0.5).clamp(0.3, 1.0);
 
     return Transform(
       alignment: Alignment.center,
       transform: Matrix4.identity()
         ..translate(x, y)
         ..rotateZ(rot)
-        ..scale(scale),
-      child: Container(
+        ..scale(1.0),
+      child: Opacity(
+        opacity: opacity,
+        child: Container(
         width: 160,
         height: 230,
         decoration: BoxDecoration(

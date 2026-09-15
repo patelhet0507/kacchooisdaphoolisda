@@ -443,12 +443,11 @@
   <script>
     gsap.registerPlugin(ScrollTrigger);
 
-    // Card deck — scroll-driven fan-out
-    // Cards start stacked, fan out as user scrolls through hero
+    // Card deck — scroll-driven subtle effect
+    // Cards start fanned, gentle parallax on scroll
     const cards = document.querySelectorAll('.dcard');
-    const deck = document.getElementById('cardDeck');
 
-    // Final fan positions (CPU-only: left, top, margin-top)
+    // Fanned positions (default)
     const fanPositions = [
       { left: -120, top: 50,  mt: 0,    opacity: 1 },
       { left: -40,  top: 10,  mt: -8,   opacity: 1 },
@@ -456,38 +455,28 @@
       { left: 120,  top: 50,  mt: 0,    opacity: 1 },
     ];
 
-    // Stacked positions (all at center)
-    const stackPositions = [
-      { left: 10, top: 15, mt: 0,   opacity: 1 },
-      { left: 10, top: 15, mt: -3,  opacity: 1 },
-      { left: 10, top: 15, mt: -6,  opacity: 1 },
-      { left: 10, top: 15, mt: -9,  opacity: 1 },
-    ];
-
-    // Set initial stacked state
+    // Set fanned state immediately
     cards.forEach((card, i) => {
-      card.style.left = stackPositions[i].left + 'px';
-      card.style.top = stackPositions[i].top + 'px';
-      card.style.marginTop = stackPositions[i].mt + 'px';
-      card.style.opacity = stackPositions[i].opacity;
+      const f = fanPositions[i];
+      card.style.left = f.left + 'px';
+      card.style.top = f.top + 'px';
+      card.style.marginTop = f.mt + 'px';
+      card.style.opacity = f.opacity;
     });
 
-    // ScrollTrigger: pin hero, scrub card fan-out
+    // ScrollTrigger: subtle card shift as user scrolls past hero
     ScrollTrigger.create({
       trigger: '#hero',
       start: 'top top',
-      end: '+=600',
-      pin: true,
-      scrub: 1.5,
+      end: 'bottom top',
+      scrub: 1,
       onUpdate: (self) => {
-        const p = self.progress; // 0 = stacked, 1 = fanned
+        const p = self.progress;
         cards.forEach((card, i) => {
-          const s = stackPositions[i];
           const f = fanPositions[i];
-          card.style.left = (s.left + (f.left - s.left) * p) + 'px';
-          card.style.top = (s.top + (f.top - s.top) * p) + 'px';
-          card.style.marginTop = (s.mt + (f.mt - s.mt) * p) + 'px';
-          card.style.opacity = s.opacity + (f.opacity - s.opacity) * p;
+          // Gentle vertical shift + slight rotation on scroll
+          card.style.top = (f.top - p * 40) + 'px';
+          card.style.opacity = Math.max(0.3, 1 - p * 0.5);
         });
       }
     });
