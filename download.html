@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kaachu Phool — Traditional Indian Trick-Taking Card Game</title>
+  <meta name="description" content="Kaachu Phool is a traditional Indian trick-taking card game with Ka-Chu-Fu-L trump rotation, intelligent bots, and multiplayer scorekeeper. Download free on Android." />
+  <meta name="theme-color" content="#064e3b" />
+  <link rel="icon" type="image/webp" href="app/src/main/res/mipmap-xxxhdpi/ic_launcher.webp" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            emerald: {
+              950: '#022c22',
+              900: '#064e3b',
+              800: '#065f46',
+              700: '#047857',
+              600: '#059669',
+            },
+            gold: {
+              400: '#d4a843',
+              500: '#c9952a',
+              600: '#b8860b',
+            }
+          },
+          fontFamily: {
+            display: ['"Space Grotesk"', 'system-ui', 'sans-serif'],
+            body: ['"DM Sans"', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+    .card-float { animation: cardFloat 6s ease-in-out infinite; }
+    @keyframes cardFloat {
+      0%, 100% { transform: translateY(0) rotate(-3deg); }
+      50% { transform: translateY(-12px) rotate(3deg); }
+    }
+    .suit-spin { animation: suitSpin 8s linear infinite; }
+    @keyframes suitSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .glow-ring { box-shadow: 0 0 60px rgba(5, 150, 105, 0.15), 0 0 120px rgba(5, 150, 105, 0.05); }
+    .gold-glow { box-shadow: 0 0 40px rgba(201, 149, 42, 0.2); }
+    .hero-gradient { background: radial-gradient(ellipse at 30% 20%, rgba(6,78,59,0.5) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(201,149,42,0.08) 0%, transparent 50%); }
+    .download-pulse { animation: downloadPulse 2s ease-in-out infinite; }
+    @keyframes downloadPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.4); }
+      50% { box-shadow: 0 0 0 12px rgba(5, 150, 105, 0); }
+    }
+    .suit-bg { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Ctext x='30' y='38' text-anchor='middle' font-size='28' fill='rgba(255,255,255,0.03)'%3E%E2%99%A0%3C/text%3E%3C/svg%3E"); }
+  </style>
+</head>
+<body class="bg-emerald-950 text-gray-100 font-body antialiased suit-bg">
+
+  <!-- Nav -->
+  <nav class="fixed top-0 inset-x-0 z-50 border-b border-white/5 bg-emerald-950/80 backdrop-blur-xl">
+    <div class="max-w-6xl mx-auto flex items-center justify-between h-16 px-6">
+      <a href="#" class="flex items-center gap-2.5">
+        <span class="text-2xl">🃏</span>
+        <span class="font-display font-bold text-lg tracking-tight text-white">Kaachu Phool</span>
+      </a>
+      <a href="#download"
+         class="px-5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5">
+        Download APK
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="relative min-h-[100dvh] flex items-center hero-gradient overflow-hidden pt-16">
+    <!-- Floating suit decorations -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
+      <span class="absolute top-[15%] left-[8%] text-6xl opacity-[0.06] suit-spin">♠</span>
+      <span class="absolute top-[25%] right-[12%] text-7xl opacity-[0.05] suit-spin" style="animation-delay:-2s;">♦</span>
+      <span class="absolute bottom-[20%] left-[18%] text-5xl opacity-[0.06] suit-spin" style="animation-delay:-4s;">♣</span>
+      <span class="absolute bottom-[30%] right-[8%] text-6xl opacity-[0.05] suit-spin" style="animation-delay:-6s;">♥</span>
+    </div>
+
+    <div class="max-w-6xl mx-auto px-6 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center relative z-10">
+      <!-- Left: copy -->
+      <div class="text-center lg:text-left">
+        <p class="text-emerald-400 font-mono text-xs uppercase tracking-[0.2em] mb-4">Free Android Game</p>
+        <h1 class="font-display text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05] mb-6">
+          Kaachu<br/>
+          <span class="text-gold-400">Phool</span>
+        </h1>
+        <p class="text-gray-400 text-lg md:text-xl leading-relaxed max-w-lg mx-auto lg:mx-0 mb-8">
+          The classic Indian trick-taking card game. Bid, bluff, and outsmart your opponents with the legendary Ka-Chu-Fu-L trump rotation.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+          <a href="#download"
+             class="download-pulse inline-flex items-center justify-center gap-2.5 px-8 py-4 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-display font-semibold text-base transition-all duration-200 hover:-translate-y-0.5">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download Free
+          </a>
+          <a href="#features"
+             class="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full border border-white/10 hover:border-white/20 text-gray-300 hover:text-white font-display font-medium text-base transition-all duration-200">
+            Learn More
+          </a>
+        </div>
+        <p class="text-gray-500 text-sm mt-5">Android 7.0+ &middot; ~20 MB &middot; No ads</p>
+      </div>
+
+      <!-- Right: card stack visual -->
+      <div class="relative flex items-center justify-center h-[420px] lg:h-[500px]">
+        <div class="card-float relative w-48 h-72 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-900 border border-emerald-600/30 shadow-2xl flex items-center justify-center gold-glow">
+          <div class="absolute inset-3 rounded-xl border border-gold-500/20"></div>
+          <div class="text-center">
+            <div class="text-6xl mb-2">🃏</div>
+            <p class="font-display font-bold text-gold-400 text-lg tracking-tight">K-A-C-H-U-F-U-L</p>
+            <p class="text-emerald-300/60 text-xs mt-1 font-mono uppercase tracking-widest">Spades → Diamonds → Clubs → Hearts</p>
+          </div>
+        </div>
+        <!-- Shadow cards behind -->
+        <div class="absolute top-8 left-[calc(50%-110px)] w-48 h-72 rounded-2xl bg-emerald-900/40 border border-emerald-700/20 -rotate-6 -z-10" aria-hidden="true"></div>
+        <div class="absolute top-4 left-[calc(50%+20px)] w-48 h-72 rounded-2xl bg-emerald-900/30 border border-emerald-700/15 rotate-6 -z-20" aria-hidden="true"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- What is Kaachu Phool -->
+  <section class="py-24 md:py-32 relative">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="max-w-3xl mx-auto text-center mb-16">
+        <p class="text-emerald-400 font-mono text-xs uppercase tracking-[0.2em] mb-4">The Game</p>
+        <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">A Card Game Generations Grew Up With</h2>
+        <p class="text-gray-400 text-lg leading-relaxed">
+          Kaachu Phool (also known as Kachuful or Judgement) is an iconic Indian trick-taking card game. The name is a Gujarati mnemonic for the strict cyclical rotation of trump suits — making every round a fresh battle of wits.
+        </p>
+      </div>
+
+      <!-- K-A-C-H-U-F-U-L breakdown -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-3xl mx-auto">
+        <div class="rounded-2xl bg-emerald-900/50 border border-emerald-700/20 p-6 text-center hover:border-emerald-600/40 transition-colors">
+          <div class="text-3xl mb-2">♠</div>
+          <p class="font-display font-bold text-white text-xl">Ka</p>
+          <p class="text-gray-400 text-sm mt-1">Kali — Spades</p>
+        </div>
+        <div class="rounded-2xl bg-emerald-900/50 border border-emerald-700/20 p-6 text-center hover:border-emerald-600/40 transition-colors">
+          <div class="text-3xl mb-2">♦</div>
+          <p class="font-display font-bold text-white text-xl">Chu</p>
+          <p class="text-gray-400 text-sm mt-1">Chokat — Diamonds</p>
+        </div>
+        <div class="rounded-2xl bg-emerald-900/50 border border-emerald-700/20 p-6 text-center hover:border-emerald-600/40 transition-colors">
+          <div class="text-3xl mb-2">♣</div>
+          <p class="font-display font-bold text-white text-xl">Fu</p>
+          <p class="text-gray-400 text-sm mt-1">Fuli — Clubs</p>
+        </div>
+        <div class="rounded-2xl bg-emerald-900/50 border border-emerald-700/20 p-6 text-center hover:border-emerald-600/40 transition-colors">
+          <div class="text-3xl mb-2">♥</div>
+          <p class="font-display font-bold text-white text-xl">L</p>
+          <p class="text-gray-400 text-sm mt-1">Laal — Hearts</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="py-24 md:py-32 border-t border-white/5">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="max-w-3xl mx-auto text-center mb-16">
+        <p class="text-emerald-400 font-mono text-xs uppercase tracking-[0.2em] mb-4">Features</p>
+        <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">Everything You Need to Play</h2>
+      </div>
+
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- AI Bots -->
+        <div class="rounded-2xl bg-emerald-900/40 border border-emerald-700/20 p-8 hover:border-emerald-600/30 transition-colors group">
+          <div class="w-12 h-12 rounded-xl bg-emerald-800/80 border border-emerald-600/20 flex items-center justify-center text-2xl mb-5 group-hover:scale-110 transition-transform">🤖</div>
+          <h3 class="font-display font-semibold text-white text-lg mb-2">Intelligent AI Bots</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">5 named characters with 3 difficulty levels. From casual play to expert card-tracking opponents that strategic trump and bid-aware play.</p>
+        </div>
+
+        <!-- Multiplayer -->
+        <div class="rounded-2xl bg-emerald-900/40 border border-emerald-700/20 p-8 hover:border-emerald-600/30 transition-colors group">
+          <div class="w-12 h-12 rounded-xl bg-emerald-800/80 border border-emerald-600/20 flex items-center justify-center text-2xl mb-5 group-hover:scale-110 transition-transform">🌐</div>
+          <h3 class="font-display font-semibold text-white text-lg mb-2">Online Multiplayer</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Create or join rooms with 6-digit codes. Real-time sync, text chat, voice notes, emoji emotes, and friends list.</p>
+        </div>
+
+        <!-- 7 Game Modes -->
+        <div class="rounded-2xl bg-emerald-900/40 border border-emerald-700/20 p-8 hover:border-emerald-600/30 transition-colors group">
+          <div class="w-12 h-12 rounded-xl bg-emerald-800/80 border border-emerald-600/20 flex items-center justify-center text-2xl mb-5 group-hover:scale-110 transition-transform">🎮</div>
+          <h3 class="font-display font-semibold text-white text-lg mb-2">7 Game Modes</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Quick Match, Classic Standard, Full Ladder, Grand Ladder, Ascending, Short Ascending, and Single Drop — from 5 to 25 rounds.</p>
+        </div>
+
+        <!-- 3 Scoring Rules -->
+        <div class="rounded-2xl bg-emerald-900/40 border border-emerald-700/20 p-8 hover:border-emerald-600/30 transition-colors group">
+          <div class="w-12 h-12 rounded-xl bg-emerald-800/80 border border-emerald-600/20 flex items-center justify-center text-2xl mb-5 group-hover:scale-110 transition-transform">📊</div>
+          <h3 class="font-display font-semibold text-white text-lg mb-2">3 Scoring Rules</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Standard, Penalty, and Bonus scoring. Choose the ruleset that matches your group's style — from casual to cutthroat.</p>
+        </div>
+
+        <!-- Achievements -->
+        <div class="rounded-2xl bg-emerald-900/40 border border-emerald-700/20 p-8 hover:border-emerald-600/30 transition-colors group">
+          <div class="w-12 h-12 rounded-xl bg-emerald-800/80 border border-emerald-600/20 flex items-center justify-center text-2xl mb-5 group-hover:scale-110 transition-transform">🏆</div>
+          <h3 class="font-display font-semibold text-white text-lg mb-2">Achievements & Profiles</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">8 achievements to unlock. Customize your profile with 6 avatars and 5 table themes — earned through gameplay.</p>
+        </div>
+
+        <!-- Scorekeeper -->
+        <div class="rounded-2xl bg-emerald-900/40 border border-emerald-700/20 p-8 hover:border-emerald-600/30 transition-colors group">
+          <div class="w-12 h-12 rounded-xl bg-emerald-800/80 border border-emerald-600/20 flex items-center justify-center text-2xl mb-5 group-hover:scale-110 transition-transform">📝</div>
+          <h3 class="font-display font-semibold text-white text-lg mb-2">Built-in Scorekeeper</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Persistent match history stored locally. Track scores across sessions with a full scoreboard and game records.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Game Modes Detail -->
+  <section class="py-24 md:py-32 border-t border-white/5">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="max-w-3xl mx-auto text-center mb-16">
+        <p class="text-emerald-400 font-mono text-xs uppercase tracking-[0.2em] mb-4">Game Modes</p>
+        <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">Pick Your Style</h2>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+        <div class="flex items-center gap-4 rounded-xl bg-emerald-900/30 border border-emerald-700/15 p-5">
+          <span class="font-mono text-emerald-400 text-sm w-24 shrink-0">QUICK</span>
+          <div>
+            <p class="text-white font-medium text-sm">Quick Match</p>
+            <p class="text-gray-500 text-xs mt-0.5">1→5→1 cards &middot; 9 rounds</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 rounded-xl bg-emerald-900/30 border border-emerald-700/15 p-5">
+          <span class="font-mono text-emerald-400 text-sm w-24 shrink-0">CLASSIC</span>
+          <div>
+            <p class="text-white font-medium text-sm">Classic Standard</p>
+            <p class="text-gray-500 text-xs mt-0.5">1→8→1 cards &middot; 15 rounds</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 rounded-xl bg-emerald-900/30 border border-emerald-700/15 p-5">
+          <span class="font-mono text-emerald-400 text-sm w-24 shrink-0">FULL</span>
+          <div>
+            <p class="text-white font-medium text-sm">Full Ladder</p>
+            <p class="text-gray-500 text-xs mt-0.5">1→10→1 cards &middot; 19 rounds</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 rounded-xl bg-emerald-900/30 border border-emerald-700/15 p-5">
+          <span class="font-mono text-emerald-400 text-sm w-24 shrink-0">GRAND</span>
+          <div>
+            <p class="text-white font-medium text-sm">Grand Ladder</p>
+            <p class="text-gray-500 text-xs mt-0.5">1→13→1 cards &middot; 25 rounds</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 rounded-xl bg-emerald-900/30 border border-emerald-700/15 p-5">
+          <span class="font-mono text-emerald-400 text-sm w-24 shrink-0">ASCEND</span>
+          <div>
+            <p class="text-white font-medium text-sm">Ascending (1→8)</p>
+            <p class="text-gray-500 text-xs mt-0.5">1→8 cards &middot; 8 rounds</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 rounded-xl bg-emerald-900/30 border border-emerald-700/15 p-5">
+          <span class="font-mono text-emerald-400 text-sm w-24 shrink-0">SHORT</span>
+          <div>
+            <p class="text-white font-medium text-sm">Short Ascending (1→5)</p>
+            <p class="text-gray-500 text-xs mt-0.5">1→5 cards &middot; 5 rounds</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 rounded-xl bg-emerald-900/30 border border-emerald-700/15 p-5">
+          <span class="font-mono text-emerald-400 text-sm w-24 shrink-0">DROP</span>
+          <div>
+            <p class="text-white font-medium text-sm">Single Drop (8→1)</p>
+            <p class="text-gray-500 text-xs mt-0.5">8→1 cards &middot; 8 rounds</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How to Play -->
+  <section class="py-24 md:py-32 border-t border-white/5">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="max-w-3xl mx-auto text-center mb-16">
+        <p class="text-emerald-400 font-mono text-xs uppercase tracking-[0.2em] mb-4">How to Play</p>
+        <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">Simple Rules, Deep Strategy</h2>
+      </div>
+
+      <div class="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-full bg-emerald-800/60 border border-emerald-600/20 flex items-center justify-center mx-auto mb-5">
+            <span class="font-display font-bold text-emerald-300 text-2xl">1</span>
+          </div>
+          <h3 class="font-display font-semibold text-white mb-2">Bid Your Hand</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Look at your cards and predict how many tricks you'll win. The Hook Rule prevents the dealer from making the total bids equal the cards dealt.</p>
+        </div>
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-full bg-emerald-800/60 border border-emerald-600/20 flex items-center justify-center mx-auto mb-5">
+            <span class="font-display font-bold text-emerald-300 text-2xl">2</span>
+          </div>
+          <h3 class="font-display font-semibold text-white mb-2">Play Your Cards</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Follow suit, play trumps, and outsmart your opponents. Trump rotation follows Ka-Chu-Fu-L — each round the trump suit shifts.</p>
+        </div>
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-full bg-emerald-800/60 border border-emerald-600/20 flex items-center justify-center mx-auto mb-5">
+            <span class="font-display font-bold text-emerald-300 text-2xl">3</span>
+          </div>
+          <h3 class="font-display font-semibold text-white mb-2">Score & Repeat</h3>
+          <p class="text-gray-400 text-sm leading-relaxed">Hit your bid for bonus points. Miss and you get zero (or negative in Penalty mode). The highest score after all rounds wins.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section id="download" class="py-24 md:py-32 border-t border-white/5">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="max-w-2xl mx-auto text-center">
+        <p class="text-emerald-400 font-mono text-xs uppercase tracking-[0.2em] mb-4">Download</p>
+        <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">Get Kaachu Phool</h2>
+        <p class="text-gray-400 text-lg leading-relaxed mb-10">
+          Free to play. No ads. No account required for single player. Download the latest APK and start playing in seconds.
+        </p>
+
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases/download/v1.1.1.24/app-release.apk"
+           class="download-pulse inline-flex items-center gap-3 px-10 py-5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-display font-bold text-lg transition-all duration-200 hover:-translate-y-1 glow-ring">
+          <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download Latest APK
+        </a>
+
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-gray-500">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+            v1.1.1.24 — Latest
+          </span>
+          <span class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+            ~20 MB
+          </span>
+          <span class="flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+            Android 7.0+
+          </span>
+        </div>
+
+        <p class="text-gray-600 text-xs mt-6">
+          After downloading, open the APK file on your Android device. You may need to enable "Install from unknown sources" in Settings.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- All Releases -->
+  <section class="py-24 md:py-32 border-t border-white/5">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="max-w-3xl mx-auto text-center mb-12">
+        <p class="text-emerald-400 font-mono text-xs uppercase tracking-[0.2em] mb-4">Releases</p>
+        <h2 class="font-display text-3xl md:text-5xl font-bold tracking-tight mb-6">Version History</h2>
+      </div>
+
+      <div class="max-w-2xl mx-auto space-y-3">
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases/tag/v1.1.1.24"
+           class="flex items-center justify-between rounded-xl bg-emerald-900/40 border border-emerald-600/30 p-5 hover:bg-emerald-900/60 transition-colors group">
+          <div class="flex items-center gap-4">
+            <span class="px-2.5 py-1 rounded-md bg-emerald-600/20 text-emerald-400 text-xs font-mono font-semibold">LATEST</span>
+            <div>
+              <p class="text-white font-display font-semibold">v1.1.1.24</p>
+              <p class="text-gray-500 text-xs mt-0.5">Sep 15, 2026</p>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-gray-500 group-hover:text-emerald-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </a>
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases/tag/v1.1.1.23"
+           class="flex items-center justify-between rounded-xl bg-emerald-900/20 border border-emerald-700/15 p-5 hover:bg-emerald-900/40 transition-colors group">
+          <div class="flex items-center gap-4">
+            <div>
+              <p class="text-white font-display font-medium">v1.1.1.23</p>
+              <p class="text-gray-500 text-xs mt-0.5">Sep 15, 2026</p>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-gray-500 group-hover:text-emerald-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </a>
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases/tag/v1.1.1.20"
+           class="flex items-center justify-between rounded-xl bg-emerald-900/20 border border-emerald-700/15 p-5 hover:bg-emerald-900/40 transition-colors group">
+          <div class="flex items-center gap-4">
+            <div>
+              <p class="text-white font-display font-medium">v1.1.1.20</p>
+              <p class="text-gray-500 text-xs mt-0.5">Sep 15, 2026</p>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-gray-500 group-hover:text-emerald-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </a>
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases/tag/v1.1.1.19"
+           class="flex items-center justify-between rounded-xl bg-emerald-900/20 border border-emerald-700/15 p-5 hover:bg-emerald-900/40 transition-colors group">
+          <div class="flex items-center gap-4">
+            <div>
+              <p class="text-white font-display font-medium">v1.1.1.19</p>
+              <p class="text-gray-500 text-xs mt-0.5">Sep 15, 2026</p>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-gray-500 group-hover:text-emerald-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </a>
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases/tag/v1.1.1.18"
+           class="flex items-center justify-between rounded-xl bg-emerald-900/20 border border-emerald-700/15 p-5 hover:bg-emerald-900/40 transition-colors group">
+          <div class="flex items-center gap-4">
+            <div>
+              <p class="text-white font-display font-medium">v1.1.1.18</p>
+              <p class="text-gray-500 text-xs mt-0.5">Sep 14, 2026</p>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-gray-500 group-hover:text-emerald-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        </a>
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases"
+           class="flex items-center justify-center rounded-xl border border-dashed border-emerald-700/30 p-4 text-gray-500 hover:text-emerald-400 hover:border-emerald-600/40 transition-colors text-sm">
+          View all releases on GitHub →
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="border-t border-white/5 py-12">
+    <div class="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-2.5">
+        <span class="text-xl">🃏</span>
+        <span class="font-display font-semibold text-white">Kaachu Phool</span>
+      </div>
+      <div class="flex items-center gap-6 text-sm text-gray-500">
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda" class="hover:text-white transition-colors">GitHub</a>
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases" class="hover:text-white transition-colors">Releases</a>
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/issues" class="hover:text-white transition-colors">Issues</a>
+      </div>
+      <p class="text-gray-600 text-xs">Made with ❤️ for card game lovers</p>
+    </div>
+  </footer>
+
+</body>
+</html>
