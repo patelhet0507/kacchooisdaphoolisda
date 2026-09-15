@@ -41,13 +41,11 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
     }
-    .card-float { animation: cardFloat 6s ease-in-out infinite; }
+    .card-float { animation: cardFloat 4s ease-in-out infinite; }
     @keyframes cardFloat {
-      0%, 100% { transform: translateY(0) rotate(-3deg); }
-      50% { transform: translateY(-12px) rotate(3deg); }
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
     }
-    .suit-spin { animation: suitSpin 8s linear infinite; }
-    @keyframes suitSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     .glow-ring { box-shadow: 0 0 60px rgba(5, 150, 105, 0.15), 0 0 120px rgba(5, 150, 105, 0.05); }
     .gold-glow { box-shadow: 0 0 40px rgba(201, 149, 42, 0.2); }
     .hero-gradient { background: radial-gradient(ellipse at 30% 20%, rgba(6,78,59,0.5) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, rgba(201,149,42,0.08) 0%, transparent 50%); }
@@ -79,10 +77,10 @@
   <section class="relative min-h-[100dvh] flex items-center hero-gradient overflow-hidden pt-16">
     <!-- Floating suit decorations -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none select-none" aria-hidden="true">
-      <span class="absolute top-[15%] left-[8%] text-6xl opacity-[0.06] suit-spin">♠</span>
-      <span class="absolute top-[25%] right-[12%] text-7xl opacity-[0.05] suit-spin" style="animation-delay:-2s;">♦</span>
-      <span class="absolute bottom-[20%] left-[18%] text-5xl opacity-[0.06] suit-spin" style="animation-delay:-4s;">♣</span>
-      <span class="absolute bottom-[30%] right-[8%] text-6xl opacity-[0.05] suit-spin" style="animation-delay:-6s;">♥</span>
+      <span class="absolute top-[15%] left-[8%] text-6xl opacity-[0.06]">♠</span>
+      <span class="absolute top-[25%] right-[12%] text-7xl opacity-[0.05]">♦</span>
+      <span class="absolute bottom-[20%] left-[18%] text-5xl opacity-[0.06]">♣</span>
+      <span class="absolute bottom-[30%] right-[8%] text-6xl opacity-[0.05]">♥</span>
     </div>
 
     <div class="max-w-6xl mx-auto px-6 grid lg:grid-cols-2 gap-12 lg:gap-16 items-center relative z-10">
@@ -121,8 +119,8 @@
           </div>
         </div>
         <!-- Shadow cards behind -->
-        <div class="absolute top-8 left-[calc(50%-110px)] w-48 h-72 rounded-2xl bg-emerald-900/40 border border-emerald-700/20 -rotate-6 -z-10" aria-hidden="true"></div>
-        <div class="absolute top-4 left-[calc(50%+20px)] w-48 h-72 rounded-2xl bg-emerald-900/30 border border-emerald-700/15 rotate-6 -z-20" aria-hidden="true"></div>
+        <div class="absolute top-8 left-[calc(50%-110px)] w-48 h-72 rounded-2xl bg-emerald-900/40 border border-emerald-700/20 -z-10" aria-hidden="true"></div>
+        <div class="absolute top-4 left-[calc(50%+20px)] w-48 h-72 rounded-2xl bg-emerald-900/30 border border-emerald-700/15 -z-20" aria-hidden="true"></div>
       </div>
     </div>
   </section>
