@@ -77,6 +77,8 @@ import com.example.ui.theme.GoldPrimary
 import com.example.ui.theme.TextLight
 import com.example.ui.theme.TextMuted
 import com.example.viewmodel.GameViewModel
+import com.example.viewmodel.PlayerSeatState
+import com.example.viewmodel.TableState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,9 +87,52 @@ fun GamePlayScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val tableState by viewModel.tableState.collectAsStateWithLifecycle()
-    val playerSeats by viewModel.playerSeats.collectAsStateWithLifecycle()
-    val userHand by viewModel.userHand.collectAsStateWithLifecycle()
+    val tableStateRaw by viewModel.tableState.collectAsStateWithLifecycle()
+    val playerSeatsRaw by viewModel.playerSeats.collectAsStateWithLifecycle()
+    val userHandRaw by viewModel.userHand.collectAsStateWithLifecycle()
+
+    val userHand = if (uiState.isMultiplayer) {
+        if (userHandRaw.isNotEmpty()) userHandRaw else uiState.userHand
+    } else {
+        val userStateCards = uiState.playerStates.find { it.player.id == "user" || !it.player.isBot }?.cards ?: emptyList()
+        if (uiState.userHand.isNotEmpty()) {
+            uiState.userHand
+        } else if (userHandRaw.isNotEmpty()) {
+            userHandRaw
+        } else {
+            userStateCards
+        }
+    }
+
+    val playerSeats = if (playerSeatsRaw.isNotEmpty()) {
+        playerSeatsRaw
+    } else {
+        uiState.players.mapIndexed { index, p ->
+            val pState = uiState.playerStates.find { it.player.id == p.id }
+            PlayerSeatState(
+                player = p,
+                bid = pState?.bid,
+                tricksWon = pState?.tricksWon ?: 0,
+                isDealer = uiState.dealerIndex == index,
+                isCurrentTurn = uiState.currentTurnIndex == index,
+                totalScore = pState?.totalScore ?: 0,
+                activeEmote = uiState.activeEmotes[p.name] ?: uiState.activeEmotes[p.id],
+                cardsCount = pState?.cards?.size ?: 0
+            )
+        }
+    }
+
+    val tableState = if (uiState.isMultiplayer && (tableStateRaw.playedCards.isNotEmpty() || tableStateRaw.trickWinner != null)) {
+        tableStateRaw
+    } else {
+        TableState(
+            playedCards = uiState.currentTrick,
+            trumpSuit = uiState.currentTrump,
+            leadSuit = uiState.leadSuit,
+            trickWinner = uiState.lastTrickWinner,
+            isTrickFinished = uiState.phase == GamePhase.TRICK_FINISHED
+        )
+    }
 
     var showQuitDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
@@ -102,16 +147,22 @@ fun GamePlayScreen(
         viewModel.setSoundEffectsManager(soundEffectsManager, context.applicationContext as android.app.Application)
     }
 
+    LaunchedEffect(uiState.players.isEmpty()) {
+        if (uiState.players.isEmpty()) {
+            viewModel.startNewGame()
+        }
+    }
+
     // Intercept hardware / system back gesture
     BackHandler {
         showQuitDialog = true
     }
 
     val mySeat = playerSeats.find {
-        it.player.name == uiState.localPlayerName || it.player.id == uiState.localPlayerName || it.player.id == "user"
+        it.player.id == "user" || it.player.name == uiState.localPlayerName || !it.player.isBot
     } ?: playerSeats.firstOrNull()
 
-    val opponentSeats = playerSeats.filter { it.player.name != mySeat?.player?.name }
+    val opponentSeats = playerSeats.filter { it.player.id != mySeat?.player?.id && it.player.name != mySeat?.player?.name }
 
     // Dynamic opponent layout mapping
     val topOpponentSeats = when (opponentSeats.size) {
@@ -277,7 +328,8 @@ fun GamePlayScreen(
                             turnActionText = if (leftOpponentSeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
                             totalScore = leftOpponentSeat.totalScore,
                             activeEmote = leftOpponentSeat.activeEmote,
-                            is3DMode = appSettings.is3DMode
+                            is3DMode = appSettings.is3DMode,
+                            cardCount = leftOpponentSeat.cardsCount
                         )
                     }
                 }
@@ -308,7 +360,8 @@ fun GamePlayScreen(
                                     turnActionText = if (seat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
                                     totalScore = seat.totalScore,
                                     activeEmote = seat.activeEmote,
-                                    is3DMode = appSettings.is3DMode
+                                    is3DMode = appSettings.is3DMode,
+                                    cardCount = seat.cardsCount
                                 )
                             }
                         }
@@ -373,7 +426,8 @@ fun GamePlayScreen(
                             turnActionText = if (rightOpponentSeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
                             totalScore = rightOpponentSeat.totalScore,
                             activeEmote = rightOpponentSeat.activeEmote,
-                            is3DMode = appSettings.is3DMode
+                            is3DMode = appSettings.is3DMode,
+                            cardCount = rightOpponentSeat.cardsCount
                         )
                     }
                 }
@@ -404,7 +458,8 @@ fun GamePlayScreen(
                             totalScore = mySeat.totalScore,
                             activeEmote = mySeat.activeEmote,
                             isBottomUser = true,
-                            is3DMode = appSettings.is3DMode
+                            is3DMode = appSettings.is3DMode,
+                            cardCount = mySeat.cardsCount
                         )
                     }
                 }

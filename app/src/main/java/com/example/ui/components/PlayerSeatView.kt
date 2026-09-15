@@ -57,7 +57,8 @@ fun PlayerSeatView(
     activeEmote: String? = null,
     modifier: Modifier = Modifier,
     isBottomUser: Boolean = false,
-    is3DMode: Boolean = false
+    is3DMode: Boolean = false,
+    cardCount: Int = 0
 ) {
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isSmallScreen = configuration.screenHeightDp < 600
@@ -136,7 +137,25 @@ fun PlayerSeatView(
                 )
             }
 
-            // Floating Active Emote Bubble
+            // Card Count Badge (showing opponent / player cards remaining)
+            if (cardCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 6.dp, y = (-4).dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(DarkSurfaceElevated)
+                        .border(1.dp, GoldPrimary.copy(alpha = 0.7f), RoundedCornerShape(10.dp))
+                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = "🂠 $cardCount",
+                        color = GoldLight,
+                        fontSize = if (isSmallScreen) 8.sp else 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
             if (!activeEmote.isNullOrBlank()) {
                 EmoteBubbleView(
                     emoteEmoji = activeEmote,

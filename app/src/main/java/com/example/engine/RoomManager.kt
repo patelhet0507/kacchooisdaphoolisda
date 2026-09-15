@@ -44,6 +44,7 @@ class RoomManager {
         private val localRooms = ConcurrentHashMap<String, MutableStateFlow<GameRoom?>>()
         private val roomFlows = ConcurrentHashMap<String, Flow<GameRoom?>>()
         private val activeRoomListeners = ConcurrentHashMap<String, ValueEventListener>()
+        private val activePlayersListeners = ConcurrentHashMap<String, ValueEventListener>()
 
         fun gameRoomToMap(room: GameRoom): Map<String, Any?> = mapOf(
             "roomId" to room.roomId,
@@ -271,26 +272,8 @@ class RoomManager {
             return@withContext JoinRoomStatus.SUCCESS
         }
 
-        // If room does not exist yet (e.g. friend gave this code or first time joining code), initialize it seamlessly
-        val autoCreatedRoom = GameRoom(
-            roomId = cleanRoomId,
-            hostName = safePlayer,
-            players = listOf(safePlayer),
-            gameState = "WAITING",
-            messages = mapOf(
-                "msg_welcome" to ChatMessage(
-                    id = "msg_welcome",
-                    senderName = "System",
-                    text = "Room $cleanRoomId ready! Share this 6-digit code with friends to join.",
-                    timestamp = System.currentTimeMillis(),
-                    isSystem = true
-                )
-            )
-        )
-        getOrCreateLocalFlow(cleanRoomId).value = autoCreatedRoom
-        syncRoomToFirebase(cleanRoomId, autoCreatedRoom)
-
-        JoinRoomStatus.SUCCESS
+        // Room does not exist on Firebase and does not exist locally -> Return ROOM_NOT_FOUND
+        return@withContext JoinRoomStatus.ROOM_NOT_FOUND
     }
 
     suspend fun leaveRoom(roomId: String, player: String) = withContext(Dispatchers.IO) {
@@ -849,6 +832,43 @@ class RoomManager {
                     }
                 }
 
+                val playersRef = ref?.child("players")
+                val playersListener = object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        if (snapshot.exists()) {
+                            val playersList = mutableListOf<String>()
+                            when (val v = snapshot.value) {
+                                is List<*> -> v.forEach { item -> if (item != null) playersList.add(item.toString()) }
+                                is Map<*, *> -> v.values.forEach { item -> if (item != null) playersList.add(item.toString()) }
+                                else -> snapshot.children.forEach { c -> c.value?.toString()?.let { playersList.add(it) } }
+                            }
+                            Log.d("RoomManager", "Players node monitor updated for $cleanRoomId: count=${playersList.size}, players=$playersList")
+                            val current = localFlow.value
+                            if (current != null) {
+                                val updated = current.copy(players = playersList)
+                                localFlow.value = updated
+                                trySend(updated)
+                            }
+                        }
+                    }
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.w("RoomManager", "Players listener cancelled: ${error.message}")
+                    }
+                }
+                if (playersRef != null) {
+                    try {
+                        val existingPlayerListener = activePlayersListeners.remove(cleanRoomId)
+                        if (existingPlayerListener != null) {
+                            playersRef.removeEventListener(existingPlayerListener)
+                        }
+                        activePlayersListeners[cleanRoomId] = playersListener
+                        playersRef.addValueEventListener(playersListener)
+                        Log.d("RoomManager", "Attached dedicated players node listener for room: $cleanRoomId")
+                    } catch (t: Throwable) {
+                        Log.w("RoomManager", "Error registering players listener", t)
+                    }
+                }
+
                 val scope = CoroutineScope(Dispatchers.Default)
                 val localJob = scope.launch {
                     localFlow.collect { localRoom ->
@@ -864,6 +884,12 @@ class RoomManager {
                                 ref.removeEventListener(listener)
                                 activeRoomListeners.remove(cleanRoomId)
                                 Log.d("RoomManager", "Removed listener for room: $cleanRoomId")
+                            }
+                            val activePlayers = activePlayersListeners[cleanRoomId]
+                            if (activePlayers != null && playersRef != null) {
+                                playersRef.removeEventListener(activePlayers)
+                                activePlayersListeners.remove(cleanRoomId)
+                                Log.d("RoomManager", "Removed dedicated players node listener for room: $cleanRoomId")
                             }
                             // Also clear persistence sync when leaving room observation
                             ref.keepSynced(false)

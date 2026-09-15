@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.engine.GameDiagnosticLogger
 import com.example.engine.KaachuPhoolEngine
 import com.example.engine.RoomManager
 import com.example.engine.SoundEffectsManager
@@ -47,7 +48,8 @@ data class PlayerSeatState(
     val isDealer: Boolean = false,
     val isCurrentTurn: Boolean = false,
     val totalScore: Int = 0,
-    val activeEmote: String? = null
+    val activeEmote: String? = null,
+    val cardsCount: Int = 0
 )
 
 data class GameUiState(
@@ -110,6 +112,43 @@ class GameViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(GameUiState())
     val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _uiState.collect { state ->
+                syncSinglePlayerFlows(state)
+            }
+        }
+        if (_uiState.value.players.isEmpty()) {
+            startNewGame(gameMode = GameMode.QUICK, scoringRule = ScoringRule.STANDARD, userName = "You", botCount = 3)
+        }
+    }
+
+    private fun syncSinglePlayerFlows(state: GameUiState) {
+        if (!state.isMultiplayer && state.players.isNotEmpty()) {
+            _userHand.value = state.userHand
+            _tableState.value = TableState(
+                playedCards = state.currentTrick,
+                trumpSuit = state.currentTrump,
+                leadSuit = state.leadSuit,
+                trickWinner = state.lastTrickWinner,
+                isTrickFinished = state.phase == GamePhase.TRICK_FINISHED
+            )
+            _playerSeats.value = state.players.mapIndexed { index, p ->
+                val pState = state.playerStates.find { it.player.id == p.id }
+                PlayerSeatState(
+                    player = p,
+                    bid = pState?.bid,
+                    tricksWon = pState?.tricksWon ?: 0,
+                    isDealer = state.dealerIndex == index,
+                    isCurrentTurn = state.currentTurnIndex == index,
+                    totalScore = pState?.totalScore ?: 0,
+                    activeEmote = state.activeEmotes[p.name] ?: state.activeEmotes[p.id],
+                    cardsCount = pState?.cards?.size ?: 0
+                )
+            }
+        }
+    }
 
     // ==========================================
     // MULTIPLAYER MATCH INTEGRATION
@@ -305,6 +344,7 @@ class GameViewModel : ViewModel() {
 
         // Update Granular Player Seats State
         val newPlayerSeats = playersList.map { p ->
+            val pCardsCount = room.dealtHands[p.name]?.split(",")?.filter { it.isNotBlank() }?.size ?: 0
             PlayerSeatState(
                 player = p,
                 bid = room.bids[p.name],
@@ -312,7 +352,8 @@ class GameViewModel : ViewModel() {
                 isDealer = room.dealerIndex == playerNames.indexOf(p.name),
                 isCurrentTurn = room.currentTurnIndex == playerNames.indexOf(p.name),
                 totalScore = room.scores[p.name] ?: 0,
-                activeEmote = room.activeEmotes[p.name]
+                activeEmote = room.activeEmotes[p.name],
+                cardsCount = pCardsCount
             )
         }
         _playerSeats.value = newPlayerSeats
@@ -514,7 +555,7 @@ class GameViewModel : ViewModel() {
         val dealerIdx = roundIndex % state.players.size
         val firstBidderIdx = (dealerIdx + 1) % state.players.size
 
-        val dealtHands = KaachuPhoolEngine.dealHands(state.players, roundCardCount)
+        val dealtHands = KaachuPhoolEngine.dealCards(state.players, roundCardCount)
 
         val newPlayerStates = state.playerStates.map { pState ->
             pState.copy(
@@ -526,6 +567,7 @@ class GameViewModel : ViewModel() {
         }
 
         val userHand = dealtHands["user"] ?: emptyList()
+        _userHand.value = userHand
 
         soundEffectsManager?.playCardDeal()
         soundEffectsManager?.playTrumpAnnounce()
@@ -586,7 +628,8 @@ class GameViewModel : ViewModel() {
                 )
             }
 
-            viewModelScope.launch {
+            botTurnJob?.cancel()
+            botTurnJob = viewModelScope.launch {
                 delay(700)
                 executeBotBid(currentIdx)
             }
@@ -655,9 +698,40 @@ class GameViewModel : ViewModel() {
 
         if (allBidsIn) {
             val firstLeader = (state.dealerIndex + 1) % state.players.size
+
+            // Diagnostic verification: verify player and bot hands are correctly populated before first trick
+            val verification = GameDiagnosticLogger.verifyHandsBeforeFirstTrick(
+                roundIndex = state.currentRoundIndex,
+                expectedCardsPerPlayer = state.currentRoundCardCount,
+                trump = state.currentTrump,
+                players = state.players,
+                playerStates = state.playerStates,
+                userHand = state.userHand,
+                isMultiplayer = state.isMultiplayer
+            )
+
+            // Emergency synchronization fallback if userHand or bot hands were desynchronized
+            var resolvedUserHand = state.userHand
+            var resolvedPlayerStates = state.playerStates
+
+            if (!verification.isValid && state.currentRoundCardCount > 0) {
+                val userState = state.playerStates.find { it.player.id == "user" }
+                if (resolvedUserHand.isEmpty() && !userState?.cards.isNullOrEmpty()) {
+                    resolvedUserHand = userState!!.cards
+                } else if (resolvedUserHand.isNotEmpty() && (userState?.cards.isNullOrEmpty() || userState?.cards?.size != state.currentRoundCardCount)) {
+                    resolvedPlayerStates = state.playerStates.map {
+                        if (it.player.id == "user") it.copy(cards = resolvedUserHand) else it
+                    }
+                }
+            }
+
+            _userHand.value = resolvedUserHand
+
             _uiState.update {
                 it.copy(
                     phase = GamePhase.PLAYING,
+                    userHand = resolvedUserHand,
+                    playerStates = resolvedPlayerStates,
                     currentTurnIndex = firstLeader,
                     statusMessage = "All bids placed! ${state.players[firstLeader].name} leads the first trick"
                 )
@@ -672,6 +746,19 @@ class GameViewModel : ViewModel() {
         }
     }
 
+    fun performPreTrickDiagnostics(): GameDiagnosticLogger.HandVerificationResult {
+        val state = _uiState.value
+        return GameDiagnosticLogger.verifyHandsBeforeFirstTrick(
+            roundIndex = state.currentRoundIndex,
+            expectedCardsPerPlayer = state.currentRoundCardCount,
+            trump = state.currentTrump,
+            players = state.players,
+            playerStates = state.playerStates,
+            userHand = state.userHand,
+            isMultiplayer = state.isMultiplayer
+        )
+    }
+
     private fun checkPlayingTurn() {
         val state = _uiState.value
         if (state.phase != GamePhase.PLAYING) return
@@ -681,8 +768,19 @@ class GameViewModel : ViewModel() {
         val currentPlayer = state.players[currentIdx]
 
         if (!currentPlayer.isBot) {
+            // Guard: ensure userHand is populated before user's turn to play
+            val finalUserHand = if (state.userHand.isNotEmpty()) {
+                state.userHand
+            } else {
+                state.playerStates.find { it.player.id == currentPlayer.id }?.cards ?: emptyList()
+            }
+            if (state.userHand != finalUserHand) {
+                _userHand.value = finalUserHand
+            }
+
             _uiState.update {
                 it.copy(
+                    userHand = finalUserHand,
                     isProcessingBot = false,
                     statusMessage = if (state.leadSuit != null) {
                         "Your turn! Follow ${state.leadSuit.displayName} (${state.leadSuit.symbol}) if you have it"
@@ -699,7 +797,8 @@ class GameViewModel : ViewModel() {
                 )
             }
 
-            viewModelScope.launch {
+            botTurnJob?.cancel()
+            botTurnJob = viewModelScope.launch {
                 delay(800)
                 executeBotCardPlay(currentIdx)
             }
@@ -732,6 +831,7 @@ class GameViewModel : ViewModel() {
         val leadSuit = state.leadSuit ?: card.suit
 
         soundEffectsManager?.playCardPlay()
+        _userHand.value = updatedHand
 
         _uiState.update {
             it.copy(

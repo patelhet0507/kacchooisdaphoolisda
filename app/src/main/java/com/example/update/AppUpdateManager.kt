@@ -430,10 +430,9 @@ class AppUpdateManager private constructor(private val context: Context) {
             val cleanTag = tagVersion.trim().removePrefix("v").removePrefix("V")
             val cleanCur = currentVersion.trim().removePrefix("v").removePrefix("V")
 
-            // Handle 'latest' tag by treating it as a generic update if not in a dev environment,
-            // but for production builds, we rely on semantic version comparison.
+            // Handle 'latest' tag by treating it as a newer release unless already running 'latest'
             if (tagVersion.equals("latest", ignoreCase = true)) {
-                return false // Don't trigger 'latest' as newer by default
+                return !currentVersion.equals("latest", ignoreCase = true)
             }
 
             val tagParts = cleanTag.split(".").mapNotNull { it.toIntOrNull() }

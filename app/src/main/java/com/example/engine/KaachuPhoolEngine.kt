@@ -12,9 +12,16 @@ object KaachuPhoolEngine {
     /**
      * Shuffles a standard 52-card deck and deals [cardsPerPlayer] to each player.
      * Hands are sorted cleanly by suit and descending rank.
+     * Tracks deck state, shuffling, and distribution via [GameDiagnosticLogger].
      */
     fun dealHands(players: List<Player>, cardsPerPlayer: Int): Map<String, List<Card>> {
-        val deck = Card.createStandardDeck().shuffled().toMutableList()
+        val rawDeck = Card.createStandardDeck()
+        GameDiagnosticLogger.logDeckState(rawDeck)
+
+        val shuffledDeck = rawDeck.shuffled()
+        GameDiagnosticLogger.logShuffling(rawDeck, shuffledDeck)
+
+        val deck = shuffledDeck.toMutableList()
         val hands = mutableMapOf<String, MutableList<Card>>()
 
         for (player in players) {
@@ -30,7 +37,7 @@ object KaachuPhoolEngine {
         }
 
         // Sort hands by suit order and rank descending
-        return hands.mapValues { (_, cardList) ->
+        val sortedHands = hands.mapValues { (_, cardList) ->
             cardList.sortedWith(
                 compareBy<Card> { card ->
                     when (card.suit) {
@@ -42,6 +49,16 @@ object KaachuPhoolEngine {
                 }.thenByDescending { it.rank.value }
             )
         }
+
+        GameDiagnosticLogger.logDistribution(players, cardsPerPlayer, sortedHands, deck.size)
+        return sortedHands
+    }
+
+    /**
+     * Deals cards to all players. Alias for [dealHands] verifying deck distribution.
+     */
+    fun dealCards(players: List<Player>, cardsPerPlayer: Int): Map<String, List<Card>> {
+        return dealHands(players, cardsPerPlayer)
     }
 
     /**
