@@ -107,6 +107,31 @@ jobs:
             fi
           fi
 
+      - name: Validate Gradle Wrapper
+        run: |
+          echo "Validating presence of gradlew executable..."
+          if [ ! -f "./gradlew" ]; then
+            echo "gradlew not found! Generating wrapper..."
+            gradle wrapper --gradle-version 9.3.1
+          fi
+
+          if [ ! -f "./gradlew" ]; then
+            echo "Error: gradlew executable could not be found or generated!"
+            exit 1
+          fi
+
+          echo "Setting execution permissions for gradlew..."
+          chmod +x ./gradlew
+
+          if [ ! -x "./gradlew" ]; then
+            echo "Error: gradlew is not executable after chmod!"
+            exit 1
+          fi
+
+          echo "Confirmed gradlew presence and permissions:"
+          ls -l ./gradlew
+          ./gradlew --version
+
       - name: Build Signed Release APK
         run: |
           # Extract version from app/build.gradle.kts
