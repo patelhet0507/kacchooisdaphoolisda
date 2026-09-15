@@ -196,8 +196,8 @@
     @media (max-width: 768px) {
       .hero-grid { grid-template-columns: 1fr; text-align: center; }
       .hero-sub { margin-left: auto; margin-right: auto; }
-      .hero-right { height: 260px; }
-      .card-deck { max-width: 380px; height: 200px; }
+      .hero-right { height: 240px; }
+      .card-deck { max-width: 100%; height: 180px; }
       .dcard { width: 100px; height: 150px; padding: 10px; }
       .dcard svg { width: 22px; height: 22px; margin-bottom: 4px; }
       .dcard h3 { font-size: 12px; }
@@ -207,6 +207,10 @@
       .steps { grid-template-columns: 1fr; gap: 24px; }
       nav { padding: 8px 16px; gap: 16px; }
       .hero { padding-top: 80px; }
+      .section-title { font-size: 28px; }
+      .section-desc { font-size: 15px; }
+      footer .inner { justify-content: center; text-align: center; }
+      footer .links { justify-content: center; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -442,24 +446,34 @@
     // Card deck — scroll-driven subtle effect
     // Cards start fanned, gentle parallax on scroll
     const cards = document.querySelectorAll('.dcard');
+    const deck = document.getElementById('cardDeck');
 
-    // Fanned positions — positive left values within 520px container
-    // Each card is 140px wide, fan spacing ~100px apart, centered
-    const fanPositions = [
-      { left: 30,  top: 40,  mt: 0,    opacity: 1 },
-      { left: 130, top: 15,  mt: -8,   opacity: 1 },
-      { left: 230, top: 15,  mt: -8,   opacity: 1 },
-      { left: 330, top: 40,  mt: 0,    opacity: 1 },
-    ];
+    function getCardSize() {
+      return window.innerWidth <= 768
+        ? { w: 100, h: 150, spacing: 75, topOuter: 25, topInner: 10 }
+        : { w: 140, h: 210, spacing: 100, topOuter: 40, topInner: 15 };
+    }
 
-    // Set fanned state immediately
-    cards.forEach((card, i) => {
-      const f = fanPositions[i];
-      card.style.left = f.left + 'px';
-      card.style.top = f.top + 'px';
-      card.style.marginTop = f.mt + 'px';
-      card.style.opacity = f.opacity;
-    });
+    function layoutCards() {
+      const s = getCardSize();
+      const total = s.w + s.spacing * 3;
+      const startLeft = 0;
+      const positions = [
+        { left: startLeft,                    top: s.topOuter, mt: 0 },
+        { left: startLeft + s.spacing,        top: s.topInner, mt: -8 },
+        { left: startLeft + s.spacing * 2,    top: s.topInner, mt: -8 },
+        { left: startLeft + s.spacing * 3,    top: s.topOuter, mt: 0 },
+      ];
+      cards.forEach((card, i) => {
+        card.style.left = positions[i].left + 'px';
+        card.style.top = positions[i].top + 'px';
+        card.style.marginTop = positions[i].mt + 'px';
+        card.style.opacity = '1';
+      });
+    }
+
+    layoutCards();
+    window.addEventListener('resize', layoutCards);
 
     // ScrollTrigger: subtle card shift as user scrolls past hero
     ScrollTrigger.create({
@@ -469,10 +483,10 @@
       scrub: 1,
       onUpdate: (self) => {
         const p = self.progress;
+        const s = getCardSize();
         cards.forEach((card, i) => {
-          const f = fanPositions[i];
-          // Gentle vertical shift + slight rotation on scroll
-          card.style.top = (f.top - p * 40) + 'px';
+          const baseTop = (i === 1 || i === 2) ? s.topInner : s.topOuter;
+          card.style.top = (baseTop - p * 30) + 'px';
           card.style.opacity = Math.max(0.3, 1 - p * 0.5);
         });
       }
