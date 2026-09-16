@@ -42,6 +42,10 @@ enum class AppScreen {
 }
 
 class MainActivity : ComponentActivity() {
+    
+    // Track loading state at the activity level so it resets on fresh launch
+    private var hasCompletedInitialLoading = false
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -54,7 +58,10 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = DarkBackground
                 ) {
-                    KaachuPhoolApp()
+                    KaachuPhoolApp(
+                        initialScreen = if (hasCompletedInitialLoading) AppScreen.HOME else AppScreen.LOADING,
+                        onLoadingComplete = { hasCompletedInitialLoading = true }
+                    )
                 }
             }
         }
@@ -62,8 +69,11 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun KaachuPhoolApp() {
-    var currentScreen by remember { mutableStateOf(AppScreen.LOADING) }
+fun KaachuPhoolApp(
+    initialScreen: AppScreen = AppScreen.LOADING,
+    onLoadingComplete: () -> Unit = {}
+) {
+    var currentScreen by remember(initialScreen) { mutableStateOf(initialScreen) }
     val gameViewModel: GameViewModel = viewModel()
     val scorecardViewModel: ScorecardViewModel = viewModel()
     val multiplayerViewModel: MultiplayerViewModel = viewModel()
@@ -77,6 +87,7 @@ fun KaachuPhoolApp() {
             AppScreen.LOADING -> {
                 LoadingScreen(
                     onLoadingComplete = {
+                        onLoadingComplete()
                         currentScreen = AppScreen.HOME
                     }
                 )
