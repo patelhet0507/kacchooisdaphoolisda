@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,7 +46,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.unit.IntOffset
+import com.example.ui.components.OvalTableCanvas
+import kotlin.math.abs
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -199,359 +205,215 @@ fun GamePlayScreen(
     ) { innerPadding ->
         val configuration = androidx.compose.ui.platform.LocalConfiguration.current
         val isSmallScreen = configuration.screenHeightDp < 600
-        val cardWidth = if (isSmallScreen) 56.dp else 80.dp
-        val cardHeight = if (isSmallScreen) 82.dp else 116.dp
+        val cardWidth = if (isSmallScreen) 60.dp else 84.dp
+        val cardHeight = if (isSmallScreen) 88.dp else 122.dp
 
-        Column(
+        val density = androidx.compose.ui.platform.LocalDensity.current
+
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = if (isSmallScreen) 6.dp else 12.dp, vertical = 2.dp),
-            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. Sleek Top Bar (Single Row: Back + Title | Trump Indicator | Settings + Restart)
+            val screenWidth = maxWidth
+            val screenHeight = maxHeight
+
+            // 1. Oval Table (Centered, takes ~65% width, ~45% height)
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth(0.65f)
+                    .fillMaxHeight(0.45f)
+                    .padding(bottom = 40.dp) // Slight shift up for hand space
+            ) {
+                TrickTableView(
+                    modifier = Modifier.fillMaxSize(),
+                    playedCards = tableState.playedCards,
+                    trumpSuit = tableState.trumpSuit,
+                    leadSuit = tableState.leadSuit,
+                    trickWinner = tableState.trickWinner,
+                    isTrickFinished = tableState.isTrickFinished,
+                    onNextTrickClick = { viewModel.continueNextTrick() },
+                    is3DMode = appSettings.is3DMode
+                )
+            }
+
+            // 2. Top Opponent Seats
+            val topSeatsCount = topOpponentSeats.size
+            topOpponentSeats.forEachIndexed { index, seat ->
+                val xOffset = if (topSeatsCount > 1) {
+                    val spread = 120.dp
+                    with(density) { (index - (topSeatsCount - 1) / 2f) * spread.toPx() }
+                } else 0f
+                
+                PlayerSeatView(
+                    player = seat.player,
+                    bid = seat.bid,
+                    tricksWon = seat.tricksWon,
+                    isDealer = seat.isDealer,
+                    isCurrentTurn = seat.isCurrentTurn,
+                    turnActionText = if (seat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
+                    totalScore = seat.totalScore,
+                    activeEmote = seat.activeEmote,
+                    is3DMode = appSettings.is3DMode,
+                    cardCount = seat.cardsCount,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .offset { IntOffset(xOffset.toInt(), with(density) { 20.dp.toPx().toInt() }) }
+                )
+            }
+
+            // 3. Left Opponent Seat
+            if (leftOpponentSeat != null) {
+                PlayerSeatView(
+                    player = leftOpponentSeat.player,
+                    bid = leftOpponentSeat.bid,
+                    tricksWon = leftOpponentSeat.tricksWon,
+                    isDealer = leftOpponentSeat.isDealer,
+                    isCurrentTurn = leftOpponentSeat.isCurrentTurn,
+                    turnActionText = if (leftOpponentSeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
+                    totalScore = leftOpponentSeat.totalScore,
+                    activeEmote = leftOpponentSeat.activeEmote,
+                    is3DMode = appSettings.is3DMode,
+                    cardCount = leftOpponentSeat.cardsCount,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .offset(x = 10.dp, y = (-20).dp)
+                )
+            }
+
+            // 4. Right Opponent Seat
+            if (rightOpponentSeat != null) {
+                PlayerSeatView(
+                    player = rightOpponentSeat.player,
+                    bid = rightOpponentSeat.bid,
+                    tricksWon = rightOpponentSeat.tricksWon,
+                    isDealer = rightOpponentSeat.isDealer,
+                    isCurrentTurn = rightOpponentSeat.isCurrentTurn,
+                    turnActionText = if (rightOpponentSeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
+                    totalScore = rightOpponentSeat.totalScore,
+                    activeEmote = rightOpponentSeat.activeEmote,
+                    is3DMode = appSettings.is3DMode,
+                    cardCount = rightOpponentSeat.cardsCount,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .offset(x = (-10).dp, y = (-20).dp)
+                )
+            }
+
+            // 5. Top Bar Controls
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (isSmallScreen) 64.dp else 84.dp)
-                    .padding(vertical = 1.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .align(Alignment.TopCenter),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Left: Back button + Title
-                Row(
-                    modifier = Modifier.weight(0.25f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    IconButton(
-                        onClick = { showQuitDialog = true },
-                        modifier = Modifier
-                            .size(if (isSmallScreen) 36.dp else 44.dp)
-                            .testTag("game_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Leave Match",
-                            tint = GoldPrimary,
-                            modifier = Modifier.size(if (isSmallScreen) 20.dp else 24.dp)
-                        )
-                    }
+                IconButton(onClick = { showQuitDialog = true }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = GoldPrimary)
+                }
+                
+                TrumpIndicator(
+                    currentTrump = uiState.currentTrump,
+                    roundNumber = uiState.currentRoundIndex + 1,
+                    totalRounds = uiState.rounds.size,
+                    cardCount = uiState.currentRoundCardCount,
+                    modifier = Modifier.width(180.dp)
+                )
 
-                    Column {
-                        Text(
-                            text = if (uiState.isMultiplayer) "Play Together" else "Kaachu Phool",
-                            color = GoldLight,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = if (isSmallScreen) 14.sp else 18.sp
-                        )
-                        if (uiState.isMultiplayer && uiState.roomCode != null) {
-                            Text(
-                                text = "Code: ${uiState.roomCode}",
-                                color = EmeraldLight,
-                                fontSize = if (isSmallScreen) 10.sp else 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                Row {
+                    IconButton(onClick = { showSettingsDialog = true }) {
+                        Icon(Icons.Default.Settings, "Settings", tint = GoldLight)
+                    }
+                    IconButton(onClick = { viewModel.restartCurrentGame() }) {
+                        Icon(Icons.Default.Refresh, "Restart", tint = TextMuted)
                     }
                 }
+            }
 
-                // Center: Trump Rotation & Round Info Banner
-                Box(
-                    modifier = Modifier.weight(0.5f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    TrumpIndicator(
-                        currentTrump = uiState.currentTrump,
-                        roundNumber = uiState.currentRoundIndex + 1,
-                        totalRounds = uiState.rounds.size.coerceAtLeast(1),
-                        cardCount = uiState.currentRoundCardCount,
-                        modifier = Modifier.fillMaxWidth()
+            // 6. Bottom User Area
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 12.dp)
+            ) {
+                // User seat on the left
+                if (mySeat != null) {
+                    PlayerSeatView(
+                        player = mySeat.player,
+                        bid = mySeat.bid,
+                        tricksWon = mySeat.tricksWon,
+                        isDealer = mySeat.isDealer,
+                        isCurrentTurn = mySeat.isCurrentTurn,
+                        turnActionText = if (mySeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bid!" else "Play!") else null,
+                        totalScore = mySeat.totalScore,
+                        activeEmote = mySeat.activeEmote,
+                        isBottomUser = true,
+                        is3DMode = appSettings.is3DMode,
+                        cardCount = mySeat.cardsCount,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 16.dp, bottom = 8.dp)
                     )
                 }
 
-                // Right: Action Buttons
-                Row(
-                    modifier = Modifier.weight(0.25f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    IconButton(
-                        onClick = {
-                            soundEffectsManager.playButtonTap()
-                            showSettingsDialog = true
-                        },
-                        modifier = Modifier
-                            .size(if (isSmallScreen) 36.dp else 44.dp)
-                            .testTag("game_settings_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings",
-                            tint = GoldLight,
-                            modifier = Modifier.size(if (isSmallScreen) 20.dp else 24.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            soundEffectsManager.playButtonTap()
-                            viewModel.restartCurrentGame()
-                        },
-                        modifier = Modifier
-                            .size(if (isSmallScreen) 36.dp else 44.dp)
-                            .testTag("restart_match_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Restart Match",
-                            tint = TextMuted,
-                            modifier = Modifier.size(if (isSmallScreen) 20.dp else 24.dp)
-                        )
-                    }
-                }
-            }
+                // Cards in hand (Centered, fan arrangement)
+                val isMyTurnToPlay = uiState.phase == GamePhase.PLAYING && mySeat?.isCurrentTurn == true
+                val playableCards = if (isMyTurnToPlay) KaachuPhoolEngine.getPlayableCards(userHand, uiState.leadSuit) else emptyList()
 
-            // 2. Center Playing Table Arena with Seated Opponents (Takes all remaining vertical space)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Left Opponent Seat
                 Box(
-                    modifier = Modifier.width(if (isSmallScreen) 68.dp else 78.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (leftOpponentSeat != null) {
-                        PlayerSeatView(
-                            player = leftOpponentSeat.player,
-                            bid = leftOpponentSeat.bid,
-                            tricksWon = leftOpponentSeat.tricksWon,
-                            isDealer = leftOpponentSeat.isDealer,
-                            isCurrentTurn = leftOpponentSeat.isCurrentTurn,
-                            turnActionText = if (leftOpponentSeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                            totalScore = leftOpponentSeat.totalScore,
-                            activeEmote = leftOpponentSeat.activeEmote,
-                            is3DMode = appSettings.is3DMode,
-                            cardCount = leftOpponentSeat.cardsCount
-                        )
-                    }
-                }
-
-                // Center Felt Table with Top Opponent(s)
-                Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .padding(horizontal = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth(0.6f)
+                        .height(cardHeight + 20.dp),
+                    contentAlignment = Alignment.BottomCenter
                 ) {
-                    // Top Opponent(s) Row
-                    if (topOpponentSeats.isNotEmpty()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            topOpponentSeats.forEach { seat ->
-                                PlayerSeatView(
-                                    player = seat.player,
-                                    bid = seat.bid,
-                                    tricksWon = seat.tricksWon,
-                                    isDealer = seat.isDealer,
-                                    isCurrentTurn = seat.isCurrentTurn,
-                                    turnActionText = if (seat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                                    totalScore = seat.totalScore,
-                                    activeEmote = seat.activeEmote,
-                                    is3DMode = appSettings.is3DMode,
-                                    cardCount = seat.cardsCount
-                                )
-                            }
-                        }
-                    }
+                    userHand.forEachIndexed { index, card ->
+                        val totalCards = userHand.size
+                        val maxFanAngle = 20f
+                        val normalizedPosition = if (totalCards > 1) {
+                            (index - (totalCards - 1) / 2f) / (totalCards - 1)
+                        } else 0f
+                        
+                        val rotation = normalizedPosition * maxFanAngle
+                        val yOffset = abs(normalizedPosition) * 12f // pixels
+                        val xOffset = normalizedPosition * (totalCards * 15f) // pixels
 
-                    // Felt Trick Arena (Takes the majority of the center area!)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(vertical = 2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        TrickTableView(
-                            modifier = Modifier.fillMaxSize(),
-                            playedCards = tableState.playedCards,
-                            trumpSuit = tableState.trumpSuit,
-                            leadSuit = tableState.leadSuit,
-                            trickWinner = tableState.trickWinner,
-                            isTrickFinished = tableState.isTrickFinished,
-                            onNextTrickClick = { viewModel.continueNextTrick() },
-                            is3DMode = appSettings.is3DMode
-                        )
-                    }
-
-                    // Table Status Message Banner
-                    if (uiState.statusMessage.isNotBlank()) {
-                        Box(
+                        PlayingCardView(
+                            card = card,
+                            isPlayable = playableCards.contains(card),
+                            isTrump = card.suit == tableState.trumpSuit,
+                            width = cardWidth,
+                            height = cardHeight,
+                            is3DMode = appSettings.is3DMode,
+                            onClick = { if (isMyTurnToPlay && playableCards.contains(card)) viewModel.playUserCard(card) },
                             modifier = Modifier
-                                .fillMaxWidth(0.85f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(DarkSurfaceElevated.copy(alpha = 0.92f))
-                                .border(1.dp, EmeraldBorder, RoundedCornerShape(8.dp))
-                                .padding(horizontal = 10.dp, vertical = 2.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = uiState.statusMessage,
-                                color = GoldLight,
-                                fontSize = if (isSmallScreen) 10.sp else 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                textAlign = TextAlign.Center,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-                }
-
-                // Right Opponent Seat
-                Box(
-                    modifier = Modifier.width(if (isSmallScreen) 68.dp else 78.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (rightOpponentSeat != null) {
-                        PlayerSeatView(
-                            player = rightOpponentSeat.player,
-                            bid = rightOpponentSeat.bid,
-                            tricksWon = rightOpponentSeat.tricksWon,
-                            isDealer = rightOpponentSeat.isDealer,
-                            isCurrentTurn = rightOpponentSeat.isCurrentTurn,
-                            turnActionText = if (rightOpponentSeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                            totalScore = rightOpponentSeat.totalScore,
-                            activeEmote = rightOpponentSeat.activeEmote,
-                            is3DMode = appSettings.is3DMode,
-                            cardCount = rightOpponentSeat.cardsCount
-                        )
-                    }
-                }
-            }
-
-            // 3. Bottom Player Controls & Hand (Unified Horizontal Row)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(if (isSmallScreen) 74.dp else 86.dp)
-                    .padding(vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Left: User Seat View
-                Box(
-                    modifier = Modifier.width(if (isSmallScreen) 84.dp else 96.dp),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    if (mySeat != null) {
-                        PlayerSeatView(
-                            player = mySeat.player,
-                            bid = mySeat.bid,
-                            tricksWon = mySeat.tricksWon,
-                            isDealer = mySeat.isDealer,
-                            isCurrentTurn = mySeat.isCurrentTurn,
-                            turnActionText = if (mySeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bid!" else "Play!") else null,
-                            totalScore = mySeat.totalScore,
-                            activeEmote = mySeat.activeEmote,
-                            isBottomUser = true,
-                            is3DMode = appSettings.is3DMode,
-                            cardCount = mySeat.cardsCount
+                                .offset { IntOffset(with(density) { xOffset.dp.toPx().toInt() }, with(density) { yOffset.dp.toPx().toInt() }) }
+                                .graphicsLayer { rotationZ = rotation }
                         )
                     }
                 }
 
-                // Center: Cards in Hand
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .padding(horizontal = 4.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val isMyTurnToPlay = uiState.phase == GamePhase.PLAYING &&
-                            mySeat?.isCurrentTurn == true
-
-                    val playableCards = remember(userHand, uiState.leadSuit, isMyTurnToPlay) {
-                        if (isMyTurnToPlay) {
-                            KaachuPhoolEngine.getPlayableCards(userHand, uiState.leadSuit)
-                        } else emptyList()
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (userHand.isEmpty()) {
-                            Text(
-                                text = if (uiState.phase == GamePhase.ROUND_FINISHED) "Round Finished"
-                                       else if (uiState.phase == GamePhase.TRICK_FINISHED) "Trick Finished"
-                                       else if (uiState.phase == GamePhase.BIDDING) "Bidding Phase"
-                                       else "No cards in hand",
-                                color = TextMuted,
-                                fontSize = if (isSmallScreen) 11.sp else 13.sp
-                            )
-                        } else {
-                            userHand.forEach { card ->
-                                val isPlayable = playableCards.contains(card)
-                                PlayingCardView(
-                                    card = card,
-                                    isPlayable = isPlayable,
-                                    isSelected = false,
-                                    isTrump = card.suit == tableState.trumpSuit,
-                                    width = cardWidth,
-                                    height = cardHeight,
-                                    is3DMode = appSettings.is3DMode,
-                                    onClick = {
-                                        if (isMyTurnToPlay && isPlayable) {
-                                            viewModel.playUserCard(card)
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Right: Emote Reaction Picker & Score Pill
+                // Score + Emotes on the right
                 Column(
-                    modifier = Modifier.width(if (isSmallScreen) 96.dp else 110.dp),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 8.dp),
                     horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(DarkSurface)
                             .border(1.dp, GoldPrimary.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
-                        Text(
-                            text = "Score: ${mySeat?.totalScore ?: 0}",
-                            color = GoldLight,
-                            fontSize = if (isSmallScreen) 11.sp else 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Text("Score: ${mySeat?.totalScore ?: 0}", color = GoldLight, fontWeight = FontWeight.Bold)
                     }
-
-                    EmotePickerBar(
-                        onEmoteSelected = { emote ->
-                            viewModel.sendEmote(emote)
-                        }
-                    )
+                    EmotePickerBar(onEmoteSelected = { viewModel.sendEmote(it) })
                 }
             }
         }

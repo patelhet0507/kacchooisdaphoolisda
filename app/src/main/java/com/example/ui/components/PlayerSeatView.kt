@@ -1,23 +1,12 @@
 package com.example.ui.components
 
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,24 +15,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Player
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceElevated
-import com.example.ui.theme.EmeraldBorder
-import com.example.ui.theme.EmeraldDeep
-import com.example.ui.theme.EmeraldLight
-import com.example.ui.theme.GoldDark
-import com.example.ui.theme.GoldLight
-import com.example.ui.theme.GoldPrimary
-import com.example.ui.theme.SuccessGreen
-import com.example.ui.theme.TextLight
-import com.example.ui.theme.TextMuted
+import com.example.ui.theme.*
+import kotlin.math.min
 
 @Composable
 fun PlayerSeatView(
@@ -63,66 +46,123 @@ fun PlayerSeatView(
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isSmallScreen = configuration.screenHeightDp < 600
 
-    val borderColor by animateColorAsState(
-        targetValue = if (isCurrentTurn) GoldPrimary else if (is3DMode) GoldLight else EmeraldBorder.copy(alpha = 0.6f),
-        label = "border_color"
+    val infiniteTransition = rememberInfiniteTransition(label = "turn_glow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_alpha"
+    )
+    val glowScale by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glow_scale"
     )
 
     val avatarSize = if (isSmallScreen) {
-        if (isBottomUser) 36.dp else 30.dp
+        if (isBottomUser) 38.dp else 32.dp
     } else {
-        if (isBottomUser) {
-            if (is3DMode) 52.dp else 46.dp
-        } else {
-            if (is3DMode) 46.dp else 40.dp
-        }
+        if (isBottomUser) 54.dp else 46.dp
     }
-
-    val chairWidth = if (isBottomUser) 72.dp else 60.dp
-    val chairHeight = if (isBottomUser) 36.dp else 30.dp
-    val chairOffset = if (isBottomUser) 18.dp else 14.dp
 
     Column(
         modifier = modifier.testTag("player_seat_${player.id}"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(contentAlignment = Alignment.Center) {
-            if (is3DMode && !isSmallScreen) {
-                // 3D Chair Seat Base (Cushion & Backrest visual) - Hidden in compact mode to maximize space
+            // Turn indicator glow ring
+            if (isCurrentTurn) {
                 Box(
                     modifier = Modifier
-                        .size(chairWidth, chairHeight)
-                        .offset(y = chairOffset)
-                        .shadow(8.dp, RoundedCornerShape(50))
-                        .background(
-                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
-                                colors = listOf(Color(0xFF8B5A2B), Color(0xFF5C3A21))
-                            )
-                        )
-                        .border(1.5.dp, GoldPrimary.copy(alpha = 0.8f), RoundedCornerShape(50))
+                        .size(avatarSize + 12.dp)
+                        .graphicsLayer {
+                            scaleX = glowScale
+                            scaleY = glowScale
+                        }
+                        .border(2.dp, GoldPrimary.copy(alpha = glowAlpha), CircleShape)
                 )
             }
 
-            // Main avatar circle with 3D elevation if is3DMode is true
+            // Chair Visual
+            Box(
+                modifier = Modifier
+                    .size(if (isBottomUser) 76.dp else 64.dp, if (isBottomUser) 40.dp else 34.dp)
+                    .offset(y = if (isBottomUser) 16.dp else 12.dp)
+                    .shadow(if (is3DMode) 8.dp else 4.dp, RoundedCornerShape(50))
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(ChairCushion, ChairCushionDark)
+                        ),
+                        shape = RoundedCornerShape(50)
+                    )
+                    .border(1.dp, WoodRail.copy(alpha = 0.5f), RoundedCornerShape(50))
+            )
+            
+            if (is3DMode) {
+                // Backrest (simplified arc)
+                Canvas(modifier = Modifier
+                    .size(if (isBottomUser) 60.dp else 50.dp, if (isBottomUser) 24.dp else 20.dp)
+                    .offset(y = if (isBottomUser) (-22).dp else (-18).dp)
+                ) {
+                    drawArc(
+                        brush = Brush.verticalGradient(listOf(ChairCushion, ChairCushionDark)),
+                        startAngle = 180f,
+                        sweepAngle = 180f,
+                        useCenter = true
+                    )
+                    drawArc(
+                        color = Color.White.copy(alpha = 0.1f),
+                        startAngle = 180f,
+                        sweepAngle = 180f,
+                        useCenter = false,
+                        style = Stroke(width = 1f)
+                    )
+                }
+            }
+
+            // Card fan indicators behind avatar
+            if (cardCount > 0 && !isBottomUser) {
+                Row(
+                    modifier = Modifier.offset(y = (-avatarSize/2) - 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy((-8).dp)
+                ) {
+                    repeat(min(cardCount, 3)) { i ->
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp, 16.dp)
+                                .graphicsLayer { rotationZ = (i - 1) * 15f }
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color(0xFFB91C1C)) // Red card back
+                                .border(0.5.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(2.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("♣", color = Color.White.copy(alpha = 0.3f), fontSize = 6.sp)
+                        }
+                    }
+                }
+            }
+
+            // Main avatar circle
             Box(
                 modifier = Modifier
                     .size(avatarSize)
-                    .shadow(if (is3DMode && !isSmallScreen) 14.dp else if (isCurrentTurn) 8.dp else 2.dp, CircleShape)
+                    .shadow(if (is3DMode) 10.dp else 4.dp, CircleShape)
                     .clip(CircleShape)
                     .background(
-                        brush = if (is3DMode && !isSmallScreen) {
-                            androidx.compose.ui.graphics.Brush.verticalGradient(
-                                colors = listOf(Color(player.colorHex), Color(player.colorHex).copy(alpha = 0.6f))
-                            )
-                        } else {
-                            androidx.compose.ui.graphics.Brush.verticalGradient(
-                                colors = listOf(Color(player.colorHex).copy(alpha = 0.25f), Color(player.colorHex).copy(alpha = 0.25f))
-                            )
-                        }
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color(player.colorHex), Color(player.colorHex).copy(alpha = 0.7f))
+                        )
                     )
                     .border(
-                        width = if (is3DMode && !isSmallScreen) 3.dp else if (isCurrentTurn) 2.5.dp else 1.5.dp,
-                        color = borderColor,
+                        width = if (isCurrentTurn) 2.dp else 1.dp,
+                        color = if (isCurrentTurn) GoldPrimary else Color.White.copy(alpha = 0.3f),
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -130,36 +170,10 @@ fun PlayerSeatView(
                 Text(
                     text = player.avatarEmoji,
                     fontSize = if (isSmallScreen) {
-                        if (isBottomUser) 16.sp else 14.sp
+                        if (isBottomUser) 18.sp else 16.sp
                     } else {
-                        if (isBottomUser) (if (is3DMode) 26.sp else 22.sp) else (if (is3DMode) 22.sp else 18.sp)
+                        if (isBottomUser) 28.sp else 24.sp
                     }
-                )
-            }
-
-            // Card Count Badge (showing opponent / player cards remaining)
-            if (cardCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 6.dp, y = (-4).dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(DarkSurfaceElevated)
-                        .border(1.dp, GoldPrimary.copy(alpha = 0.7f), RoundedCornerShape(10.dp))
-                        .padding(horizontal = 5.dp, vertical = 1.dp)
-                ) {
-                    Text(
-                        text = "🂠 $cardCount",
-                        color = GoldLight,
-                        fontSize = if (isSmallScreen) 8.sp else 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            if (!activeEmote.isNullOrBlank()) {
-                EmoteBubbleView(
-                    emoteEmoji = activeEmote,
-                    modifier = Modifier.offset(y = if (isSmallScreen) (-22).dp else (-32).dp)
                 )
             }
 
@@ -167,12 +181,10 @@ fun PlayerSeatView(
             if (isDealer) {
                 Box(
                     modifier = Modifier
-                        .offset(
-                            x = if (isSmallScreen) 12.dp else (if (is3DMode) 20.dp else 18.dp),
-                            y = if (isSmallScreen) (-8).dp else (-12).dp
-                        )
-                        .size(if (isSmallScreen) 14.dp else 22.dp)
-                        .shadow(if (is3DMode && !isSmallScreen) 6.dp else 2.dp, CircleShape)
+                        .align(Alignment.TopEnd)
+                        .offset(x = 4.dp, y = (-4).dp)
+                        .size(if (isSmallScreen) 16.dp else 20.dp)
+                        .shadow(4.dp, CircleShape)
                         .clip(CircleShape)
                         .background(GoldPrimary)
                         .border(1.dp, GoldLight, CircleShape),
@@ -181,58 +193,61 @@ fun PlayerSeatView(
                     Text(
                         text = "D",
                         color = EmeraldDeep,
-                        fontSize = if (isSmallScreen) 8.sp else 11.sp,
+                        fontSize = if (isSmallScreen) 9.sp else 11.sp,
                         fontWeight = FontWeight.Black
                     )
                 }
             }
+
+            if (!activeEmote.isNullOrBlank()) {
+                EmoteBubbleView(
+                    emoteEmoji = activeEmote,
+                    modifier = Modifier.offset(y = (-avatarSize/2) - 20.dp)
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(if (isSmallScreen) 1.dp else 3.dp))
+        Spacer(modifier = Modifier.height(if (isSmallScreen) 8.dp else 12.dp))
 
-        // Player Name & Score
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        // Player Name Plate
+        Box(
+            modifier = Modifier
+                .width(if (isSmallScreen) 70.dp else 86.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(WoodRailDark)
+                .border(1.dp, WoodRail, RoundedCornerShape(4.dp))
+                .padding(vertical = 2.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = if (isBottomUser) "You" else player.name,
-                color = if (isCurrentTurn) GoldLight else TextLight,
-                fontSize = if (isSmallScreen) 10.sp else 12.sp,
-                fontWeight = if (isCurrentTurn) FontWeight.Bold else FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Text(
-                text = "($totalScore)",
-                color = GoldPrimary,
-                fontSize = if (isSmallScreen) 9.sp else 11.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = if (isBottomUser) "You" else player.name,
+                    color = GoldLight,
+                    fontSize = if (isSmallScreen) 10.sp else 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "($totalScore)",
+                    color = GoldPrimary,
+                    fontSize = if (isSmallScreen) 9.sp else 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
         // Status / Bid & Tricks Badge
         Box(
             modifier = Modifier
-                .padding(top = if (isSmallScreen) 1.dp else 2.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(
-                    if (isCurrentTurn && turnActionText != null) {
-                        GoldPrimary.copy(alpha = 0.2f)
-                    } else {
-                        DarkSurface.copy(alpha = 0.85f)
-                    }
-                )
-                .border(
-                    1.dp,
-                    if (isCurrentTurn) GoldPrimary.copy(alpha = 0.5f) else EmeraldBorder.copy(alpha = 0.3f),
-                    RoundedCornerShape(6.dp)
-                )
-                .padding(
-                    horizontal = if (isSmallScreen) 4.dp else 6.dp,
-                    vertical = if (isSmallScreen) 1.dp else 2.dp
-                )
+                .padding(top = 2.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(DarkSurface.copy(alpha = 0.8f))
+                .border(0.5.dp, GoldPrimary.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                .padding(horizontal = 6.dp, vertical = 1.dp)
         ) {
             if (isCurrentTurn && turnActionText != null) {
                 Text(

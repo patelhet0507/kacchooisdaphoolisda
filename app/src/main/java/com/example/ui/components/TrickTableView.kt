@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -72,55 +73,17 @@ fun TrickTableView(
     val centerRing1Size = if (isSmallScreen) 100.dp else 180.dp
     val centerRing2Size = if (isSmallScreen) 130.dp else 210.dp
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = tableMinHeight, max = tableMaxHeight)
-            .shadow(
-                elevation = if (is3DMode) 24.dp else 12.dp,
-                shape = RoundedCornerShape(outerShapeRadius),
-                spotColor = Color(0xFF3E2723)
-            )
-            .clip(RoundedCornerShape(outerShapeRadius))
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        EmeraldFelt,
-                        EmeraldDeep,
-                        Color(0xFF1B5E20), // Deep Green Felt edge
-                        Color(0xFF3E2723), // Dark Wood Table Edge
-                        Color(0xFF2D1B18)  // Outer Wood Finish
-                    ),
-                    center = androidx.compose.ui.geometry.Offset.Unspecified,
-                    radius = 1200f
-                )
-            )
-            .border(
-                width = if (is3DMode) 8.dp else 5.dp,
-                brush = Brush.linearGradient(
-                    listOf(
-                        Color(0xFF5D4037),
-                        Color(0xFF8D6E63),
-                        Color(0xFF3E2723)
-                    )
-                ),
-                shape = RoundedCornerShape(outerShapeRadius)
-            )
             .testTag("trick_table_view"),
         contentAlignment = Alignment.Center
     ) {
-        // Decorative center felt emblem ring
-        Box(
-            modifier = Modifier
-                .size(centerRing1Size)
-                .clip(CircleShape)
-                .border(2.dp, GoldLight.copy(alpha = 0.2f), CircleShape)
-        )
-        Box(
-            modifier = Modifier
-                .size(centerRing2Size)
-                .clip(CircleShape)
-                .border(1.5.dp, EmeraldBorder.copy(alpha = 0.25f), CircleShape)
+        val width = maxWidth
+        val height = maxHeight
+        
+        OvalTableCanvas(
+            modifier = Modifier.fillMaxSize(),
+            is3DMode = is3DMode
         )
 
         // Display current lead suit if active
@@ -128,11 +91,11 @@ fun TrickTableView(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = if (isSmallScreen) 8.dp else 16.dp)
+                    .padding(top = if (isSmallScreen) 12.dp else 24.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(
                         Brush.horizontalGradient(
-                            listOf(DarkSurface.copy(alpha = 0.95f), DarkSurfaceElevated)
+                            listOf(DarkSurface.copy(alpha = 0.85f), DarkSurfaceElevated.copy(alpha = 0.85f))
                         )
                     )
                     .border(1.5.dp, GoldPrimary.copy(alpha = 0.6f), RoundedCornerShape(16.dp))

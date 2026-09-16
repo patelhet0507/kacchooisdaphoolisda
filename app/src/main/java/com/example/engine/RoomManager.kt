@@ -131,21 +131,13 @@ class RoomManager {
         }
     }
 
-    fun syncRoomToFirebase(roomId: String, room: GameRoom) {
+    private suspend fun syncRoomToFirebase(roomId: String, room: GameRoom) {
         try {
+            ensureAuth()
             val map = gameRoomToMap(room)
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    ensureAuth()
-                    roomsRef?.child(roomId)?.setValue(map)?.addOnFailureListener { e ->
-                        Log.w("RoomManager", "Firebase sync failed for room $roomId: ${e.message}")
-                    }?.await()
-                } catch (t: Throwable) {
-                    Log.w("RoomManager", "Error in syncRoomToFirebase coroutine: ${t.message}")
-                }
-            }
+            roomsRef?.child(roomId)?.setValue(map)?.await()
         } catch (t: Throwable) {
-            Log.w("RoomManager", "Error syncing room to Firebase: ${t.message}")
+            Log.w("RoomManager", "Firebase sync failed for room $roomId: ${t.message}")
         }
     }
 
@@ -292,6 +284,10 @@ class RoomManager {
                         if (continuation.isActive) continuation.resume(JoinRoomStatus.ERROR)
                     } else if (committed) {
                         if (snapshot?.exists() == true) {
+                            // Bug D: Verification read
+                            val verified = parseRoomFromSnapshot(snapshot)
+                            if (verified != null) getOrCreateLocalFlow(cleanRoomId).value = verified
+                            
                             if (continuation.isActive) continuation.resume(JoinRoomStatus.SUCCESS)
                         } else {
                             if (continuation.isActive) continuation.resume(JoinRoomStatus.ROOM_NOT_FOUND)
@@ -347,10 +343,10 @@ class RoomManager {
 
                 try {
                     // First push DISBANDED state so active listeners get notified immediately
-                    roomsRef?.child(cleanRoomId)?.child("gameState")?.setValue("DISBANDED")
-                    roomsRef?.child(cleanRoomId)?.child("statusMessage")?.setValue("Room has been disbanded by host ($player).")
+                    roomsRef?.child(cleanRoomId)?.child("gameState")?.setValue("DISBANDED")?.await()
+                    roomsRef?.child(cleanRoomId)?.child("statusMessage")?.setValue("Room has been disbanded by host ($player).")?.await()
                     // Delete the room node from Firebase
-                    roomsRef?.child(cleanRoomId)?.removeValue()
+                    roomsRef?.child(cleanRoomId)?.removeValue()?.await()
                 } catch (e: Exception) {
                     Log.w("RoomManager", "Failed to disband room: ${e.message}")
                 }
@@ -361,7 +357,7 @@ class RoomManager {
             if (updatedPlayers.isEmpty()) {
                 getOrCreateLocalFlow(cleanRoomId).value = null
                 try {
-                    roomsRef?.child(cleanRoomId)?.removeValue()
+                    roomsRef?.child(cleanRoomId)?.removeValue()?.await()
                 } catch (e: Exception) {}
             } else {
                 val updatedMessages = current.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
@@ -566,7 +562,11 @@ class RoomManager {
         scoringRule: ScoringRule = ScoringRule.STANDARD
     ) = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
-        val current = getOrCreateLocalFlow(cleanRoomId).value ?: return@withContext
+        // Fresh fetch to guarantee latest player list
+        val ref = roomsRef?.child(cleanRoomId)
+        val freshSnapshot = if (ref != null) fetchRoomSnapshot(ref) else null
+        val freshRoom = if (freshSnapshot != null && freshSnapshot.exists()) parseRoomFromSnapshot(freshSnapshot) else null
+        val current = freshRoom ?: getOrCreateLocalFlow(cleanRoomId).value ?: return@withContext
         val players = current.players
         if (players.isEmpty()) return@withContext
 
@@ -884,13 +884,11 @@ class RoomManager {
                 val ref = roomsRef?.child(cleanRoomId)
                 if (ref != null) {
                     try {
-                        val existing = activeRoomListeners.remove(cleanRoomId)
-                        if (existing != null) {
-                            ref.removeEventListener(existing)
+                        if (!activeRoomListeners.containsKey(cleanRoomId)) {
+                            activeRoomListeners[cleanRoomId] = listener
+                            ref.addValueEventListener(listener)
+                            Log.d("RoomManager", "Attached listener for room: $cleanRoomId")
                         }
-                        activeRoomListeners[cleanRoomId] = listener
-                        ref.addValueEventListener(listener)
-                        Log.d("RoomManager", "Attached listener for room: $cleanRoomId")
                     } catch (t: Throwable) {
                         Log.w("RoomManager", "Error registering Firebase listener", t)
                     }

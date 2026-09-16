@@ -41,6 +41,18 @@ val DarkBackground = Color(0xFF080D1A)
 val DarkSurface = Color(0xFF0F172A)
 val DarkSurfaceElevated = Color(0xFF1E293B)
 
+// Game Table & Seats Redesign
+val WoodRail = Color(0xFF5C3A21)
+val WoodRailLight = Color(0xFF8B5A2B)
+val WoodRailDark = Color(0xFF3D2117)
+val ChairCushion = Color(0xFF3D2B1F)
+val ChairCushionDark = Color(0xFF2C1A12)
+val StitchLine = Color(0xFFD4AF37).copy(alpha = 0.15f)
+val FeltCenter = Color(0xFF166534)
+val FeltMid = Color(0xFF14532d)
+val FeltEdge = Color(0xFF052e16)
+val FeltDeep = Color(0xFF03140a)
+
 // Badges & Status
 val SuccessGreen = Color(0xFF10B981)
 val ErrorRed = Color(0xFFEF4444)
