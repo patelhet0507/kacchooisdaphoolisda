@@ -365,20 +365,91 @@ fun HomeScreen(
                     }
                 }
 
-                // Primary Feature Cards Horizontal Slider
+                // Primary Feature Grid
                 item {
-                    HorizontalGameModeSlider(
-                        onPlayVsAi = { showQuickStartDialog = true },
-                        onMultiplayer = { showMultiplayerDialog = true },
-                        onFriends = { showFriendsDialog = true },
-                        onScorecard = onOpenScorecard,
-                        onRules = onOpenRules,
-                        onSettings = {
-                            soundEffectsManager.playButtonTap()
-                            showSettingsDialog = true
-                        },
-                        matches = lastMatches
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            text = "PLAY",
+                            color = TextMuted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            ActionCard(
+                                title = "Play vs AI",
+                                icon = "🤖",
+                                desc = "Offline practice",
+                                onClick = { showQuickStartDialog = true },
+                                modifier = Modifier.weight(1f),
+                                isPrimary = true
+                            )
+                            ActionCard(
+                                title = "Multiplayer",
+                                icon = "🌐",
+                                desc = "Play with friends",
+                                onClick = { showMultiplayerDialog = true },
+                                modifier = Modifier.weight(1f),
+                                isPrimary = true
+                            )
+                        }
+
+                        Text(
+                            text = "COMMUNITY & LEARN",
+                            color = TextMuted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            ActionCard(
+                                title = "Friends",
+                                icon = "👥",
+                                desc = "",
+                                onClick = { showFriendsDialog = true },
+                                modifier = Modifier.weight(1f)
+                            )
+                            ActionCard(
+                                title = "Scorepad",
+                                icon = "📝",
+                                desc = "",
+                                onClick = onOpenScorecard,
+                                modifier = Modifier.weight(1f)
+                            )
+                            ActionCard(
+                                title = "Rules",
+                                icon = "📖",
+                                desc = "",
+                                onClick = onOpenRules,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(
+                            text = "RECENT HISTORY",
+                            color = TextMuted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                        MatchHistorySlide(matches = lastMatches)
+                    }
                 }
 
                 item {
@@ -1877,6 +1948,58 @@ private fun SettingsSlidePreview(onLaunch: () -> Unit) {
                     Text("• 📳 Haptics", color = TextLight, fontSize = 9.sp)
                     Text("• 👤 Profile Sync", color = TextLight, fontSize = 9.sp)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionCard(
+    title: String,
+    icon: String,
+    desc: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isPrimary: Boolean = false
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(if (isPrimary) 130.dp else 90.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isPrimary) DarkSurfaceElevated else DarkSurface.copy(alpha = 0.9f)
+        ),
+        border = BorderStroke(
+            if (isPrimary) 1.5.dp else 1.dp,
+            if (isPrimary) GoldPrimary else EmeraldBorder.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = icon, fontSize = if (isPrimary) 36.sp else 24.sp)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = title,
+                color = if (isPrimary) GoldPrimary else TextLight,
+                fontSize = if (isPrimary) 15.sp else 12.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            if (isPrimary && desc.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = desc,
+                    color = TextMuted,
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }

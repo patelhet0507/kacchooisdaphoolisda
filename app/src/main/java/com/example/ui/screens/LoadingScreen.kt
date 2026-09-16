@@ -42,17 +42,18 @@ fun LoadingScreen(onLoadingComplete: () -> Unit) {
     
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
-        animationSpec = tween(durationMillis = 1500),
+        animationSpec = tween(durationMillis = 800),
         label = "progress"
     )
 
     LaunchedEffect(Unit) {
-        progress = 0.4f
-        delay(500)
-        progress = 0.8f
-        delay(500)
+        delay(300) // Initial pause
+        progress = 0.3f
+        delay(600)
+        progress = 0.7f
+        delay(600)
         progress = 1.0f
-        delay(500)
+        delay(600) // Let it sit at 100% briefly
         onLoadingComplete()
     }
 

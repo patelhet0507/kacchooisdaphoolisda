@@ -2,6 +2,11 @@ package com.example.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -101,8 +107,22 @@ fun TrumpIndicator(
                 ) {
                     Suit.ROTATION_ORDER.forEach { suit ->
                         val isActive = suit == currentTrump
+                        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                        val scale by infiniteTransition.animateFloat(
+                            initialValue = 1f,
+                            targetValue = if (isActive) 1.15f else 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000),
+                                repeatMode = RepeatMode.Reverse
+                            ),
+                            label = "scale"
+                        )
                         Box(
                             modifier = Modifier
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(if (isActive) GoldPrimary else Color.Transparent)
                                 .border(1.dp, if (isActive) GoldLight else EmeraldBorder.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
@@ -219,8 +239,23 @@ private fun MnemonicPill(
     val textColor = if (isActive) EmeraldDeep else TextMuted
     val borderColor = if (isActive) GoldLight else EmeraldBorder.copy(alpha = 0.4f)
 
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse_large")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isActive) 1.05f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "scale"
+    )
+
     Box(
         modifier = modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clip(RoundedCornerShape(10.dp))
             .background(backgroundColor)
             .border(if (isActive) 1.5.dp else 1.dp, borderColor, RoundedCornerShape(10.dp))
