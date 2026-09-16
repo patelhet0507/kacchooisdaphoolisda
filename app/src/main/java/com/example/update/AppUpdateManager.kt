@@ -191,43 +191,21 @@ class AppUpdateManager private constructor(private val context: Context) {
 
         try {
             _downloadStatus.value = DownloadStatus.Downloading(0, 0.0)
-
-            // Lightning-fast instant download preparation
-            CoroutineScope(Dispatchers.IO).launch {
-                for (p in 25..100 step 25) {
-                    delay(100)
-                    _downloadStatus.value = DownloadStatus.Downloading(p, 5000.0)
-                }
-
-                try {
-                    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                    if (!downloadsDir.exists()) downloadsDir.mkdirs()
-                    val apkFile = File(downloadsDir, fileName)
-
-                    val sourceFile = File(context.applicationInfo.sourceDir)
-                    if (sourceFile.exists()) {
-                        sourceFile.copyTo(apkFile, overwrite = true)
-                    } else {
-                        apkFile.writeText("Kaachu Phool APK update")
-                    }
-
-                    val contentUri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.provider",
-                        apkFile
-                    )
-                    _downloadStatus.value = DownloadStatus.ReadyToInstall(contentUri, apkFile)
-                } catch (e: Exception) {
-                    Log.e("AppUpdateManager", "Instant download prep error", e)
-                    val fallbackFile = File(context.applicationInfo.sourceDir)
-                    val contentUri = FileProvider.getUriForFile(
-                        context,
-                        "${context.packageName}.provider",
-                        fallbackFile
-                    )
-                    _downloadStatus.value = DownloadStatus.ReadyToInstall(contentUri, fallbackFile)
-                }
+            
+            val request = DownloadManager.Request(Uri.parse(release.apkDownloadUrl)).apply {
+                setTitle("Downloading Kaachu Phool Update")
+                setDescription("Downloading version ${release.tagName}")
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                setAllowedOverMetered(true)
+                setAllowedOverRoaming(true)
             }
+            
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val downloadId = downloadManager.enqueue(request)
+            
+            registerDownloadReceiver(downloadId, fileName)
+            startProgressPolling(downloadId)
         } catch (e: Exception) {
             Log.e("AppUpdateManager", "Download initiation error", e)
             _downloadStatus.value = DownloadStatus.Failed(e.localizedMessage ?: "Download failed")
