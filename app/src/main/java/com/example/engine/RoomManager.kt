@@ -432,17 +432,28 @@ class RoomManager {
 
     suspend fun addBotToRoom(roomId: String, botName: String): Boolean = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
-        val current = getOrCreateLocalFlow(cleanRoomId).value ?: return@withContext false
-        if (current.players.size >= 6) return@withContext false
-        val updatedPlayers = (current.players + botName).distinct()
-        val updatedMessages = current.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
+        val current = getOrCreateLocalFlow(cleanRoomId).value
+        val resolvedCurrent = current ?: run {
+            val ref = roomsRef?.child(cleanRoomId)
+            val snap = if (ref != null) fetchRoomSnapshot(ref) else null
+            val parsed = if (snap != null && snap.exists()) parseRoomFromSnapshot(snap) else null
+            parsed ?: GameRoom(
+                roomId = cleanRoomId,
+                hostName = botName,
+                players = listOf(botName),
+                gameState = "WAITING"
+            )
+        }
+        if (resolvedCurrent.players.size >= 6) return@withContext false
+        val updatedPlayers = (resolvedCurrent.players + botName).distinct()
+        val updatedMessages = resolvedCurrent.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
             id = "msg_${System.currentTimeMillis()}",
             senderName = "System",
             text = "$botName (Bot) joined the room.",
             timestamp = System.currentTimeMillis(),
             isSystem = true
         ))
-        val updated = current.copy(players = updatedPlayers, messages = updatedMessages)
+        val updated = resolvedCurrent.copy(players = updatedPlayers, messages = updatedMessages)
         getOrCreateLocalFlow(cleanRoomId).value = updated
         syncRoomToFirebase(cleanRoomId, updated)
         true
