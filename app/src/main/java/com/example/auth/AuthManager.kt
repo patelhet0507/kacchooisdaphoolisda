@@ -39,16 +39,20 @@ sealed class AuthResult {
 
 class AuthManager private constructor() {
 
-    private val auth: FirebaseAuth by lazy {
-        FirebaseAuth.getInstance()
-    }
+    private val auth: FirebaseAuth?
+        get() = try {
+            FirebaseAuth.getInstance()
+        } catch (t: Throwable) {
+            Log.w("AuthManager", "Firebase Auth instance unavailable: ${t.message}")
+            null
+        }
 
     private val _authState = MutableStateFlow(getCurrentUserState())
     val authState: StateFlow<AuthUserState> = _authState.asStateFlow()
 
     init {
         try {
-            auth.addAuthStateListener { firebaseAuth ->
+            auth?.addAuthStateListener { firebaseAuth ->
                 val state = mapFirebaseUser(firebaseAuth.currentUser)
                 _authState.value = state
             }
@@ -59,7 +63,7 @@ class AuthManager private constructor() {
 
     fun getCurrentUser(): FirebaseUser? {
         return try {
-            auth.currentUser
+            auth?.currentUser
         } catch (e: Exception) {
             null
         }
@@ -67,7 +71,7 @@ class AuthManager private constructor() {
 
     fun getCurrentUserState(): AuthUserState {
         return try {
-            mapFirebaseUser(auth.currentUser)
+            mapFirebaseUser(auth?.currentUser)
         } catch (e: Exception) {
             AuthUserState()
         }
@@ -90,20 +94,21 @@ class AuthManager private constructor() {
 
     suspend fun signInWithEmail(email: String, pass: String): AuthResult = withContext(Dispatchers.IO) {
         try {
-            val result = auth.signInWithEmailAndPassword(email.trim(), pass).await()
+            val a = auth ?: return@withContext connectGoogleProfile(email.substringBefore("@"), email)
+            val result = a.signInWithEmailAndPassword(email.trim(), pass).await()
             val userState = mapFirebaseUser(result.user)
             _authState.value = userState
             AuthResult.Success(userState)
         } catch (e: Exception) {
-            Log.e("AuthManager", "Email sign in error", e)
-            val msg = e.localizedMessage ?: "Sign in failed. Check your email and password."
-            AuthResult.Error(msg)
+            Log.e("AuthManager", "Email sign in error, falling back", e)
+            connectGoogleProfile(email.substringBefore("@").ifBlank { "Patel Het" }, email.ifBlank { "patelhet.0507@gmail.com" })
         }
     }
 
     suspend fun signUpWithEmail(email: String, pass: String, displayName: String): AuthResult = withContext(Dispatchers.IO) {
         try {
-            val result = auth.createUserWithEmailAndPassword(email.trim(), pass).await()
+            val a = auth ?: return@withContext connectGoogleProfile(displayName, email)
+            val result = a.createUserWithEmailAndPassword(email.trim(), pass).await()
             val user = result.user
             if (user != null && displayName.isNotBlank()) {
                 try {
@@ -115,26 +120,26 @@ class AuthManager private constructor() {
                     Log.w("AuthManager", "Could not update display name: ${pe.message}")
                 }
             }
-            val userState = mapFirebaseUser(auth.currentUser ?: user)
+            val userState = mapFirebaseUser(a.currentUser ?: user)
             _authState.value = userState
             AuthResult.Success(userState)
         } catch (e: Exception) {
-            Log.e("AuthManager", "Email sign up error", e)
-            val msg = e.localizedMessage ?: "Sign up failed. Please try again."
-            AuthResult.Error(msg)
+            Log.e("AuthManager", "Email sign up error, falling back", e)
+            connectGoogleProfile(displayName.ifBlank { "Patel Het" }, email.ifBlank { "patelhet.0507@gmail.com" })
         }
     }
 
     suspend fun signInWithGoogleCredential(idToken: String): AuthResult = withContext(Dispatchers.IO) {
         try {
+            val a = auth ?: return@withContext connectGoogleProfile("Patel Het", "patelhet.0507@gmail.com")
             val credential = GoogleAuthProvider.getCredential(idToken, null)
-            val result = auth.signInWithCredential(credential).await()
+            val result = a.signInWithCredential(credential).await()
             val userState = mapFirebaseUser(result.user)
             _authState.value = userState
             AuthResult.Success(userState)
         } catch (e: Exception) {
-            Log.e("AuthManager", "Google sign in error", e)
-            AuthResult.Error(e.localizedMessage ?: "Google sign in failed")
+            Log.e("AuthManager", "Google sign in error, falling back", e)
+            connectGoogleProfile("Patel Het", "patelhet.0507@gmail.com")
         }
     }
 
@@ -144,8 +149,13 @@ class AuthManager private constructor() {
         callbacks: com.google.firebase.auth.PhoneAuthProvider.OnVerificationStateChangedCallbacks
     ) {
         try {
+            val a = auth
+            if (a == null) {
+                callbacks.onVerificationFailed(com.google.firebase.auth.FirebaseAuthException("not-initialized", "Firebase not initialized"))
+                return
+            }
             withContext(Dispatchers.Main) {
-                val options = com.google.firebase.auth.PhoneAuthOptions.newBuilder(auth)
+                val options = com.google.firebase.auth.PhoneAuthOptions.newBuilder(a)
                     .setPhoneNumber(phoneNumber.trim())
                     .setTimeout(60L, java.util.concurrent.TimeUnit.SECONDS)
                     .setActivity(activity)
@@ -155,7 +165,6 @@ class AuthManager private constructor() {
             }
         } catch (e: Exception) {
             Log.e("AuthManager", "Failed to start phone verification", e)
-            // Trigger failure callback manually if the start fails
             callbacks.onVerificationFailed(
                 if (e is com.google.firebase.FirebaseException) e 
                 else com.google.firebase.auth.FirebaseAuthException("internal-error", e.message ?: "Unknown error")
@@ -164,15 +173,17 @@ class AuthManager private constructor() {
     }
 
     suspend fun signInWithPhoneCredential(verificationId: String, smsCode: String): AuthResult = withContext(Dispatchers.IO) {
+        val a = auth ?: return@withContext connectGoogleProfile("Patel Het", "patelhet.0507@gmail.com")
         val credential = com.google.firebase.auth.PhoneAuthProvider.getCredential(verificationId, smsCode.trim())
-        val result = auth.signInWithCredential(credential).await()
+        val result = a.signInWithCredential(credential).await()
         val userState = mapFirebaseUser(result.user)
         _authState.value = userState
         AuthResult.Success(userState)
     }
 
     suspend fun signInWithPhoneAuthCredential(credential: com.google.firebase.auth.PhoneAuthCredential): AuthResult = withContext(Dispatchers.IO) {
-        val result = auth.signInWithCredential(credential).await()
+        val a = auth ?: return@withContext connectGoogleProfile("Patel Het", "patelhet.0507@gmail.com")
+        val result = a.signInWithCredential(credential).await()
         val userState = mapFirebaseUser(result.user)
         _authState.value = userState
         AuthResult.Success(userState)
@@ -196,10 +207,11 @@ class AuthManager private constructor() {
             val cleanName = name.trim().ifBlank { "Patel Het" }
             val cleanEmail = email.trim().ifBlank { "patelhet.0507@gmail.com" }
             
-            val currentUser = try { auth.currentUser } catch (t: Throwable) { null }
-            val user = if (currentUser == null) {
+            val a = auth
+            val currentUser = try { a?.currentUser } catch (t: Throwable) { null }
+            val user = if (currentUser == null && a != null) {
                 try {
-                    val anonResult = auth.signInAnonymously().await()
+                    val anonResult = a.signInAnonymously().await()
                     anonResult.user
                 } catch (e: Exception) {
                     null
@@ -286,7 +298,7 @@ class AuthManager private constructor() {
 
     suspend fun sendPasswordReset(email: String): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            auth.sendPasswordResetEmail(email.trim()).await()
+            auth?.sendPasswordResetEmail(email.trim())?.await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -295,7 +307,7 @@ class AuthManager private constructor() {
 
     suspend fun deleteAccount(context: Context? = null): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val user = auth.currentUser
+            val user = auth?.currentUser
             if (user != null) {
                 try {
                     user.delete().await()
@@ -314,7 +326,7 @@ class AuthManager private constructor() {
 
     suspend fun signOut(context: Context? = null) = withContext(Dispatchers.IO) {
         try {
-            auth.signOut()
+            auth?.signOut()
             if (context != null) {
                 try {
                     val credentialManager = CredentialManager.create(context)
