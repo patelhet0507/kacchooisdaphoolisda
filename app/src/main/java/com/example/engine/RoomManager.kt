@@ -10,6 +10,7 @@ import com.example.model.Player
 import com.example.model.ScoringRule
 import com.example.model.Suit
 import com.example.model.VoiceNote
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -117,11 +118,30 @@ class RoomManager {
             null
         }
 
+    private suspend fun ensureAuth() {
+        try {
+            val auth = FirebaseAuth.getInstance()
+            if (auth.currentUser == null) {
+                auth.signInAnonymously().await()
+                Log.d("RoomManager", "Successfully signed in anonymously for Firebase RTDB")
+            }
+        } catch (t: Throwable) {
+            Log.w("RoomManager", "Firebase anonymous auth warning: ${t.message}")
+        }
+    }
+
     fun syncRoomToFirebase(roomId: String, room: GameRoom) {
         try {
             val map = gameRoomToMap(room)
-            roomsRef?.child(roomId)?.setValue(map)?.addOnFailureListener { e ->
-                Log.w("RoomManager", "Firebase sync failed for room $roomId: ${e.message}")
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    ensureAuth()
+                    roomsRef?.child(roomId)?.setValue(map)?.addOnFailureListener { e ->
+                        Log.w("RoomManager", "Firebase sync failed for room $roomId: ${e.message}")
+                    }?.await()
+                } catch (t: Throwable) {
+                    Log.w("RoomManager", "Error in syncRoomToFirebase coroutine: ${t.message}")
+                }
             }
         } catch (t: Throwable) {
             Log.w("RoomManager", "Error syncing room to Firebase: ${t.message}")
@@ -135,6 +155,7 @@ class RoomManager {
     }
 
     suspend fun createRoom(roomId: String, player: String): Boolean = withContext(Dispatchers.IO) {
+        ensureAuth()
         val cleanRoomId = roomId.trim()
         val safePlayer = player.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "Host" }
         val initialRoom = GameRoom(
@@ -166,6 +187,7 @@ class RoomManager {
     }
 
     private suspend fun fetchRoomSnapshot(ref: DatabaseReference): DataSnapshot? {
+        ensureAuth()
         return try {
             withTimeoutOrNull(4000L) {
                 suspendCancellableCoroutine { continuation ->
@@ -197,6 +219,7 @@ class RoomManager {
     }
 
     suspend fun joinRoom(roomId: String, player: String): JoinRoomStatus = withContext(Dispatchers.IO) {
+        ensureAuth()
         val cleanRoomId = roomId.trim()
         val basePlayer = player.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "Player" }
         var safePlayer = basePlayer
