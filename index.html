@@ -152,6 +152,10 @@
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             Download Android APK
           </a>
+          <button id="shareAppBtn" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 glass-card text-goldPrimary border-goldPrimary/40 font-semibold px-6 py-4 rounded-2xl hover:border-goldPrimary transition-all transform hover:-translate-y-1">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3.316 3.316 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3.316 3.316 0 00-5.368-2.684z"/></svg>
+            Share App
+          </button>
           <a href="#features" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 glass-card text-white font-semibold px-6 py-4 rounded-2xl hover:border-goldPrimary/50 transition-all">
             Explore Features
           </a>
@@ -499,6 +503,273 @@
                   <span class="text-goldPrimary">Download APK →</span>
                 </a>
               `;
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Releases fetch info:', e);
+      }
+    }
+    fetchReleases();
+  </script>
+
+  <!-- Share Modal Dialog -->
+  <div id="shareModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
+    <div class="glass-card w-full max-w-md rounded-3xl p-6 sm:p-8 border border-goldPrimary/40 shadow-2xl relative space-y-6 transform scale-95 transition-all duration-300" id="shareModalCard">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-goldPrimary/20 border border-goldPrimary/40 flex items-center justify-center text-goldPrimary text-xl">🎴</div>
+          <div>
+            <h3 class="font-display font-bold text-lg text-white">Share Kaachu Phool</h3>
+            <p class="text-xs text-emerald-300/60 font-mono">Invite friends to play & download</p>
+          </div>
+        </div>
+        <button id="closeShareModal" class="p-2 rounded-xl bg-emeraldCard text-goldPrimary border border-goldPrimary/30 hover:bg-goldPrimary/10 transition-colors">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <!-- WhatsApp -->
+        <a id="shareWhatsapp" href="#" target="_blank" class="flex items-center justify-between p-4 rounded-2xl bg-[#25d366]/10 border border-[#25d366]/30 hover:bg-[#25d366]/20 transition-all text-white font-medium">
+          <span class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-[#25d366] text-black flex items-center justify-center font-bold text-sm">💬</span>
+            Share via WhatsApp
+          </span>
+          <span class="text-xs font-mono text-[#25d366]">Send →</span>
+        </a>
+
+        <!-- Twitter / X -->
+        <a id="shareTwitter" href="#" target="_blank" class="flex items-center justify-between p-4 rounded-2xl bg-sky-500/10 border border-sky-500/30 hover:bg-sky-500/20 transition-all text-white font-medium">
+          <span class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-sky-500 text-black flex items-center justify-center font-bold text-sm">🐦</span>
+            Share on Twitter / X
+          </span>
+          <span class="text-xs font-mono text-sky-400">Tweet →</span>
+        </a>
+
+        <!-- Email -->
+        <a id="shareEmail" href="#" class="flex items-center justify-between p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 transition-all text-white font-medium">
+          <span class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-amber-500 text-black flex items-center justify-center font-bold text-sm">✉️</span>
+            Share via Email
+          </span>
+          <span class="text-xs font-mono text-amber-400">Mail →</span>
+        </a>
+
+        <!-- Copy Link -->
+        <button id="shareCopyLink" class="w-full flex items-center justify-between p-4 rounded-2xl bg-emeraldCard border border-goldPrimary/30 hover:border-goldPrimary transition-all text-white font-medium">
+          <span class="flex items-center gap-3">
+            <span class="w-8 h-8 rounded-full bg-goldPrimary/20 text-goldPrimary flex items-center justify-center font-bold text-sm">📋</span>
+            <span id="copyLinkText">Copy App Link</span>
+          </span>
+          <span id="copyLinkBadge" class="text-xs font-mono text-goldPrimary">Copy →</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    // Mobile Navigation Drawer Toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const closeMenuBtn = document.getElementById('closeMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const mobileLinks = document.querySelectorAll('.mobile-link');
+
+    function toggleMenu() {
+      const isOpen = mobileMenu.classList.contains('opacity-100');
+      if (isOpen) {
+        mobileMenu.classList.remove('opacity-100', 'pointer-events-auto');
+        mobileMenu.classList.add('opacity-0', 'pointer-events-none');
+      } else {
+        mobileMenu.classList.remove('opacity-0', 'pointer-events-none');
+        mobileMenu.classList.add('opacity-100', 'pointer-events-auto');
+      }
+    }
+
+    mobileMenuBtn?.addEventListener('click', toggleMenu);
+    closeMenuBtn?.addEventListener('click', toggleMenu);
+    mobileLinks.forEach(link => link.addEventListener('click', toggleMenu));
+
+    // Native Share Button & Sharing Modal
+    const shareAppBtn = document.getElementById('shareAppBtn');
+    const shareModal = document.getElementById('shareModal');
+    const shareModalCard = document.getElementById('shareModalCard');
+    const closeShareModal = document.getElementById('closeShareModal');
+    const shareWhatsapp = document.getElementById('shareWhatsapp');
+    const shareTwitter = document.getElementById('shareTwitter');
+    const shareEmail = document.getElementById('shareEmail');
+    const shareCopyLink = document.getElementById('shareCopyLink');
+    const copyLinkText = document.getElementById('copyLinkText');
+    const copyLinkBadge = document.getElementById('copyLinkBadge');
+
+    const shareTitle = 'Kaachu Phool — Traditional Indian Trick-Taking Card Game';
+    const shareText = 'Play the ultimate Gujarati trick-taking card game Kaachu Phool! Play AI bots or multiplayer rooms with friends. Download free on Android:';
+    const shareUrl = window.location.href;
+
+    if (shareWhatsapp) shareWhatsapp.href = \`https://api.whatsapp.com/send?text=\${encodeURIComponent(shareText + ' ' + shareUrl)}\`;
+    if (shareTwitter) shareTwitter.href = \`https://twitter.com/intent/tweet?text=\${encodeURIComponent(shareText)}&url=\${encodeURIComponent(shareUrl)}\`;
+    if (shareEmail) shareEmail.href = \`mailto:?subject=\${encodeURIComponent(shareTitle)}&body=\${encodeURIComponent(shareText + '\\n\\n' + shareUrl)}\`;
+
+    function openShareModal() {
+      if (navigator.share) {
+        navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        }).catch(err => {
+          if (err.name !== 'AbortError') {
+            showCustomShareModal();
+          }
+        });
+      } else {
+        showCustomShareModal();
+      }
+    }
+
+    function showCustomShareModal() {
+      if (shareModal && shareModalCard) {
+        shareModal.classList.remove('opacity-0', 'pointer-events-none');
+        shareModal.classList.add('opacity-100', 'pointer-events-auto');
+        shareModalCard.classList.remove('scale-95');
+        shareModalCard.classList.add('scale-100');
+      }
+    }
+
+    function hideCustomShareModal() {
+      if (shareModal && shareModalCard) {
+        shareModal.classList.remove('opacity-100', 'pointer-events-auto');
+        shareModal.classList.add('opacity-0', 'pointer-events-none');
+        shareModalCard.classList.remove('scale-100');
+        shareModalCard.classList.add('scale-95');
+      }
+    }
+
+    shareAppBtn?.addEventListener('click', openShareModal);
+    closeShareModal?.addEventListener('click', hideCustomShareModal);
+    shareModal?.addEventListener('click', (e) => {
+      if (e.target === shareModal) hideCustomShareModal();
+    });
+
+    shareCopyLink?.addEventListener('click', () => {
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        if (copyLinkText) copyLinkText.textContent = 'Link Copied to Clipboard!';
+        if (copyLinkBadge) copyLinkBadge.textContent = 'Copied!';
+        setTimeout(() => {
+          if (copyLinkText) copyLinkText.textContent = 'Copy App Link';
+          if (copyLinkBadge) copyLinkBadge.textContent = 'Copy →';
+        }, 2500);
+      });
+    });
+
+    // Lightweight Canvas Particle Constellation
+    const canvas = document.getElementById('webgl-canvas');
+    const ctx = canvas.getContext('2d');
+    let width = canvas.width = window.innerWidth;
+    let height = canvas.height = window.innerHeight;
+
+    window.addEventListener('resize', () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    });
+
+    const particleCount = window.innerWidth < 768 ? 25 : 45;
+    const particles = Array.from({ length: particleCount }, () => ({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      radius: Math.random() * 2 + 1
+    }));
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = 'rgba(212, 168, 67, 0.25)';
+      ctx.strokeStyle = 'rgba(212, 168, 67, 0.08)';
+
+      particles.forEach((p, index) => {
+        p.x += p.vx;
+        p.y += p.vy;
+
+        if (p.x < 0) p.x = width;
+        if (p.x > width) p.x = 0;
+        if (p.y < 0) p.y = height;
+        if (p.y > height) p.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        for (let j = index + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
+          if (dist < 120) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      });
+      requestAnimationFrame(animateParticles);
+    }
+    animateParticles();
+
+    // GSAP ScrollTrigger Animations
+    gsap.registerPlugin(ScrollTrigger);
+
+    gsap.utils.toArray('.scroll-card').forEach((card, i) => {
+      gsap.fromTo(card,
+        { opacity: 0, y: 40 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          delay: (i % 3) * 0.1,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: card,
+            start: 'top 88%',
+            toggleActions: 'play none none none'
+          }
+        }
+      );
+    });
+
+    // Fetch GitHub Releases for Latest APK link
+    async function fetchReleases() {
+      try {
+        const res = await fetch('https://api.github.com/repos/patelhet0507/kacchooisdaphoolisda/releases');
+        if (!res.ok) return;
+        const releases = await res.json();
+        if (releases && releases.length > 0) {
+          const latest = releases[0];
+          let downloadUrl = latest.html_url;
+          if (latest.assets && latest.assets.length > 0) {
+            const apk = latest.assets.find(a => a.name.endsWith('.apk'));
+            if (apk) downloadUrl = apk.browser_download_url;
+          }
+          const btn = document.getElementById('mainDownloadBtn');
+          const badge = document.getElementById('downloadVersionBadge');
+          if (btn) btn.href = downloadUrl;
+          if (badge) badge.textContent = latest.tag_name;
+
+          const listEl = document.getElementById('releasesList');
+          if (listEl && releases.length > 1) {
+            listEl.innerHTML = '<p class="text-xs font-mono text-goldPrimary mb-2">Previous Releases:</p>';
+            releases.slice(1, 3).forEach(rel => {
+              let rUrl = rel.html_url;
+              if (rel.assets && rel.assets.length > 0) {
+                const a = rel.assets.find(x => x.name.endsWith('.apk'));
+                if (a) rUrl = a.browser_download_url;
+              }
+              listEl.innerHTML += \`
+                <a href="\${rUrl}" class="flex items-center justify-between p-3 rounded-xl bg-black/30 border border-emeraldBorder hover:border-goldPrimary transition-all text-xs font-mono">
+                  <span>\${rel.tag_name}</span>
+                  <span class="text-goldPrimary">Download APK →</span>
+                </a>
+              \`;
             });
           }
         }
