@@ -30,7 +30,10 @@ import com.example.viewmodel.MultiplayerViewModel
 import com.example.viewmodel.GameViewModel
 import com.example.viewmodel.ScorecardViewModel
 
+import com.example.ui.screens.LoadingScreen
+
 enum class AppScreen {
+    LOADING,
     HOME,
     MULTIPLAYER_LOBBY,
     GAME_PLAY,
@@ -60,7 +63,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun KaachuPhoolApp() {
-    var currentScreen by remember { mutableStateOf(AppScreen.HOME) }
+    var currentScreen by remember { mutableStateOf(AppScreen.LOADING) }
     val gameViewModel: GameViewModel = viewModel()
     val scorecardViewModel: ScorecardViewModel = viewModel()
     val multiplayerViewModel: MultiplayerViewModel = viewModel()
@@ -71,6 +74,13 @@ fun KaachuPhoolApp() {
         label = "screen_transition"
     ) { screen ->
         when (screen) {
+            AppScreen.LOADING -> {
+                LoadingScreen(
+                    onLoadingComplete = {
+                        currentScreen = AppScreen.HOME
+                    }
+                )
+            }
             AppScreen.HOME -> {
                 HomeScreen(
                     onStartGame = { userName, mode, scoringRule, difficulty ->
