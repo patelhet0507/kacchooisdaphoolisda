@@ -42,6 +42,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        try {
+            com.example.update.DailyNotificationManager.scheduleDailyReminder(applicationContext)
+        } catch (_: Exception) {}
         setContent {
             MyApplicationTheme {
                 Surface(
