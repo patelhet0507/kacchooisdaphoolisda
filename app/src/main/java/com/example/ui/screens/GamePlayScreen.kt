@@ -199,8 +199,8 @@ fun GamePlayScreen(
     ) { innerPadding ->
         val configuration = androidx.compose.ui.platform.LocalConfiguration.current
         val isSmallScreen = configuration.screenHeightDp < 600
-        val cardWidth = if (isSmallScreen) 48.dp else 68.dp
-        val cardHeight = if (isSmallScreen) 70.dp else 98.dp
+        val cardWidth = if (isSmallScreen) 56.dp else 80.dp
+        val cardHeight = if (isSmallScreen) 82.dp else 116.dp
 
         Column(
             modifier = Modifier
@@ -213,27 +213,28 @@ fun GamePlayScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(if (isSmallScreen) 36.dp else 48.dp)
+                    .height(if (isSmallScreen) 64.dp else 84.dp)
                     .padding(vertical = 1.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 // Left: Back button + Title
                 Row(
+                    modifier = Modifier.weight(0.25f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     IconButton(
                         onClick = { showQuitDialog = true },
                         modifier = Modifier
-                            .size(if (isSmallScreen) 32.dp else 40.dp)
+                            .size(if (isSmallScreen) 36.dp else 44.dp)
                             .testTag("game_back_button")
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Leave Match",
                             tint = GoldPrimary,
-                            modifier = Modifier.size(if (isSmallScreen) 18.dp else 22.dp)
+                            modifier = Modifier.size(if (isSmallScreen) 20.dp else 24.dp)
                         )
                     }
 
@@ -242,13 +243,13 @@ fun GamePlayScreen(
                             text = if (uiState.isMultiplayer) "Play Together" else "Kaachu Phool",
                             color = GoldLight,
                             fontWeight = FontWeight.Bold,
-                            fontSize = if (isSmallScreen) 13.sp else 16.sp
+                            fontSize = if (isSmallScreen) 14.sp else 18.sp
                         )
                         if (uiState.isMultiplayer && uiState.roomCode != null) {
                             Text(
                                 text = "Code: ${uiState.roomCode}",
                                 color = EmeraldLight,
-                                fontSize = if (isSmallScreen) 9.sp else 11.sp,
+                                fontSize = if (isSmallScreen) 10.sp else 12.sp,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -256,18 +257,24 @@ fun GamePlayScreen(
                 }
 
                 // Center: Trump Rotation & Round Info Banner
-                TrumpIndicator(
-                    currentTrump = uiState.currentTrump,
-                    roundNumber = uiState.currentRoundIndex + 1,
-                    totalRounds = uiState.rounds.size.coerceAtLeast(1),
-                    cardCount = uiState.currentRoundCardCount,
-                    modifier = Modifier.wrapContentWidth()
-                )
+                Box(
+                    modifier = Modifier.weight(0.5f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    TrumpIndicator(
+                        currentTrump = uiState.currentTrump,
+                        roundNumber = uiState.currentRoundIndex + 1,
+                        totalRounds = uiState.rounds.size.coerceAtLeast(1),
+                        cardCount = uiState.currentRoundCardCount,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
                 // Right: Action Buttons
                 Row(
+                    modifier = Modifier.weight(0.25f),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(if (isSmallScreen) 2.dp else 6.dp)
+                    horizontalArrangement = Arrangement.End
                 ) {
                     IconButton(
                         onClick = {
@@ -275,14 +282,14 @@ fun GamePlayScreen(
                             showSettingsDialog = true
                         },
                         modifier = Modifier
-                            .size(if (isSmallScreen) 32.dp else 40.dp)
+                            .size(if (isSmallScreen) 36.dp else 44.dp)
                             .testTag("game_settings_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
                             tint = GoldLight,
-                            modifier = Modifier.size(if (isSmallScreen) 18.dp else 22.dp)
+                            modifier = Modifier.size(if (isSmallScreen) 20.dp else 24.dp)
                         )
                     }
                     IconButton(
@@ -291,14 +298,14 @@ fun GamePlayScreen(
                             viewModel.restartCurrentGame()
                         },
                         modifier = Modifier
-                            .size(if (isSmallScreen) 32.dp else 40.dp)
+                            .size(if (isSmallScreen) 36.dp else 44.dp)
                             .testTag("restart_match_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Restart Match",
                             tint = TextMuted,
-                            modifier = Modifier.size(if (isSmallScreen) 18.dp else 22.dp)
+                            modifier = Modifier.size(if (isSmallScreen) 20.dp else 24.dp)
                         )
                     }
                 }

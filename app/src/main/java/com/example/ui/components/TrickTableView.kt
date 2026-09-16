@@ -66,39 +66,44 @@ fun TrickTableView(
 ) {
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isSmallScreen = configuration.screenHeightDp < 600
-    val tableMinHeight = 125.dp
-    val tableMaxHeight = 240.dp
-    val outerShapeRadius = if (isSmallScreen) 18.dp else 28.dp
-    val centerRing1Size = if (isSmallScreen) 80.dp else 150.dp
-    val centerRing2Size = if (isSmallScreen) 105.dp else 170.dp
+    val tableMinHeight = if (isSmallScreen) 180.dp else 260.dp
+    val tableMaxHeight = if (isSmallScreen) 280.dp else 420.dp
+    val outerShapeRadius = if (isSmallScreen) 24.dp else 40.dp
+    val centerRing1Size = if (isSmallScreen) 100.dp else 180.dp
+    val centerRing2Size = if (isSmallScreen) 130.dp else 210.dp
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = tableMinHeight, max = tableMaxHeight)
             .shadow(
-                elevation = if (is3DMode) 16.dp else 8.dp,
+                elevation = if (is3DMode) 24.dp else 12.dp,
                 shape = RoundedCornerShape(outerShapeRadius),
-                spotColor = if (is3DMode) Color(0xFF5B3A1A) else GoldDark.copy(alpha = 0.5f)
+                spotColor = Color(0xFF3E2723)
             )
             .clip(RoundedCornerShape(outerShapeRadius))
             .background(
                 Brush.radialGradient(
-                    colors = if (is3DMode) {
-                        listOf(EmeraldFelt, EmeraldDeep, Color(0xFF021008))
-                    } else {
-                        listOf(EmeraldFelt, EmeraldDeep, Color(0xFF03140A))
-                    },
-                    radius = 900f
+                    colors = listOf(
+                        EmeraldFelt,
+                        EmeraldDeep,
+                        Color(0xFF1B5E20), // Deep Green Felt edge
+                        Color(0xFF3E2723), // Dark Wood Table Edge
+                        Color(0xFF2D1B18)  // Outer Wood Finish
+                    ),
+                    center = androidx.compose.ui.geometry.Offset.Unspecified,
+                    radius = 1200f
                 )
             )
             .border(
-                width = if (is3DMode) 4.dp else 2.5.dp,
-                brush = if (is3DMode) {
-                    Brush.linearGradient(listOf(Color(0xFFD4AF37), Color(0xFF8B5A2B), Color(0xFFD4AF37)))
-                } else {
-                    Brush.linearGradient(listOf(GoldLight.copy(alpha = 0.6f), EmeraldBorder, GoldDark.copy(alpha = 0.7f)))
-                },
+                width = if (is3DMode) 8.dp else 5.dp,
+                brush = Brush.linearGradient(
+                    listOf(
+                        Color(0xFF5D4037),
+                        Color(0xFF8D6E63),
+                        Color(0xFF3E2723)
+                    )
+                ),
                 shape = RoundedCornerShape(outerShapeRadius)
             )
             .testTag("trick_table_view"),
@@ -109,13 +114,13 @@ fun TrickTableView(
             modifier = Modifier
                 .size(centerRing1Size)
                 .clip(CircleShape)
-                .border(1.5.dp, GoldLight.copy(alpha = 0.15f), CircleShape)
+                .border(2.dp, GoldLight.copy(alpha = 0.2f), CircleShape)
         )
         Box(
             modifier = Modifier
                 .size(centerRing2Size)
                 .clip(CircleShape)
-                .border(1.dp, EmeraldBorder.copy(alpha = 0.20f), CircleShape)
+                .border(1.5.dp, EmeraldBorder.copy(alpha = 0.25f), CircleShape)
         )
 
         // Display current lead suit if active
@@ -123,31 +128,32 @@ fun TrickTableView(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = if (isSmallScreen) 4.dp else 10.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .padding(top = if (isSmallScreen) 8.dp else 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
                     .background(
                         Brush.horizontalGradient(
                             listOf(DarkSurface.copy(alpha = 0.95f), DarkSurfaceElevated)
                         )
                     )
-                    .border(1.dp, GoldPrimary.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .border(1.5.dp, GoldPrimary.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "Lead Suit:",
+                        text = "LEAD:",
                         color = TextMuted,
-                        fontSize = if (isSmallScreen) 9.sp else 11.sp,
-                        fontWeight = FontWeight.Medium
+                        fontSize = if (isSmallScreen) 10.sp else 12.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp
                     )
                     Text(
-                        text = "${leadSuit.symbol} ${leadSuit.displayName} (${leadSuit.localName})",
+                        text = "${leadSuit.symbol} ${leadSuit.displayName}",
                         color = if (leadSuit.isRed) Color(0xFFF87171) else GoldLight,
-                        fontSize = if (isSmallScreen) 9.sp else 11.sp,
-                        fontWeight = FontWeight.Bold
+                        fontSize = if (isSmallScreen) 11.sp else 13.sp,
+                        fontWeight = FontWeight.ExtraBold
                     )
                 }
             }
@@ -156,27 +162,28 @@ fun TrickTableView(
         if (playedCards.isEmpty()) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(if (isSmallScreen) 2.dp else 4.dp)
+                verticalArrangement = Arrangement.spacedBy(if (isSmallScreen) 4.dp else 8.dp)
             ) {
                 Text(
                     text = "♠ ♣ ♥ ♦",
-                    color = GoldLight.copy(alpha = 0.4f),
-                    fontSize = if (isSmallScreen) 13.sp else 18.sp,
-                    letterSpacing = if (isSmallScreen) 2.sp else 4.sp
+                    color = GoldLight.copy(alpha = 0.3f),
+                    fontSize = if (isSmallScreen) 18.sp else 26.sp,
+                    letterSpacing = if (isSmallScreen) 4.sp else 8.sp
                 )
                 Text(
-                    text = "Lead a card to start the trick",
-                    color = TextMuted.copy(alpha = 0.8f),
-                    fontSize = if (isSmallScreen) 10.sp else 13.sp,
-                    fontWeight = FontWeight.Medium
+                    text = "Awaiting Lead...",
+                    color = TextMuted.copy(alpha = 0.7f),
+                    fontSize = if (isSmallScreen) 12.sp else 15.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
         } else {
-            // Display cards in trick side-by-side
+            // Display cards in trick (slightly staggered or arranged)
             Row(
                 modifier = Modifier
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(if (isSmallScreen) 6.dp else 10.dp, Alignment.CenterHorizontally),
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(if (isSmallScreen) 8.dp else 14.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 playedCards.forEach { played ->
@@ -184,37 +191,37 @@ fun TrickTableView(
                     val isWinner = trickWinner?.id == played.player.id
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(if (isSmallScreen) 2.dp else 4.dp)
+                        verticalArrangement = Arrangement.spacedBy(if (isSmallScreen) 4.dp else 6.dp)
                     ) {
                         PlayingCardView(
                             card = played.card,
                             isTrump = isTrump,
                             isPlayable = false,
                             isSelected = isWinner && isTrickFinished,
-                            width = if (isSmallScreen) 38.dp else 56.dp,
-                            height = if (isSmallScreen) 54.dp else 80.dp,
+                            width = if (isSmallScreen) 50.dp else 74.dp,
+                            height = if (isSmallScreen) 72.dp else 106.dp,
                             is3DMode = is3DMode
                         )
 
                         // Name of player who played this card
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(RoundedCornerShape(10.dp))
                                 .background(
                                     if (isWinner && isTrickFinished) GoldPrimary else DarkSurface.copy(alpha = 0.95f)
                                 )
                                 .border(
                                     1.dp,
                                     if (isWinner && isTrickFinished) GoldLight else EmeraldBorder.copy(alpha = 0.6f),
-                                    RoundedCornerShape(8.dp)
+                                    RoundedCornerShape(10.dp)
                                 )
-                                .padding(horizontal = if (isSmallScreen) 4.dp else 7.dp, vertical = if (isSmallScreen) 1.dp else 2.dp)
+                                .padding(horizontal = if (isSmallScreen) 6.dp else 10.dp, vertical = if (isSmallScreen) 2.dp else 4.dp)
                         ) {
                             Text(
                                 text = played.player.name,
                                 color = if (isWinner && isTrickFinished) EmeraldDeep else TextLight,
-                                fontSize = if (isSmallScreen) 8.sp else 10.sp,
-                                fontWeight = if (isWinner && isTrickFinished) FontWeight.Black else FontWeight.SemiBold
+                                fontSize = if (isSmallScreen) 9.sp else 11.sp,
+                                fontWeight = if (isWinner && isTrickFinished) FontWeight.Black else FontWeight.Bold
                             )
                         }
                     }

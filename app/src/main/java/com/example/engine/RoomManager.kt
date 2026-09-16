@@ -15,6 +15,8 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.MutableData
+import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -45,7 +47,6 @@ class RoomManager {
         private val localRooms = ConcurrentHashMap<String, MutableStateFlow<GameRoom?>>()
         private val roomFlows = ConcurrentHashMap<String, Flow<GameRoom?>>()
         private val activeRoomListeners = ConcurrentHashMap<String, ValueEventListener>()
-        private val activePlayersListeners = ConcurrentHashMap<String, ValueEventListener>()
 
         fun gameRoomToMap(room: GameRoom): Map<String, Any?> = mapOf(
             "roomId" to room.roomId,
@@ -222,116 +223,96 @@ class RoomManager {
         ensureAuth()
         val cleanRoomId = roomId.trim()
         val basePlayer = player.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "Player" }
-        var safePlayer = basePlayer
-
+        
+        val ref = roomsRef?.child(cleanRoomId) ?: return@withContext JoinRoomStatus.ERROR
+        
         try {
-            val ref = roomsRef?.child(cleanRoomId)
-            if (ref != null) {
-                try {
-                    ref.keepSynced(true)
-                } catch (e: Exception) {}
-                val snapshot = fetchRoomSnapshot(ref)
-                if (snapshot != null && snapshot.exists()) {
-                    val room = parseRoomFromSnapshot(snapshot)
-                    if (room != null) {
-                        safePlayer = basePlayer
-                        val isAlreadyInRoom = room.players.contains(safePlayer)
-                        if (!isAlreadyInRoom) {
-                            var counter = 2
-                            while (room.players.contains(safePlayer)) {
-                                safePlayer = "$basePlayer $counter"
-                                counter++
-                            }
-                        }
-                        if (room.players.size >= 6 && !isAlreadyInRoom) {
-                            return@withContext JoinRoomStatus.ROOM_FULL
-                        }
-                        val updatedPlayers = if (isAlreadyInRoom) room.players else (room.players + safePlayer)
-                        val updatedKicked = room.kickedPlayers.filter { it != safePlayer }
-                        val updatedMessages = if (isAlreadyInRoom) {
-                            room.messages
-                        } else {
-                            room.messages + ("msg_${System.currentTimeMillis()}" to ChatMessage(
-                                id = "msg_${System.currentTimeMillis()}",
-                                senderName = "System",
-                                text = "$safePlayer joined the room!",
-                                timestamp = System.currentTimeMillis(),
-                                isSystem = true
-                            ))
-                        }
-                        val updated = room.copy(
-                            players = updatedPlayers,
-                            kickedPlayers = updatedKicked,
-                            messages = updatedMessages
-                        )
+            ref.keepSynced(true)
+        } catch (e: Exception) {}
 
-                        getOrCreateLocalFlow(cleanRoomId).value = updated
-                        syncRoomToFirebase(cleanRoomId, updated)
-                        return@withContext JoinRoomStatus.SUCCESS
+        return@withContext suspendCancellableCoroutine { continuation ->
+            ref.runTransaction(object : Transaction.Handler {
+                override fun doTransaction(mutableData: MutableData): Transaction.Result {
+                    val currentRoomMap = mutableData.value as? Map<String, Any?>
+                    if (currentRoomMap == null) {
+                        return Transaction.success(mutableData)
+                    }
+
+                    val gameState = currentRoomMap["gameState"]?.toString() ?: "WAITING"
+                    if (gameState == "DISBANDED" || gameState == "GAME_OVER") {
+                         return Transaction.abort()
+                    }
+
+                    val players = (currentRoomMap["players"] as? List<*>)?.mapNotNull { it?.toString() }?.toMutableList() ?: mutableListOf()
+                    val kicked = (currentRoomMap["kickedPlayers"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+
+                    if (kicked.contains(basePlayer)) {
+                        return Transaction.abort()
+                    }
+
+                    if (players.contains(basePlayer)) {
+                        // Already in, nothing to do but succeed
+                        return Transaction.success(mutableData)
+                    }
+
+                    if (players.size >= 6) {
+                        return Transaction.abort()
+                    }
+
+                    var safePlayer = basePlayer
+                    var counter = 2
+                    while (players.contains(safePlayer)) {
+                        safePlayer = "$basePlayer $counter"
+                        counter++
+                    }
+
+                    players.add(safePlayer)
+                    
+                    val messages = (currentRoomMap["messages"] as? Map<String, Any?>)?.toMutableMap() ?: mutableMapOf()
+                    val msgId = "msg_${System.currentTimeMillis()}"
+                    messages[msgId] = mapOf(
+                        "id" to msgId,
+                        "senderName" to "System",
+                        "text" to "$safePlayer joined the room!",
+                        "timestamp" to System.currentTimeMillis(),
+                        "isSystem" to true
+                    )
+
+                    val updatedMap = currentRoomMap.toMutableMap()
+                    updatedMap["players"] = players
+                    updatedMap["messages"] = messages
+                    
+                    mutableData.value = updatedMap
+                    return Transaction.success(mutableData)
+                }
+
+                override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
+                    if (error != null) {
+                        Log.e("RoomManager", "Join transaction error: ${error.message}")
+                        if (continuation.isActive) continuation.resume(JoinRoomStatus.ERROR)
+                    } else if (committed) {
+                        if (snapshot?.exists() == true) {
+                            if (continuation.isActive) continuation.resume(JoinRoomStatus.SUCCESS)
+                        } else {
+                            if (continuation.isActive) continuation.resume(JoinRoomStatus.ROOM_NOT_FOUND)
+                        }
+                    } else {
+                        // Aborted
+                        if (snapshot?.exists() == true) {
+                            val players = snapshot.child("players").children.count()
+                            val kicked = snapshot.child("kickedPlayers").children.any { it.value?.toString() == basePlayer }
+                            when {
+                                kicked -> if (continuation.isActive) continuation.resume(JoinRoomStatus.ERROR)
+                                players >= 6 -> if (continuation.isActive) continuation.resume(JoinRoomStatus.ROOM_FULL)
+                                else -> if (continuation.isActive) continuation.resume(JoinRoomStatus.ERROR)
+                            }
+                        } else {
+                            if (continuation.isActive) continuation.resume(JoinRoomStatus.ROOM_NOT_FOUND)
+                        }
                     }
                 }
-            }
-        } catch (e: Exception) {
-            Log.w("RoomManager", "Firebase join query notice: ${e.message}")
+            })
         }
-
-        val currentLocal = getOrCreateLocalFlow(cleanRoomId).value
-        if (currentLocal != null) {
-            safePlayer = basePlayer
-            val isAlreadyInRoom = currentLocal.players.contains(safePlayer)
-            if (!isAlreadyInRoom) {
-                var counter = 2
-                while (currentLocal.players.contains(safePlayer)) {
-                    safePlayer = "$basePlayer $counter"
-                    counter++
-                }
-            }
-            if (currentLocal.players.size >= 6 && !isAlreadyInRoom) {
-                return@withContext JoinRoomStatus.ROOM_FULL
-            }
-            val updatedPlayers = if (isAlreadyInRoom) currentLocal.players else (currentLocal.players + safePlayer)
-            val updatedKicked = currentLocal.kickedPlayers.filter { it != safePlayer }
-            val updatedMessages = if (isAlreadyInRoom) {
-                currentLocal.messages
-            } else {
-                val msgId = "msg_${System.currentTimeMillis()}"
-                currentLocal.messages + (msgId to ChatMessage(
-                    id = msgId,
-                    senderName = "System",
-                    text = "$safePlayer joined the room!",
-                    timestamp = System.currentTimeMillis(),
-                    isSystem = true
-                ))
-            }
-            val updated = currentLocal.copy(
-                players = updatedPlayers,
-                kickedPlayers = updatedKicked,
-                messages = updatedMessages
-            )
-            getOrCreateLocalFlow(cleanRoomId).value = updated
-            syncRoomToFirebase(cleanRoomId, updated)
-            return@withContext JoinRoomStatus.SUCCESS
-        }
-
-        // Room does not exist on Firebase and does not exist locally -> Auto-bootstrap room so joining any code always succeeds seamlessly!
-        val newRoom = GameRoom(
-            roomId = cleanRoomId,
-            hostName = safePlayer,
-            players = listOf(safePlayer),
-            gameState = "WAITING",
-            messages = mapOf(
-                "msg_welcome" to ChatMessage(
-                    id = "msg_welcome",
-                    senderName = "System",
-                    text = "Room $cleanRoomId joined by $safePlayer!",
-                    timestamp = System.currentTimeMillis(),
-                    isSystem = true
-                )
-            )
-        )
-        getOrCreateLocalFlow(cleanRoomId).value = newRoom
-        syncRoomToFirebase(cleanRoomId, newRoom)
-        return@withContext JoinRoomStatus.SUCCESS
     }
 
     suspend fun leaveRoom(roomId: String, player: String) = withContext(Dispatchers.IO) {
@@ -881,11 +862,13 @@ class RoomManager {
                                     trySend(room)
                                 }
                             } else {
-                                // Snapshot not found on server yet:
-                                // If local room exists and is active, sync it up to Firebase so other players see it!
-                                val local = localFlow.value
-                                if (local != null && local.gameState != "DISBANDED") {
-                                    syncRoomToFirebase(cleanRoomId, local)
+                                // Room deleted or not yet on server
+                                localFlow.value?.let { local ->
+                                    if (local.gameState != "DISBANDED") {
+                                        // If we thought we were in a room but it's gone, notify UI
+                                        localFlow.value = null
+                                        trySend(null)
+                                    }
                                 }
                             }
                         } catch (t: Throwable) {
@@ -901,63 +884,15 @@ class RoomManager {
                 val ref = roomsRef?.child(cleanRoomId)
                 if (ref != null) {
                     try {
-                        // Ensure any existing listener for this path is removed before adding a new one
                         val existing = activeRoomListeners.remove(cleanRoomId)
                         if (existing != null) {
                             ref.removeEventListener(existing)
                         }
-                        
                         activeRoomListeners[cleanRoomId] = listener
                         ref.addValueEventListener(listener)
                         Log.d("RoomManager", "Attached listener for room: $cleanRoomId")
                     } catch (t: Throwable) {
                         Log.w("RoomManager", "Error registering Firebase listener", t)
-                    }
-                }
-
-                val playersRef = ref?.child("players")
-                val playersListener = object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        if (snapshot.exists()) {
-                            val playersList = mutableListOf<String>()
-                            when (val v = snapshot.value) {
-                                is List<*> -> v.forEach { item -> if (item != null) playersList.add(item.toString()) }
-                                is Map<*, *> -> v.values.forEach { item -> if (item != null) playersList.add(item.toString()) }
-                                else -> snapshot.children.forEach { c -> c.value?.toString()?.let { playersList.add(it) } }
-                            }
-                            Log.d("RoomManager", "Players node monitor updated for $cleanRoomId: count=${playersList.size}, players=$playersList")
-                            val current = localFlow.value
-                            if (current != null) {
-                                val updated = current.copy(players = playersList)
-                                localFlow.value = updated
-                                trySend(updated)
-                            } else {
-                                val fallbackRoom = GameRoom(
-                                    roomId = cleanRoomId,
-                                    hostName = playersList.firstOrNull() ?: "Host",
-                                    players = playersList,
-                                    gameState = "WAITING"
-                                )
-                                localFlow.value = fallbackRoom
-                                trySend(fallbackRoom)
-                            }
-                        }
-                    }
-                    override fun onCancelled(error: DatabaseError) {
-                        Log.w("RoomManager", "Players listener cancelled: ${error.message}")
-                    }
-                }
-                if (playersRef != null) {
-                    try {
-                        val existingPlayerListener = activePlayersListeners.remove(cleanRoomId)
-                        if (existingPlayerListener != null) {
-                            playersRef.removeEventListener(existingPlayerListener)
-                        }
-                        activePlayersListeners[cleanRoomId] = playersListener
-                        playersRef.addValueEventListener(playersListener)
-                        Log.d("RoomManager", "Attached dedicated players node listener for room: $cleanRoomId")
-                    } catch (t: Throwable) {
-                        Log.w("RoomManager", "Error registering players listener", t)
                     }
                 }
 
@@ -977,20 +912,12 @@ class RoomManager {
                                 activeRoomListeners.remove(cleanRoomId)
                                 Log.d("RoomManager", "Removed listener for room: $cleanRoomId")
                             }
-                            val activePlayers = activePlayersListeners[cleanRoomId]
-                            if (activePlayers != null && playersRef != null) {
-                                playersRef.removeEventListener(activePlayers)
-                                activePlayersListeners.remove(cleanRoomId)
-                                Log.d("RoomManager", "Removed dedicated players node listener for room: $cleanRoomId")
-                            }
-                            // Also clear persistence sync when leaving room observation
                             ref.keepSynced(false)
                         } catch (t: Throwable) {
                             Log.w("RoomManager", "Error removing Firebase listener", t)
                         }
                     }
                     localJob.cancel()
-                    // Remove from flow cache to ensure fresh start on next observation
                     roomFlows.remove(cleanRoomId)
                 }
             }.shareIn(

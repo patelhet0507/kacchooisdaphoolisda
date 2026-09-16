@@ -94,13 +94,6 @@ class MultiplayerViewModel(application: Application) : AndroidViewModel(applicat
                 when (val result = roomManager.joinRoom(cleanRoomId, sanitizedName)) {
                     com.example.engine.JoinRoomStatus.SUCCESS -> {
                         _roomCode.value = cleanRoomId
-                        val existingRoom = roomManager.getOrCreateLocalFlow(cleanRoomId).value
-                        _currentRoom.value = existingRoom ?: com.example.model.GameRoom(
-                            roomId = cleanRoomId,
-                            hostName = sanitizedName,
-                            players = listOf(sanitizedName),
-                            gameState = "WAITING"
-                        )
                         observeRoom(cleanRoomId)
                         Log.d("MultiplayerViewModel", "Joined room: $cleanRoomId")
                     }
