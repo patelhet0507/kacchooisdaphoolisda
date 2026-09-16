@@ -933,12 +933,19 @@ class RoomManager {
             val gameState = snapshot.child("gameState").value?.toString() ?: "WAITING"
             val gameMode = snapshot.child("gameMode").value?.toString() ?: "QUICK"
             val scoringRule = snapshot.child("scoringRule").value?.toString() ?: "STANDARD"
-            val currentRoundIndex = (snapshot.child("currentRoundIndex").value as? Number)?.toInt()
-                ?: snapshot.child("currentRoundIndex").value?.toString()?.toIntOrNull() ?: 0
-            val currentTurnIndex = (snapshot.child("currentTurnIndex").value as? Number)?.toInt()
-                ?: snapshot.child("currentTurnIndex").value?.toString()?.toIntOrNull() ?: 0
-            val dealerIndex = (snapshot.child("dealerIndex").value as? Number)?.toInt()
-                ?: snapshot.child("dealerIndex").value?.toString()?.toIntOrNull() ?: 0
+            
+            val currentRoundIndex = runCatching { 
+                (snapshot.child("currentRoundIndex").value as? Number)?.toInt() ?: snapshot.child("currentRoundIndex").value?.toString()?.toIntOrNull() ?: 0
+            }.getOrDefault(0)
+            
+            val currentTurnIndex = runCatching { 
+                (snapshot.child("currentTurnIndex").value as? Number)?.toInt() ?: snapshot.child("currentTurnIndex").value?.toString()?.toIntOrNull() ?: 0
+            }.getOrDefault(0)
+            
+            val dealerIndex = runCatching { 
+                (snapshot.child("dealerIndex").value as? Number)?.toInt() ?: snapshot.child("dealerIndex").value?.toString()?.toIntOrNull() ?: 0
+            }.getOrDefault(0)
+
             val trumpSuit = snapshot.child("trumpSuit").value?.toString()
             val leadSuit = snapshot.child("leadSuit").value?.toString()
             val lastTrickWinner = snapshot.child("lastTrickWinner").value?.toString()
@@ -1163,7 +1170,7 @@ class RoomManager {
                 completedAt = completedAt
             )
         } catch (e: Exception) {
-            Log.e("RoomManager", "Error in manual DataSnapshot parsing", e)
+            Log.e("RoomManager", "Error in manual DataSnapshot parsing: ${e.message}", e)
             null
         }
     }
