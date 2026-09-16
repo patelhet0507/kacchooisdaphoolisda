@@ -178,7 +178,10 @@ class GameViewModel : ViewModel() {
 
         if (isHost) {
             viewModelScope.launch {
-                roomManager.startMultiplayerMatch(roomId, gameMode, scoringRule)
+                val currentFlowRoom = roomManager.getOrCreateLocalFlow(roomId).value
+                if (currentFlowRoom?.gameState == "WAITING") {
+                    roomManager.startMultiplayerMatch(roomId, gameMode, scoringRule)
+                }
             }
         }
 

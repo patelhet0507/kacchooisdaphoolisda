@@ -136,10 +136,11 @@ class RoomManager {
 
     suspend fun createRoom(roomId: String, player: String): Boolean = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
+        val safePlayer = player.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "Host" }
         val initialRoom = GameRoom(
             roomId = cleanRoomId,
-            hostName = player,
-            players = listOf(player),
+            hostName = safePlayer,
+            players = listOf(safePlayer),
             gameState = "WAITING",
             messages = mapOf(
                 "msg_welcome" to ChatMessage(
@@ -197,7 +198,8 @@ class RoomManager {
 
     suspend fun joinRoom(roomId: String, player: String): JoinRoomStatus = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
-        val safePlayer = player.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "Player" }
+        val basePlayer = player.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "Player" }
+        var safePlayer = basePlayer
 
         try {
             val ref = roomsRef?.child(cleanRoomId)
@@ -209,10 +211,18 @@ class RoomManager {
                 if (snapshot != null && snapshot.exists()) {
                     val room = parseRoomFromSnapshot(snapshot)
                     if (room != null) {
-                        if (room.players.size >= 6 && !room.players.contains(safePlayer)) {
+                        safePlayer = basePlayer
+                        val isAlreadyInRoom = room.players.contains(safePlayer)
+                        if (!isAlreadyInRoom) {
+                            var counter = 2
+                            while (room.players.contains(safePlayer)) {
+                                safePlayer = "$basePlayer $counter"
+                                counter++
+                            }
+                        }
+                        if (room.players.size >= 6 && !isAlreadyInRoom) {
                             return@withContext JoinRoomStatus.ROOM_FULL
                         }
-                        val isAlreadyInRoom = room.players.contains(safePlayer)
                         val updatedPlayers = if (isAlreadyInRoom) room.players else (room.players + safePlayer)
                         val updatedKicked = room.kickedPlayers.filter { it != safePlayer }
                         val updatedMessages = if (isAlreadyInRoom) {
@@ -244,10 +254,18 @@ class RoomManager {
 
         val currentLocal = getOrCreateLocalFlow(cleanRoomId).value
         if (currentLocal != null) {
-            if (currentLocal.players.size >= 6 && !currentLocal.players.contains(safePlayer)) {
+            safePlayer = basePlayer
+            val isAlreadyInRoom = currentLocal.players.contains(safePlayer)
+            if (!isAlreadyInRoom) {
+                var counter = 2
+                while (currentLocal.players.contains(safePlayer)) {
+                    safePlayer = "$basePlayer $counter"
+                    counter++
+                }
+            }
+            if (currentLocal.players.size >= 6 && !isAlreadyInRoom) {
                 return@withContext JoinRoomStatus.ROOM_FULL
             }
-            val isAlreadyInRoom = currentLocal.players.contains(safePlayer)
             val updatedPlayers = if (isAlreadyInRoom) currentLocal.players else (currentLocal.players + safePlayer)
             val updatedKicked = currentLocal.kickedPlayers.filter { it != safePlayer }
             val updatedMessages = if (isAlreadyInRoom) {
@@ -598,6 +616,9 @@ class RoomManager {
     suspend fun submitBid(roomId: String, playerName: String, bid: Int) = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
         val current = getOrCreateLocalFlow(cleanRoomId).value ?: return@withContext
+        if (current.gameState != "BIDDING") return@withContext
+        if (current.bids.containsKey(playerName)) return@withContext
+
         val players = current.players
         val updatedBids = current.bids + (playerName to bid)
 
@@ -615,11 +636,13 @@ class RoomManager {
             )
         } else {
             val currentIdx = players.indexOf(playerName)
-            val nextIdx = (if (currentIdx != -1) currentIdx + 1 else current.currentTurnIndex + 1) % players.size
+            val nextUnbidIdx = players.indices.map { (if (currentIdx != -1) currentIdx + it + 1 else current.currentTurnIndex + it + 1) % players.size }
+                .firstOrNull { idx -> !updatedBids.containsKey(players[idx]) } ?: ((current.currentTurnIndex + 1) % players.size)
+
             current.copy(
                 bids = updatedBids,
-                currentTurnIndex = nextIdx,
-                statusMessage = "${players[nextIdx]}'s turn to bid"
+                currentTurnIndex = nextUnbidIdx,
+                statusMessage = "${players[nextUnbidIdx]}'s turn to bid"
             )
         }
 
@@ -630,7 +653,12 @@ class RoomManager {
     suspend fun playCard(roomId: String, playerName: String, cardId: String) = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
         val current = getOrCreateLocalFlow(cleanRoomId).value ?: return@withContext
+        if (current.gameState != "PLAYING") return@withContext
+
         val players = current.players
+        if (players.getOrNull(current.currentTurnIndex) != playerName) return@withContext
+        if (current.trickCards.containsKey(playerName)) return@withContext
+
         val card = Card.fromId(cardId) ?: return@withContext
 
         // Remove card from player's hand in dealtHands
@@ -702,6 +730,8 @@ class RoomManager {
     suspend fun nextTrickOrRound(roomId: String) = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
         val current = getOrCreateLocalFlow(cleanRoomId).value ?: return@withContext
+        if (current.gameState != "TRICK_FINISHED") return@withContext
+
         val players = current.players
         val winner = current.lastTrickWinner ?: players.firstOrNull() ?: return@withContext
         val winnerIndex = players.indexOf(winner).coerceAtLeast(0)
@@ -754,6 +784,8 @@ class RoomManager {
     suspend fun nextRound(roomId: String) = withContext(Dispatchers.IO) {
         val cleanRoomId = roomId.trim()
         val current = getOrCreateLocalFlow(cleanRoomId).value ?: return@withContext
+        if (current.gameState != "ROUND_FINISHED") return@withContext
+
         val nextRoundIdx = current.currentRoundIndex + 1
         if (nextRoundIdx >= current.rounds.size) {
             val updated = current.copy(gameState = "GAME_OVER", completedAt = System.currentTimeMillis())
