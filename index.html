@@ -616,6 +616,27 @@
     
     // Fetch and render dynamic releases immediately
     fetchReleases();
+
+    // Download button hover animation
+    const dlBtn = document.getElementById('main-download-btn');
+    if (dlBtn) {
+      dlBtn.addEventListener('mouseenter', () => {
+        gsap.to(dlBtn, {
+          scale: 1.05,
+          boxShadow: '0 0 20px rgba(139, 92, 246, 0.6)',
+          duration: 0.3,
+          ease: 'power2.out'
+        });
+      });
+      dlBtn.addEventListener('mouseleave', () => {
+        gsap.to(dlBtn, {
+          scale: 1,
+          boxShadow: 'none',
+          duration: 0.3,
+          ease: 'power2.out'
+        });
+      });
+    }
   </script>
 
 </body>
