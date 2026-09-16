@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en" class="dark scroll-smooth">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kaachu Phool — Traditional Indian Trick-Taking Game</title>
+  <title>Kaachu Phool — Traditional Indian Trick-Taking Card Game</title>
   <meta name="description" content="The classic Indian trick-taking card game. Play AI bots or multiplayer with friends. Download free on Android." />
   <meta name="theme-color" content="#052e16" />
   
@@ -16,7 +16,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   
-  <!-- Tailwind CSS CDN for modern utility styling -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -24,9 +24,10 @@
       theme: {
         extend: {
           colors: {
-            emeraldDark: '#052e16',
+            emeraldDark: '#031c0e',
+            emeraldSurface: '#082f14',
             emeraldCard: '#0c2214',
-            emeraldBorder: 'rgba(212, 168, 67, 0.2)',
+            emeraldBorder: 'rgba(212, 168, 67, 0.25)',
             goldPrimary: '#d4a843',
             goldLight: '#fde047',
           },
@@ -40,27 +41,26 @@
   </script>
   
   <style>
-    /* Custom Styling & Glows */
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
-      background-color: #052e16;
+      background-color: #031c0e;
       color: #f0fdf4;
       overflow-x: hidden;
     }
     .glass-card {
-      background: rgba(12, 34, 20, 0.75);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(212, 168, 67, 0.2);
+      background: rgba(12, 34, 20, 0.82);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(212, 168, 67, 0.22);
     }
     .glass-nav {
-      background: rgba(5, 46, 22, 0.85);
+      background: rgba(3, 28, 14, 0.88);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(212, 168, 67, 0.15);
+      border: 1px solid rgba(212, 168, 67, 0.2);
     }
     .gold-gradient-text {
-      background: linear-gradient(135deg, #fde047 0%, #d4a843 50%, #b45309 100%);
+      background: linear-gradient(135deg, #fde047 0%, #d4a843 55%, #b45309 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
@@ -72,51 +72,78 @@
       height: 100vh;
       pointer-events: none;
       z-index: 0;
-      opacity: 0.6;
+      opacity: 0.65;
     }
-    .hero-card-3d {
-      transform-style: preserve-3d;
-      perspective: 1000px;
+    .hero-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(212, 168, 67, 0.12) 0%, rgba(5, 46, 22, 0) 70%);
+      top: 10%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 0;
+      pointer-events: none;
     }
   </style>
 </head>
 <body class="bg-emeraldDark text-white antialiased selection:bg-goldPrimary selection:text-black">
 
-  <!-- Lightweight WebGL / Canvas Particle Constellation Background -->
+  <!-- Background Ambient Glow & WebGL Canvas -->
+  <div class="hero-glow"></div>
   <canvas id="webgl-canvas"></canvas>
 
-  <!-- Sticky Glass Navigation -->
-  <nav class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-5xl glass-nav rounded-full px-6 py-3 flex items-center justify-between shadow-2xl">
+  <!-- Fully Responsive Glass Navigation -->
+  <nav class="fixed top-3 sm:top-4 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-5xl glass-nav rounded-2xl sm:rounded-full px-5 py-3 flex items-center justify-between shadow-2xl">
     <div class="flex items-center gap-3">
-      <div class="w-9 h-9 rounded-full bg-gradient-to-br from-goldPrimary to-amber-600 flex items-center justify-center font-bold text-black text-lg shadow-lg">🎴</div>
-      <span class="font-display font-bold text-lg tracking-wide text-white">Kaachu Phool</span>
+      <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-full bg-gradient-to-br from-goldPrimary to-amber-600 flex items-center justify-center font-bold text-black text-lg shadow-lg">🎴</div>
+      <span class="font-display font-bold text-base sm:text-lg tracking-wide text-white">Kaachu Phool</span>
     </div>
-    <div class="hidden md:flex items-center gap-6 text-sm font-medium text-emerald-100/80">
+
+    <!-- Desktop Nav Links -->
+    <div class="hidden md:flex items-center gap-7 text-sm font-medium text-emerald-100/80">
       <a href="#features" class="hover:text-goldPrimary transition-colors">Features</a>
       <a href="#rules" class="hover:text-goldPrimary transition-colors">Rules</a>
       <a href="#download" class="hover:text-goldPrimary transition-colors">Download</a>
     </div>
-    <a href="#download" class="bg-goldPrimary text-black font-display font-bold px-5 py-2.5 rounded-full text-sm shadow-lg hover:bg-goldLight transition-all transform hover:scale-105">
-      Get APK
-    </a>
+
+    <div class="flex items-center gap-3">
+      <a href="#download" class="hidden sm:inline-flex bg-goldPrimary text-black font-display font-bold px-5 py-2.5 rounded-full text-xs sm:text-sm shadow-lg hover:bg-goldLight transition-all transform hover:scale-105">
+        Get APK
+      </a>
+      <!-- Mobile Hamburger Button -->
+      <button id="mobileMenuBtn" class="md:hidden p-2 rounded-xl bg-emeraldCard border border-goldPrimary/30 text-goldPrimary focus:outline-none" aria-label="Toggle Menu">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"/></svg>
+      </button>
+    </div>
   </nav>
 
+  <!-- Mobile Drawer Menu -->
+  <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center space-y-8 text-xl font-display font-bold opacity-0 pointer-events-none transition-all duration-300 md:hidden">
+    <a href="#features" class="mobile-link hover:text-goldPrimary transition-colors">Features</a>
+    <a href="#rules" class="mobile-link hover:text-goldPrimary transition-colors">Rules</a>
+    <a href="#download" class="mobile-link hover:text-goldPrimary transition-colors">Download APK</a>
+    <button id="closeMenuBtn" class="absolute top-6 right-6 p-3 rounded-full bg-emeraldCard text-goldPrimary border border-goldPrimary/30">
+      <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+
   <!-- Hero Section -->
-  <section class="relative min-h-screen flex items-center justify-center pt-28 pb-20 px-6 z-10">
-    <div class="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+  <section class="relative min-h-[90vh] sm:min-h-screen flex items-center justify-center pt-32 sm:pt-28 pb-20 px-5 sm:px-6 z-10">
+    <div class="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
       
       <!-- Left Content -->
       <div class="lg:col-span-7 space-y-6 text-center lg:text-left">
-        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-goldPrimary/10 border border-goldPrimary/30 text-goldPrimary text-xs font-mono uppercase tracking-widest">
-          <span class="w-2 h-2 rounded-full bg-goldPrimary animate-pulse"></span>
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-goldPrimary/10 border border-goldPrimary/30 text-goldPrimary text-xs font-mono uppercase tracking-widest shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-goldPrimary animate-ping"></span>
           Traditional Indian Trick-Taking Masterpiece
         </div>
         
-        <h1 class="font-display text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.08]">
+        <h1 class="font-display text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.1]">
           Master the <span class="gold-gradient-text">Ka-Chu-Fu-L</span> Trump Rotation
         </h1>
         
-        <p class="text-emerald-100/70 text-lg sm:text-xl font-normal max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+        <p class="text-emerald-100/75 text-base sm:text-xl font-normal max-w-2xl mx-auto lg:mx-0 leading-relaxed">
           The ultimate Gujarati card game experience. Play solo against smart AI bots with distinct personalities, or host real-time multiplayer rooms with friends.
         </p>
         
@@ -130,7 +157,7 @@
           </a>
         </div>
         
-        <div class="flex items-center justify-center lg:justify-start gap-6 pt-2 text-xs font-mono text-emerald-200/50">
+        <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 pt-2 text-xs font-mono text-emerald-200/60">
           <span class="flex items-center gap-1.5">✓ Android 7.0+</span>
           <span class="flex items-center gap-1.5">✓ ~20 MB Fast Download</span>
           <span class="flex items-center gap-1.5">✓ Zero Ads / Offline First</span>
@@ -138,30 +165,30 @@
       </div>
 
       <!-- Right Interactive Fanned Card Deck -->
-      <div class="lg:col-span-5 flex items-center justify-center">
-        <div class="relative w-full max-w-[380px] h-[380px] flex items-center justify-center" id="heroDeck">
+      <div class="lg:col-span-5 flex items-center justify-center py-6">
+        <div class="relative w-full max-w-[340px] sm:max-w-[380px] h-[340px] sm:h-[380px] flex items-center justify-center" id="heroDeck">
           <!-- Card 1: Spades -->
-          <div class="hero-card absolute w-40 h-60 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 p-5 flex flex-col justify-between border border-goldPrimary/40 shadow-2xl transition-all duration-300 transform -rotate-12 -translate-x-16 hover:scale-105 hover:z-20">
-            <div class="flex justify-between items-start"><span class="font-display font-bold text-xl text-white">♠</span><span class="text-xs font-mono text-goldPrimary">Ka</span></div>
-            <div class="text-center my-auto"><div class="text-4xl">♠</div><div class="text-sm font-bold mt-2 text-white">Kali</div><div class="text-[10px] text-emerald-300/60 font-mono">Spades</div></div>
+          <div class="hero-card absolute w-36 sm:w-40 h-54 sm:h-60 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 p-4 sm:p-5 flex flex-col justify-between border border-goldPrimary/40 shadow-2xl transition-all duration-300 transform -rotate-12 -translate-x-12 sm:-translate-x-16 hover:scale-105 hover:z-20">
+            <div class="flex justify-between items-start"><span class="font-display font-bold text-lg sm:text-xl text-white">♠</span><span class="text-xs font-mono text-goldPrimary">Ka</span></div>
+            <div class="text-center my-auto"><div class="text-3xl sm:text-4xl">♠</div><div class="text-xs sm:text-sm font-bold mt-2 text-white">Kali</div><div class="text-[9px] sm:text-[10px] text-emerald-300/60 font-mono">Spades</div></div>
             <div class="text-right font-mono text-xs text-goldPrimary">01</div>
           </div>
           <!-- Card 2: Diamonds -->
-          <div class="hero-card absolute w-40 h-60 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 p-5 flex flex-col justify-between border border-goldPrimary/40 shadow-2xl transition-all duration-300 transform -rotate-4 -translate-x-6 -translate-y-4 hover:scale-105 hover:z-20">
-            <div class="flex justify-between items-start"><span class="font-display font-bold text-xl text-goldPrimary">♦</span><span class="text-xs font-mono text-goldPrimary">Chu</span></div>
-            <div class="text-center my-auto"><div class="text-4xl text-goldPrimary">♦</div><div class="text-sm font-bold mt-2 text-white">Chokat</div><div class="text-[10px] text-emerald-300/60 font-mono">Diamonds</div></div>
+          <div class="hero-card absolute w-36 sm:w-40 h-54 sm:h-60 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 p-4 sm:p-5 flex flex-col justify-between border border-goldPrimary/40 shadow-2xl transition-all duration-300 transform -rotate-4 -translate-x-4 sm:-translate-x-6 -translate-y-3 sm:-translate-y-4 hover:scale-105 hover:z-20">
+            <div class="flex justify-between items-start"><span class="font-display font-bold text-lg sm:text-xl text-goldPrimary">♦</span><span class="text-xs font-mono text-goldPrimary">Chu</span></div>
+            <div class="text-center my-auto"><div class="text-3xl sm:text-4xl text-goldPrimary">♦</div><div class="text-xs sm:text-sm font-bold mt-2 text-white">Chokat</div><div class="text-[9px] sm:text-[10px] text-emerald-300/60 font-mono">Diamonds</div></div>
             <div class="text-right font-mono text-xs text-goldPrimary">02</div>
           </div>
           <!-- Card 3: Clubs -->
-          <div class="hero-card absolute w-40 h-60 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 p-5 flex flex-col justify-between border border-goldPrimary/40 shadow-2xl transition-all duration-300 transform rotate-6 translate-x-6 -translate-y-2 hover:scale-105 hover:z-20">
-            <div class="flex justify-between items-start"><span class="font-display font-bold text-xl text-white">♣</span><span class="text-xs font-mono text-goldPrimary">Fu</span></div>
-            <div class="text-center my-auto"><div class="text-4xl">♣</div><div class="text-sm font-bold mt-2 text-white">Fuli</div><div class="text-[10px] text-emerald-300/60 font-mono">Clubs</div></div>
+          <div class="hero-card absolute w-36 sm:w-40 h-54 sm:h-60 rounded-2xl bg-gradient-to-br from-emerald-800 to-emerald-950 p-4 sm:p-5 flex flex-col justify-between border border-goldPrimary/40 shadow-2xl transition-all duration-300 transform rotate-6 translate-x-4 sm:translate-x-6 -translate-y-1 sm:-translate-y-2 hover:scale-105 hover:z-20">
+            <div class="flex justify-between items-start"><span class="font-display font-bold text-lg sm:text-xl text-white">♣</span><span class="text-xs font-mono text-goldPrimary">Fu</span></div>
+            <div class="text-center my-auto"><div class="text-3xl sm:text-4xl">♣</div><div class="text-xs sm:text-sm font-bold mt-2 text-white">Fuli</div><div class="text-[9px] sm:text-[10px] text-emerald-300/60 font-mono">Clubs</div></div>
             <div class="text-right font-mono text-xs text-goldPrimary">03</div>
           </div>
           <!-- Card 4: Hearts -->
-          <div class="hero-card absolute w-40 h-60 rounded-2xl bg-gradient-to-br from-rose-950 to-red-900 p-5 flex flex-col justify-between border border-rose-500/40 shadow-2xl transition-all duration-300 transform rotate-16 translate-x-16 hover:scale-105 hover:z-20">
-            <div class="flex justify-between items-start"><span class="font-display font-bold text-xl text-red-400">♥</span><span class="text-xs font-mono text-rose-300">L</span></div>
-            <div class="text-center my-auto"><div class="text-4xl text-red-400">♥</div><div class="text-sm font-bold mt-2 text-white">Laal</div><div class="text-[10px] text-rose-300/60 font-mono">Hearts</div></div>
+          <div class="hero-card absolute w-36 sm:w-40 h-54 sm:h-60 rounded-2xl bg-gradient-to-br from-rose-950 to-red-900 p-4 sm:p-5 flex flex-col justify-between border border-rose-500/40 shadow-2xl transition-all duration-300 transform rotate-16 translate-x-12 sm:translate-x-16 hover:scale-105 hover:z-20">
+            <div class="flex justify-between items-start"><span class="font-display font-bold text-lg sm:text-xl text-red-400">♥</span><span class="text-xs font-mono text-rose-300">L</span></div>
+            <div class="text-center my-auto"><div class="text-3xl sm:text-4xl text-red-400">♥</div><div class="text-xs sm:text-sm font-bold mt-2 text-white">Laal</div><div class="text-[9px] sm:text-[10px] text-rose-300/60 font-mono">Hearts</div></div>
             <div class="text-right font-mono text-xs text-rose-300">04</div>
           </div>
         </div>
@@ -171,14 +198,14 @@
   </section>
 
   <!-- Trump Cycle Suits Section (K-A-C-H-U-F-U-L) -->
-  <section class="py-24 px-6 relative z-10 border-t border-emeraldBorder/30">
+  <section class="py-20 sm:py-24 px-5 sm:px-6 relative z-10 border-t border-emeraldBorder/30">
     <div class="max-w-5xl mx-auto">
-      <div class="text-center max-w-2xl mx-auto mb-16 space-y-4">
+      <div class="text-center max-w-2xl mx-auto mb-14 space-y-4">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-goldPrimary/10 border border-goldPrimary/20 text-goldPrimary text-xs font-mono uppercase tracking-widest">
           <span></span> Mnemonic Tradition
         </div>
         <h2 class="font-display text-3xl sm:text-4xl lg:text-5xl font-bold">The K-A-C-H-U-F-U-L Rotation</h2>
-        <p class="text-emerald-100/70 text-base">Each round rotates the trump suit in strict cyclical order, keeping every hand tactically thrilling.</p>
+        <p class="text-emerald-100/70 text-sm sm:text-base">Each round rotates the trump suit in strict cyclical order, keeping every hand tactically thrilling.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -215,14 +242,14 @@
   </section>
 
   <!-- Features Section -->
-  <section id="features" class="py-24 px-6 relative z-10 border-t border-emeraldBorder/30">
+  <section id="features" class="py-20 sm:py-24 px-5 sm:px-6 relative z-10 border-t border-emeraldBorder/30">
     <div class="max-w-6xl mx-auto">
-      <div class="text-center max-w-2xl mx-auto mb-16 space-y-4">
+      <div class="text-center max-w-2xl mx-auto mb-14 space-y-4">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-goldPrimary/10 border border-goldPrimary/20 text-goldPrimary text-xs font-mono uppercase tracking-widest">
           <span></span> Production Grade
         </div>
         <h2 class="font-display text-3xl sm:text-4xl lg:text-5xl font-bold">Designed for Pure Immersion</h2>
-        <p class="text-emerald-100/70 text-base">Built with modern Android Jetpack Compose, offering buttery-smooth animations and robust offline & online modes.</p>
+        <p class="text-emerald-100/70 text-sm sm:text-base">Built with modern Android Jetpack Compose, offering buttery-smooth animations and robust offline & online modes.</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -267,14 +294,14 @@
   </section>
 
   <!-- How to Play Section -->
-  <section id="rules" class="py-24 px-6 relative z-10 border-t border-emeraldBorder/30">
+  <section id="rules" class="py-20 sm:py-24 px-5 sm:px-6 relative z-10 border-t border-emeraldBorder/30">
     <div class="max-w-5xl mx-auto">
-      <div class="text-center max-w-2xl mx-auto mb-16 space-y-4">
+      <div class="text-center max-w-2xl mx-auto mb-14 space-y-4">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-goldPrimary/10 border border-goldPrimary/20 text-goldPrimary text-xs font-mono uppercase tracking-widest">
           <span></span> Quick Guide
         </div>
         <h2 class="font-display text-3xl sm:text-4xl lg:text-5xl font-bold">How to Play in 3 Steps</h2>
-        <p class="text-emerald-100/70 text-base">Simple to learn, offering deep strategic mastery for trick-taking enthusiasts.</p>
+        <p class="text-emerald-100/70 text-sm sm:text-base">Simple to learn, offering deep strategic mastery for trick-taking enthusiasts.</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -298,20 +325,20 @@
   </section>
 
   <!-- Download Section -->
-  <section id="download" class="py-24 px-6 relative z-10 border-t border-emeraldBorder/30 bg-gradient-to-b from-transparent to-emerald-950/80">
-    <div class="max-w-4xl mx-auto text-center space-y-8 glass-card rounded-3xl p-10 sm:p-16 border border-goldPrimary/30 shadow-2xl">
+  <section id="download" class="py-20 sm:py-24 px-5 sm:px-6 relative z-10 border-t border-emeraldBorder/30 bg-gradient-to-b from-transparent to-emerald-950/80">
+    <div class="max-w-4xl mx-auto text-center space-y-8 glass-card rounded-3xl p-8 sm:p-16 border border-goldPrimary/30 shadow-2xl">
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-goldPrimary/10 border border-goldPrimary/20 text-goldPrimary text-xs font-mono uppercase tracking-widest">
         <span></span> Latest Stable Release
       </div>
       
-      <h2 class="font-display text-4xl sm:text-5xl font-bold">Ready to Play Kaachu Phool?</h2>
+      <h2 class="font-display text-3xl sm:text-5xl font-bold">Ready to Play Kaachu Phool?</h2>
       
-      <p class="text-emerald-100/70 text-lg max-w-xl mx-auto">
+      <p class="text-emerald-100/70 text-base sm:text-lg max-w-xl mx-auto">
         Download the official Android APK free. Install directly on your phone or tablet and start playing instantly.
       </p>
 
       <div class="pt-2">
-        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases" id="mainDownloadBtn" class="inline-flex items-center gap-3 bg-gradient-to-r from-goldPrimary to-amber-500 text-black font-display font-bold text-lg px-10 py-5 rounded-2xl shadow-2xl shadow-amber-900/50 hover:opacity-95 transition-all transform hover:scale-105">
+        <a href="https://github.com/patelhet0507/kacchooisdaphoolisda/releases" id="mainDownloadBtn" class="inline-flex items-center justify-center gap-3 bg-gradient-to-r from-goldPrimary to-amber-500 text-black font-display font-bold text-base sm:text-lg px-8 sm:px-10 py-4 sm:py-5 rounded-2xl shadow-2xl shadow-amber-900/50 hover:opacity-95 transition-all transform hover:scale-105">
           <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
           Download APK <span id="downloadVersionBadge" class="text-xs bg-black/20 px-2.5 py-1 rounded-full font-mono">v1.0.0</span>
         </a>
@@ -328,7 +355,7 @@
   </section>
 
   <!-- Footer -->
-  <footer class="py-12 px-6 border-t border-emeraldBorder/30 text-center sm:text-left text-sm text-emerald-100/60 relative z-10">
+  <footer class="py-12 px-5 sm:px-6 border-t border-emeraldBorder/30 text-center sm:text-left text-sm text-emerald-100/60 relative z-10">
     <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 rounded-full bg-goldPrimary flex items-center justify-center font-bold text-black text-sm">🎴</div>
@@ -342,9 +369,30 @@
     </div>
   </footer>
 
-  <!-- WebGL / Canvas Particle Script & GSAP Scroll animations -->
+  <!-- Scripts -->
   <script>
-    // Lightweight Canvas Particle Constellation (Smooth 60fps WebGL/2D)
+    // Mobile Navigation Drawer Toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const closeMenuBtn = document.getElementById('closeMenuBtn');
+    const mobileMenu = document.getElementById('mobileMenu');
+    const mobileLinks = document.querySelectorAll('.mobile-link');
+
+    function toggleMenu() {
+      const isOpen = mobileMenu.classList.contains('opacity-100');
+      if (isOpen) {
+        mobileMenu.classList.remove('opacity-100', 'pointer-events-auto');
+        mobileMenu.classList.add('opacity-0', 'pointer-events-none');
+      } else {
+        mobileMenu.classList.remove('opacity-0', 'pointer-events-none');
+        mobileMenu.classList.add('opacity-100', 'pointer-events-auto');
+      }
+    }
+
+    mobileMenuBtn?.addEventListener('click', toggleMenu);
+    closeMenuBtn?.addEventListener('click', toggleMenu);
+    mobileLinks.forEach(link => link.addEventListener('click', toggleMenu));
+
+    // Lightweight Canvas Particle Constellation
     const canvas = document.getElementById('webgl-canvas');
     const ctx = canvas.getContext('2d');
     let width = canvas.width = window.innerWidth;
@@ -355,11 +403,12 @@
       height = canvas.height = window.innerHeight;
     });
 
-    const particles = Array.from({ length: 45 }, () => ({
+    const particleCount = window.innerWidth < 768 ? 25 : 45;
+    const particles = Array.from({ length: particleCount }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
       radius: Math.random() * 2 + 1
     }));
 
@@ -406,11 +455,11 @@
           opacity: 1,
           y: 0,
           duration: 0.8,
-          delay: (i % 3) * 0.15,
+          delay: (i % 3) * 0.1,
           ease: 'power3.out',
           scrollTrigger: {
             trigger: card,
-            start: 'top 85%',
+            start: 'top 88%',
             toggleActions: 'play none none none'
           }
         }
