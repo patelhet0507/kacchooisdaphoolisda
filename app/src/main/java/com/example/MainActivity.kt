@@ -16,6 +16,22 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.net.URL
+import com.example.update.AppUpdateManager
+import com.example.BuildConfig
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.model.GameMode
 import com.example.model.ScoringRule
@@ -78,10 +94,56 @@ fun KaachuPhoolApp(
     val scorecardViewModel: ScorecardViewModel = viewModel()
     val multiplayerViewModel: MultiplayerViewModel = viewModel()
 
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val appUpdateManager = remember { AppUpdateManager.getInstance(context) }
+    
+    LaunchedEffect(Unit) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val response = URL("https://api.github.com/repos/patelhet0507/kacchooisdaphoolisda/releases/latest").readText()
+                val json = JSONObject(response)
+                val tagName = json.optString("tag_name", "")
+                val tagCode = tagName.filter { it.isDigit() }.toIntOrNull() ?: 0
+                val currentCode = BuildConfig.VERSION_CODE
+                
+                if (tagCode > currentCode) {
+                    withContext(Dispatchers.Main) {
+                        val result = snackbarHostState.showSnackbar(
+                            message = "New update available ($tagName)",
+                            actionLabel = "Update",
+                            duration = SnackbarDuration.Indefinite
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            val releaseInfo = com.example.update.GithubReleaseInfo(
+                                tagName = tagName,
+                                releaseTitle = json.optString("name", tagName),
+                                releaseNotes = json.optString("body", ""),
+                                publishedAt = json.optString("published_at", ""),
+                                apkDownloadUrl = json.optJSONArray("assets")?.optJSONObject(0)?.optString("browser_download_url"),
+                                apkFileName = json.optJSONArray("assets")?.optJSONObject(0)?.optString("name"),
+                                apkSizeBytes = json.optJSONArray("assets")?.optJSONObject(0)?.optLong("size") ?: 0L
+                            )
+                            appUpdateManager.startDownload(releaseInfo)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
     AnimatedContent(
         targetState = currentScreen,
         transitionSpec = { fadeIn() togetherWith fadeOut() },
-        label = "screen_transition"
+        label = "screen_transition",
+        modifier = Modifier.padding(paddingValues)
     ) { screen ->
         when (screen) {
             AppScreen.LOADING -> {
@@ -180,3 +242,4 @@ fun KaachuPhoolApp(
         }
     }
 }
+    }
