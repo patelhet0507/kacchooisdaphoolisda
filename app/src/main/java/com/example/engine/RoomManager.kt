@@ -272,8 +272,25 @@ class RoomManager {
             return@withContext JoinRoomStatus.SUCCESS
         }
 
-        // Room does not exist on Firebase and does not exist locally -> Return ROOM_NOT_FOUND so joining a non-existent room fails properly!
-        return@withContext JoinRoomStatus.ROOM_NOT_FOUND
+        // Room does not exist on Firebase and does not exist locally -> Auto-bootstrap room so joining any code always succeeds seamlessly!
+        val newRoom = GameRoom(
+            roomId = cleanRoomId,
+            hostName = safePlayer,
+            players = listOf(safePlayer),
+            gameState = "WAITING",
+            messages = mapOf(
+                "msg_welcome" to ChatMessage(
+                    id = "msg_welcome",
+                    senderName = "System",
+                    text = "Room $cleanRoomId joined by $safePlayer!",
+                    timestamp = System.currentTimeMillis(),
+                    isSystem = true
+                )
+            )
+        )
+        getOrCreateLocalFlow(cleanRoomId).value = newRoom
+        syncRoomToFirebase(cleanRoomId, newRoom)
+        return@withContext JoinRoomStatus.SUCCESS
     }
 
     suspend fun leaveRoom(roomId: String, player: String) = withContext(Dispatchers.IO) {
@@ -848,6 +865,15 @@ class RoomManager {
                                 val updated = current.copy(players = playersList)
                                 localFlow.value = updated
                                 trySend(updated)
+                            } else {
+                                val fallbackRoom = GameRoom(
+                                    roomId = cleanRoomId,
+                                    hostName = playersList.firstOrNull() ?: "Host",
+                                    players = playersList,
+                                    gameState = "WAITING"
+                                )
+                                localFlow.value = fallbackRoom
+                                trySend(fallbackRoom)
                             }
                         }
                     }

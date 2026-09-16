@@ -1,4 +1,4 @@
-package com.example.ui.components
+content = """package com.example.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -247,3 +247,8 @@ fun GameOverDialog(
         }
     }
 }
+"""
+
+with open('app/src/main/java/com/example/ui/components/GameOverDialog.kt', 'w') as f:
+    f.write(content)
+print("GameOverDialog.kt written via python script")
