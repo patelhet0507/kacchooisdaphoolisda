@@ -62,153 +62,64 @@ fun TrumpIndicator(
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isSmallScreen = configuration.screenHeightDp < 600
 
-    if (isSmallScreen) {
-        Card(
-            modifier = modifier
-                .testTag("trump_indicator"),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = DarkSurface.copy(alpha = 0.95f)
+    Card(
+        modifier = modifier
+            .testTag("trump_indicator"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = DarkSurface.copy(alpha = 0.9f)
+        ),
+        border = CardDefaults.outlinedCardBorder().copy(
+            brush = Brush.verticalGradient(
+                listOf(GoldPrimary, EmeraldBorder.copy(alpha = 0.5f))
             ),
-            border = CardDefaults.outlinedCardBorder().copy(
-                brush = Brush.horizontalGradient(
-                    listOf(EmeraldBorder, GoldPrimary.copy(alpha = 0.5f), EmeraldBorder)
-                )
-            )
+            width = 2.dp
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(GoldPrimary)
-                    )
-                    Text(
-                        text = "R $roundNumber/$totalRounds • $cardCount C",
-                        color = GoldLight,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 0.5.sp
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Suit.ROTATION_ORDER.forEach { suit ->
-                        val isActive = suit == currentTrump
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isActive) GoldPrimary else DarkSurfaceElevated.copy(alpha = 0.5f))
-                                .border(1.dp, if (isActive) GoldLight else EmeraldBorder.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                                .padding(horizontal = 2.dp, vertical = 3.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = suit.symbol,
-                                fontSize = if (isActive) 14.sp else 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isActive) EmeraldDeep else (if (suit.isRed) Color(0xFFF87171) else TextMuted)
-                            )
-                        }
-                    }
-                }
+            // Round Header
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "ROUND $roundNumber / $totalRounds",
+                    color = GoldLight,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = "$cardCount CARDS",
+                    color = TextLight.copy(alpha = 0.8f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
-        }
-    } else {
-        Card(
-            modifier = modifier
-                .fillMaxWidth()
-                .testTag("trump_indicator"),
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = DarkSurface.copy(alpha = 0.95f)
-            ),
-            border = CardDefaults.outlinedCardBorder().copy(
-                brush = Brush.horizontalGradient(
-                    listOf(EmeraldBorder, GoldPrimary, EmeraldBorder)
-                )
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            Column(
+
+            // Divider
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .height(1.dp)
+                    .background(Brush.horizontalGradient(listOf(Color.Transparent, EmeraldBorder, Color.Transparent)))
+            )
+
+            // Suit Rotation
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Round & Card count row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .clip(CircleShape)
-                                .background(GoldPrimary)
-                        )
-                        Text(
-                            text = "ROUND $roundNumber / $totalRounds",
-                            color = GoldLight,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 1.5.sp
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(
-                                Brush.horizontalGradient(listOf(EmeraldDeep, DarkSurfaceElevated))
-                            )
-                            .border(1.5.dp, GoldPrimary.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = "$cardCount ${if (cardCount == 1) "Card" else "Cards"}",
-                            color = TextLight,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // The Ka-Chu-Fu-L Rotation Badges
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Suit.ROTATION_ORDER.forEach { suit ->
-                        val isActive = suit == currentTrump
-                        MnemonicPill(
-                            suit = suit,
-                            isActive = isActive,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                Suit.ROTATION_ORDER.forEach { suit ->
+                    val isActive = suit == currentTrump
+                    MnemonicPill(
+                        suit = suit,
+                        isActive = isActive,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -232,12 +143,18 @@ private fun MnemonicPill(
     val infiniteTransition = rememberInfiniteTransition(label = "pulse_large")
     val scale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isActive) 1.08f else 1f,
+        targetValue = if (isActive) 1.15f else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1200),
+            animation = tween(1000),
             repeatMode = RepeatMode.Reverse
         ),
         label = "scale"
+    )
+
+    val shadowElevation by animateDpAsState(
+        targetValue = if (isActive) 8.dp else 0.dp,
+        animationSpec = spring(),
+        label = "elevation"
     )
 
     Box(
@@ -246,19 +163,20 @@ private fun MnemonicPill(
                 scaleX = scale
                 scaleY = scale
             }
+            .shadow(shadowElevation, RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)
-            .border(if (isActive) 2.dp else 1.dp, borderColor, RoundedCornerShape(12.dp))
-            .padding(horizontal = 6.dp, vertical = 6.dp),
+            .border(if (isActive) 2.5.dp else 1.dp, borderColor, RoundedCornerShape(12.dp))
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 text = suit.symbol,
-                fontSize = if (isActive) 22.sp else 16.sp,
+                fontSize = if (isActive) 28.sp else 18.sp,
                 fontWeight = FontWeight.Black,
                 color = if (isActive) {
                     if (suit.isRed) Color(0xFF991B1B) else EmeraldDeep
@@ -269,16 +187,17 @@ private fun MnemonicPill(
 
             Column(horizontalAlignment = Alignment.Start) {
                 Text(
-                    text = suit.mnemonic,
-                    fontSize = if (isActive) 15.sp else 12.sp,
-                    fontWeight = if (isActive) FontWeight.Black else FontWeight.Bold,
-                    color = textColor
+                    text = suit.mnemonic.uppercase(),
+                    fontSize = if (isActive) 16.sp else 13.sp,
+                    fontWeight = FontWeight.Black,
+                    color = textColor,
+                    letterSpacing = 1.sp
                 )
                 Text(
                     text = suit.localName,
-                    fontSize = if (isActive) 10.sp else 8.sp,
+                    fontSize = if (isActive) 11.sp else 9.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = if (isActive) EmeraldDeep.copy(alpha = 0.8f) else TextMuted.copy(alpha = 0.6f)
+                    color = if (isActive) EmeraldDeep.copy(alpha = 0.7f) else TextMuted.copy(alpha = 0.6f)
                 )
             }
         }

@@ -124,16 +124,16 @@ fun PlayingCardView(
         ) {
             Text(
                 text = card.rank.symbol,
-                fontSize = (width.value * 0.22f).sp,
+                fontSize = (width.value * 0.28f).sp,
                 fontWeight = FontWeight.Black,
                 color = card.suit.suitColor,
-                lineHeight = (width.value * 0.22f).sp
+                lineHeight = (width.value * 0.28f).sp
             )
             Text(
                 text = card.suit.symbol,
-                fontSize = (width.value * 0.20f).sp,
+                fontSize = (width.value * 0.26f).sp,
                 color = card.suit.suitColor,
-                lineHeight = (width.value * 0.20f).sp
+                lineHeight = (width.value * 0.26f).sp
             )
         }
 
@@ -144,7 +144,7 @@ fun PlayingCardView(
         ) {
             Text(
                 text = card.suit.symbol,
-                fontSize = (width.value * 0.54f).sp,
+                fontSize = (width.value * 0.68f).sp,
                 color = card.suit.suitColor.copy(alpha = if (card.suit.isRed) 0.95f else 0.90f),
                 textAlign = TextAlign.Center
             )
@@ -190,16 +190,16 @@ fun PlayingCardView(
         ) {
             Text(
                 text = card.rank.symbol,
-                fontSize = (width.value * 0.22f).sp,
+                fontSize = (width.value * 0.28f).sp,
                 fontWeight = FontWeight.Black,
                 color = card.suit.suitColor,
-                lineHeight = (width.value * 0.22f).sp
+                lineHeight = (width.value * 0.28f).sp
             )
             Text(
                 text = card.suit.symbol,
-                fontSize = (width.value * 0.20f).sp,
+                fontSize = (width.value * 0.26f).sp,
                 color = card.suit.suitColor,
-                lineHeight = (width.value * 0.20f).sp
+                lineHeight = (width.value * 0.26f).sp
             )
         }
     }

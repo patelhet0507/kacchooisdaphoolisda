@@ -205,8 +205,8 @@ fun GamePlayScreen(
     ) { innerPadding ->
         val configuration = androidx.compose.ui.platform.LocalConfiguration.current
         val isSmallScreen = configuration.screenHeightDp < 600
-        val cardWidth = if (isSmallScreen) 60.dp else 84.dp
-        val cardHeight = if (isSmallScreen) 88.dp else 122.dp
+        val cardWidth = if (isSmallScreen) 72.dp else 100.dp
+        val cardHeight = if (isSmallScreen) 104.dp else 144.dp
 
         val density = androidx.compose.ui.platform.LocalDensity.current
 
@@ -218,17 +218,19 @@ fun GamePlayScreen(
             val screenWidth = maxWidth
             val screenHeight = maxHeight
 
-            // 1. Oval Table (Centered, takes ~65% width, ~45% height)
+            // 1. Oval Table (Centered, takes ~85% width, ~55% height)
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .fillMaxWidth(0.65f)
-                    .fillMaxHeight(0.45f)
-                    .padding(bottom = 40.dp) // Slight shift up for hand space
+                    .fillMaxWidth(0.85f)
+                    .fillMaxHeight(0.55f)
+                    .padding(bottom = 60.dp) // Shift up more for hand space
             ) {
                 TrickTableView(
                     modifier = Modifier.fillMaxSize(),
                     playedCards = tableState.playedCards,
+                    allPlayers = uiState.players.map { it.name },
+                    localPlayerName = uiState.localPlayerName,
                     trumpSuit = tableState.trumpSuit,
                     leadSuit = tableState.leadSuit,
                     trickWinner = tableState.trickWinner,
@@ -314,14 +316,6 @@ fun GamePlayScreen(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = GoldPrimary)
                 }
                 
-                TrumpIndicator(
-                    currentTrump = uiState.currentTrump,
-                    roundNumber = uiState.currentRoundIndex + 1,
-                    totalRounds = uiState.rounds.size,
-                    cardCount = uiState.currentRoundCardCount,
-                    modifier = Modifier.width(180.dp)
-                )
-
                 Row {
                     IconButton(onClick = { showSettingsDialog = true }) {
                         Icon(Icons.Default.Settings, "Settings", tint = GoldLight)
@@ -339,6 +333,18 @@ fun GamePlayScreen(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 12.dp)
             ) {
+                // Trump Indicator (Bottom Left, above user seat)
+                TrumpIndicator(
+                    currentTrump = uiState.currentTrump,
+                    roundNumber = uiState.currentRoundIndex + 1,
+                    totalRounds = uiState.rounds.size,
+                    cardCount = uiState.currentRoundCardCount,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 16.dp, bottom = 100.dp) // Offset above user seat
+                        .width(140.dp)
+                )
+
                 // User seat on the left
                 if (mySeat != null) {
                     PlayerSeatView(
@@ -366,20 +372,20 @@ fun GamePlayScreen(
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .fillMaxWidth(0.6f)
-                        .height(cardHeight + 20.dp),
+                        .fillMaxWidth(0.7f)
+                        .height(cardHeight + 40.dp),
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     userHand.forEachIndexed { index, card ->
                         val totalCards = userHand.size
-                        val maxFanAngle = 20f
+                        val maxFanAngle = 25f
                         val normalizedPosition = if (totalCards > 1) {
                             (index - (totalCards - 1) / 2f) / (totalCards - 1)
                         } else 0f
                         
                         val rotation = normalizedPosition * maxFanAngle
-                        val yOffset = abs(normalizedPosition) * 12f // pixels
-                        val xOffset = normalizedPosition * (totalCards * 15f) // pixels
+                        val yOffset = abs(normalizedPosition) * 24f // increased arc
+                        val xOffset = normalizedPosition * (totalCards * 22f) // increased spread
 
                         PlayingCardView(
                             card = card,

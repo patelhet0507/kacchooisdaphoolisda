@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -57,7 +58,9 @@ import com.example.ui.theme.TextMuted
 @Composable
 fun TrickTableView(
     playedCards: List<PlayedCard>,
-    trumpSuit: Suit,
+    allPlayers: List<String>,
+    localPlayerName: String,
+    trumpSuit: Suit?,
     leadSuit: Suit?,
     trickWinner: Player?,
     isTrickFinished: Boolean,
@@ -67,11 +70,9 @@ fun TrickTableView(
 ) {
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isSmallScreen = configuration.screenHeightDp < 600
-    val tableMinHeight = if (isSmallScreen) 180.dp else 260.dp
-    val tableMaxHeight = if (isSmallScreen) 280.dp else 420.dp
-    val outerShapeRadius = if (isSmallScreen) 24.dp else 40.dp
-    val centerRing1Size = if (isSmallScreen) 100.dp else 180.dp
-    val centerRing2Size = if (isSmallScreen) 130.dp else 210.dp
+    
+    val numPlayers = allPlayers.size
+    val myIdx = allPlayers.indexOf(localPlayerName).coerceAtLeast(0)
 
     BoxWithConstraints(
         modifier = modifier
@@ -141,18 +142,54 @@ fun TrickTableView(
                 )
             }
         } else {
-            // Display cards in trick (slightly staggered or arranged)
-            Row(
-                modifier = Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(if (isSmallScreen) 8.dp else 14.dp, Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // Display cards spread across table
+            Box(modifier = Modifier.fillMaxSize()) {
                 playedCards.forEach { played ->
+                    val playerIdx = allPlayers.indexOf(played.player.name)
+                    val relIdx = if (playerIdx != -1) (playerIdx - myIdx + numPlayers) % numPlayers else 0
+                    
+                    val (xOffset, yOffset) = when (numPlayers) {
+                        2 -> if (relIdx == 0) 0.dp to 75.dp else 0.dp to (-75).dp
+                        3 -> when (relIdx) {
+                            0 -> 0.dp to 75.dp
+                            1 -> 0.dp to (-75).dp
+                            2 -> (-110).dp to 0.dp
+                            else -> 0.dp to 0.dp
+                        }
+                        4 -> when (relIdx) {
+                            0 -> 0.dp to 75.dp
+                            1 -> 0.dp to (-75).dp
+                            2 -> (-110).dp to 0.dp
+                            3 -> 110.dp to 0.dp
+                            else -> 0.dp to 0.dp
+                        }
+                        5 -> when (relIdx) {
+                            0 -> 0.dp to 75.dp
+                            1 -> (-85).dp to (-55).dp // Top Left
+                            2 -> 85.dp to (-55).dp  // Top Right
+                            3 -> (-120).dp to 15.dp  // Left
+                            4 -> 120.dp to 15.dp   // Right
+                            else -> 0.dp to 0.dp
+                        }
+                        6 -> when (relIdx) {
+                            0 -> 0.dp to 75.dp
+                            1 -> (-85).dp to (-55).dp // Top Left
+                            2 -> 85.dp to (-55).dp  // Top Right
+                            3 -> (-120).dp to 15.dp  // Left
+                            4 -> 120.dp to 15.dp   // Right
+                            5 -> (-85).dp to 55.dp   // Bottom Left
+                            else -> 0.dp to 0.dp
+                        }
+                        else -> 0.dp to 0.dp
+                    }
+
                     val isTrump = played.card.suit == trumpSuit
                     val isWinner = trickWinner?.id == played.player.id
+                    
                     Column(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .offset(x = xOffset, y = yOffset),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(if (isSmallScreen) 4.dp else 6.dp)
                     ) {
@@ -161,8 +198,8 @@ fun TrickTableView(
                             isTrump = isTrump,
                             isPlayable = false,
                             isSelected = isWinner && isTrickFinished,
-                            width = if (isSmallScreen) 50.dp else 74.dp,
-                            height = if (isSmallScreen) 72.dp else 106.dp,
+                            width = if (isSmallScreen) 70.dp else 96.dp,
+                            height = if (isSmallScreen) 100.dp else 138.dp,
                             is3DMode = is3DMode
                         )
 
