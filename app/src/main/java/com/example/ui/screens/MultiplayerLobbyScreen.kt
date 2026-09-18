@@ -109,6 +109,7 @@ import com.example.ui.theme.GoldLight
 import com.example.ui.theme.GoldPrimary
 import com.example.ui.theme.TextLight
 import com.example.ui.theme.TextMuted
+import com.example.ui.components.OvalTableCanvas
 import com.example.viewmodel.MultiplayerViewModel
 import kotlinx.coroutines.launch
 
@@ -546,53 +547,94 @@ fun MultiplayerLobbyScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Players Grid / List
+            // Players Table Layout (Poker Style)
             Text(
-                text = "PLAYERS IN ROOM",
+                text = "TABLE PREVIEW",
                 color = TextMuted,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp,
                 modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
             )
-
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(DarkSurface),
+                contentAlignment = Alignment.Center
             ) {
-                items(players) { playerName ->
-                    val isPlayerHost = playerName == room?.hostName || playerName == players.firstOrNull()
-                    val isSpeaking = room?.activeSpeakers?.get(playerName) == true
-                    val canKickPlayer = isHost && !isPlayerHost && playerName != localPlayerName
-                    PlayerLobbyChip(
-                        name = playerName,
-                        isHost = isPlayerHost,
-                        isSelf = playerName == localPlayerName,
-                        isSpeaking = isSpeaking,
-                        canKick = canKickPlayer,
-                        onKickClick = { playerToKick = playerName }
-                    )
-                }
-
-                // Empty slots
-                val emptySlots = (6 - players.size).coerceAtLeast(0)
-                items(emptySlots) {
+                OvalTableCanvas(
+                    modifier = Modifier.fillMaxSize(),
+                    is3DMode = false
+                )
+                
+                // Position players around the table
+                val totalSlots = 6
+                val playersList = players
+                
+                for (i in 0 until totalSlots) {
+                    val playerName = playersList.getOrNull(i)
+                    val isPlayerHost = playerName != null && (playerName == room?.hostName || playerName == playersList.firstOrNull())
+                    val isSpeaking = playerName != null && room?.activeSpeakers?.get(playerName) == true
+                    val isSelf = playerName != null && playerName == localPlayerName
+                    
+                    // Circular positioning logic
+                    val angle = (i * (360f / totalSlots)) - 90f // Start from bottom
+                    val radiusX = 130.dp
+                    val radiusY = 70.dp
+                    
+                    val xOffset = (kotlin.math.cos(Math.toRadians(angle.toDouble())) * radiusX.value).dp
+                    val yOffset = (kotlin.math.sin(Math.toRadians(angle.toDouble())) * radiusY.value).dp
+                    
                     Box(
                         modifier = Modifier
-                            .width(80.dp)
-                            .height(72.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkSurfaceElevated.copy(alpha = 0.5f))
-                            .border(1.dp, EmeraldBorder.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
+                            .offset(x = xOffset, y = yOffset)
                     ) {
-                        Text(
-                            text = "Waiting...",
-                            color = TextMuted,
-                            fontSize = 10.sp,
-                            textAlign = TextAlign.Center
-                        )
+                        if (playerName != null) {
+                            PlayerLobbyChip(
+                                name = playerName,
+                                isHost = isPlayerHost,
+                                isSelf = isSelf,
+                                isSpeaking = isSpeaking,
+                                canKick = isHost && !isPlayerHost && !isSelf,
+                                onKickClick = { playerToKick = playerName }
+                            )
+                        } else {
+                            // Empty slot
+                            Box(
+                                modifier = Modifier
+                                    .size(60.dp)
+                                    .clip(CircleShape)
+                                    .background(DarkSurfaceElevated.copy(alpha = 0.4f))
+                                    .border(1.dp, EmeraldBorder.copy(alpha = 0.2f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "Empty",
+                                    color = TextMuted.copy(alpha = 0.5f),
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
                     }
+                }
+                
+                // Room info in middle of table
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "ROOM",
+                        color = GoldPrimary.copy(alpha = 0.6f),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = roomCode ?: "...",
+                        color = GoldLight,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Black
+                    )
                 }
             }
 

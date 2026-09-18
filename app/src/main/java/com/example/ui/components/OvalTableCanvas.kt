@@ -42,11 +42,11 @@ fun OvalTableCanvas(
             size = shadowSize
         )
 
-        // Layer 2: Wood rail/bumper
-        val railWidth = 10f
+        // Layer 2: Rail/bumper (Darker for poker style)
+        val railWidth = 14f
         drawOval(
             brush = Brush.linearGradient(
-                colors = listOf(WoodRail, WoodRailLight, WoodRail),
+                colors = listOf(WoodRailDark, WoodRail, WoodRailDark),
                 start = Offset(left, top),
                 end = Offset(left + tableWidth, top + tableHeight)
             ),
@@ -57,10 +57,10 @@ fun OvalTableCanvas(
         
         // Inner highlight on rail
         drawOval(
-            color = Color.White.copy(alpha = 0.1f),
-            topLeft = Offset(left - railWidth/4, top - railWidth/4),
-            size = Size(tableWidth + railWidth/2, tableHeight + railWidth/2),
-            style = Stroke(width = 1f)
+            color = Color.White.copy(alpha = 0.08f),
+            topLeft = Offset(left - railWidth/3, top - railWidth/3),
+            size = Size(tableWidth + railWidth/1.5f, tableHeight + railWidth/1.5f),
+            style = Stroke(width = 1.5f)
         )
 
         // Layer 3: Inner felt
@@ -69,34 +69,80 @@ fun OvalTableCanvas(
                 brush = Brush.radialGradient(
                     colors = listOf(FeltCenter, FeltMid, FeltEdge, FeltDeep),
                     center = Offset(width / 2, height / 2),
-                    radius = tableWidth / 2
+                    radius = tableWidth * 0.7f
                 ),
                 size = size
             )
             
-            // Layer 6: Subtle felt texture
+            // Subtle felt texture pattern
             val random = java.util.Random(42)
-            repeat(200) {
+            repeat(300) {
                 val rx = random.nextFloat() * width
                 val ry = random.nextFloat() * height
                 drawCircle(
-                    color = Color.White.copy(alpha = 0.03f),
-                    radius = 1f + random.nextFloat() * 2f,
+                    color = Color.White.copy(alpha = 0.02f),
+                    radius = 0.8f + random.nextFloat() * 1.5f,
                     center = Offset(rx, ry)
                 )
             }
+
+            // Layer 4: Primary Stitching line (Outer)
+            val stitchOffset = 12f
+            drawOval(
+                color = Color.White.copy(alpha = 0.25f),
+                topLeft = Offset(left + stitchOffset, top + stitchOffset),
+                size = Size(tableWidth - stitchOffset * 2, tableHeight - stitchOffset * 2),
+                style = Stroke(
+                    width = 1.5f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 8f), 0f)
+                )
+            )
+
+            // Layer 5: Inner Play Area Rectangle (from image)
+            val rectWidth = tableWidth * 0.55f
+            val rectHeight = tableHeight * 0.45f
+            val rectLeft = width / 2 - rectWidth / 2
+            val rectTop = height / 2 - rectHeight / 2
+            
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.15f),
+                topLeft = Offset(rectLeft, rectTop),
+                size = Size(rectWidth, rectHeight),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(20f),
+                style = Stroke(
+                    width = 1f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 10f), 0f)
+                )
+            )
         }
 
-        // Layer 4: Stitching line
-        val stitchOffset = 6f
-        drawOval(
-            color = GoldPrimary.copy(alpha = 0.15f),
-            topLeft = Offset(left + stitchOffset, top + stitchOffset),
-            size = Size(tableWidth - stitchOffset * 2, tableHeight - stitchOffset * 2),
-            style = Stroke(
-                width = 2f,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 6f), 0f)
-            )
+        // Layer 6: Dealer Position (Top Center)
+        val dealerWidth = 80f
+        val dealerHeight = 30f
+        val dealerRect = androidx.compose.ui.geometry.Rect(
+            Offset(width / 2 - dealerWidth / 2, top - 10f),
+            Size(dealerWidth, dealerHeight)
+        )
+        drawRoundRect(
+            color = Color.Black.copy(alpha = 0.5f),
+            topLeft = dealerRect.topLeft,
+            size = dealerRect.size,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f)
+        )
+        drawRoundRect(
+            color = GoldPrimary.copy(alpha = 0.4f),
+            topLeft = dealerRect.topLeft,
+            size = dealerRect.size,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f),
+            style = Stroke(width = 1.5f)
+        )
+        
+        // Add "DEALER" text or just a visual hint?
+        // Since I can't draw text easily in DrawScope without native canvas, I'll use a small white dash pattern inside
+        drawCircle(
+            color = Color.White.copy(alpha = 0.5f),
+            radius = 3f,
+            center = Offset(width / 2, top + 5f)
         )
 
         // Layer 5: Center emblem (very low alpha)
