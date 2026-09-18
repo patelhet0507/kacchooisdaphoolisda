@@ -575,6 +575,7 @@ class GameViewModel : ViewModel() {
         soundEffectsManager?.playCardDeal()
         soundEffectsManager?.playTrumpAnnounce()
 
+        val roundNumber = roundIndex + 1
         _uiState.update {
             it.copy(
                 currentRoundIndex = roundIndex,
@@ -590,11 +591,15 @@ class GameViewModel : ViewModel() {
                 playedCardsInRound = emptyList(),
                 leadSuit = null,
                 lastTrickWinner = null,
-                statusMessage = "Bidding Phase: ${state.players[firstBidderIdx].name} bids first"
+                isUserBiddingTurn = false, // Ensure bidding dialog doesn't pop up immediately
+                statusMessage = "Dealing Round $roundNumber: $roundCardCount cards. Get ready to bid!"
             )
         }
 
-        checkBiddingTurn()
+        viewModelScope.launch {
+            delay(3000L) // Delay for 3 seconds as requested
+            checkBiddingTurn()
+        }
     }
 
     private fun checkBiddingTurn() {

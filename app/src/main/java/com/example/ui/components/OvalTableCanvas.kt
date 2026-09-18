@@ -22,9 +22,9 @@ fun OvalTableCanvas(
         val width = size.width
         val height = size.height
         
-        // Aspect ratio 1.6:1 for 3/4 perspective
-        val tableWidth = width * 0.95f
-        val tableHeight = tableWidth / 1.6f
+        // Aspect ratio 1.8:1 for a wider table that fits landscape better
+        val tableWidth = width * 0.98f
+        val tableHeight = height * 0.95f
         
         val left = (width - tableWidth) / 2
         val top = (height - tableHeight) / 2
@@ -35,15 +35,14 @@ fun OvalTableCanvas(
         }
 
         // Layer 1: Drop shadow
-        val shadowSize = Size(tableWidth, tableHeight)
         drawOval(
-            color = Color.Black.copy(alpha = 0.4f),
-            topLeft = Offset(left, top + 10f),
-            size = shadowSize
+            color = Color.Black.copy(alpha = 0.5f),
+            topLeft = Offset(left, top + 15f),
+            size = tableSize
         )
 
         // Layer 2: Rail/bumper (Darker for poker style)
-        val railWidth = 14f
+        val railWidth = 16f
         drawOval(
             brush = Brush.linearGradient(
                 colors = listOf(WoodRailDark, WoodRail, WoodRailDark),
@@ -57,10 +56,10 @@ fun OvalTableCanvas(
         
         // Inner highlight on rail
         drawOval(
-            color = Color.White.copy(alpha = 0.08f),
-            topLeft = Offset(left - railWidth/3, top - railWidth/3),
-            size = Size(tableWidth + railWidth/1.5f, tableHeight + railWidth/1.5f),
-            style = Stroke(width = 1.5f)
+            color = Color.White.copy(alpha = 0.12f),
+            topLeft = Offset(left - railWidth/4, top - railWidth/4),
+            size = Size(tableWidth + railWidth/2, tableHeight + railWidth/2),
+            style = Stroke(width = 2f)
         )
 
         // Layer 3: Inner felt
@@ -69,7 +68,7 @@ fun OvalTableCanvas(
                 brush = Brush.radialGradient(
                     colors = listOf(FeltCenter, FeltMid, FeltEdge, FeltDeep),
                     center = Offset(width / 2, height / 2),
-                    radius = tableWidth * 0.7f
+                    radius = tableWidth * 0.8f // Larger radius for more green coverage
                 ),
                 size = size
             )

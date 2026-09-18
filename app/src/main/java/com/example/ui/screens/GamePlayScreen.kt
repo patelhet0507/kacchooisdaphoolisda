@@ -218,13 +218,13 @@ fun GamePlayScreen(
             val screenWidth = maxWidth
             val screenHeight = maxHeight
 
-            // 1. Oval Table (Centered, takes ~85% width, ~55% height)
+            // 1. Oval Table (Centered, takes ~88% width, ~70% height)
             Box(
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .fillMaxWidth(0.85f)
-                    .fillMaxHeight(0.55f)
-                    .padding(bottom = 60.dp) // Shift up more for hand space
+                    .fillMaxWidth(0.88f)
+                    .fillMaxHeight(0.7f)
+                    .padding(bottom = 40.dp) // Shift up slightly for hand space
             ) {
                 TrickTableView(
                     modifier = Modifier.fillMaxSize(),
@@ -261,7 +261,7 @@ fun GamePlayScreen(
                     cardCount = seat.cardsCount,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .offset { IntOffset(xOffset.toInt(), with(density) { 20.dp.toPx().toInt() }) }
+                        .offset { IntOffset(xOffset.toInt(), with(density) { (-65).dp.toPx().toInt() }) }
                 )
             }
 
@@ -280,7 +280,7 @@ fun GamePlayScreen(
                     cardCount = leftOpponentSeat.cardsCount,
                     modifier = Modifier
                         .align(Alignment.CenterStart)
-                        .offset(x = 10.dp, y = (-20).dp)
+                        .offset(x = (-70).dp, y = (-30).dp)
                 )
             }
 
@@ -299,7 +299,7 @@ fun GamePlayScreen(
                     cardCount = rightOpponentSeat.cardsCount,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .offset(x = (-10).dp, y = (-20).dp)
+                        .offset(x = 70.dp, y = (-30).dp)
                 )
             }
 
@@ -333,15 +333,15 @@ fun GamePlayScreen(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 12.dp)
             ) {
-                // Trump Indicator (Bottom Left, above user seat)
+                // Trump Indicator (Movable & Minimizable)
                 TrumpIndicator(
                     currentTrump = uiState.currentTrump,
                     roundNumber = uiState.currentRoundIndex + 1,
                     totalRounds = uiState.rounds.size,
                     cardCount = uiState.currentRoundCardCount,
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(start = 16.dp, bottom = 100.dp) // Offset above user seat
+                        .align(Alignment.TopStart)
+                        .padding(start = 24.dp, top = 24.dp)
                         .width(140.dp)
                 )
 

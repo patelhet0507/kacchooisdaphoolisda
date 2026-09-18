@@ -51,6 +51,26 @@ import com.example.ui.theme.GoldPrimary
 import com.example.ui.theme.TextLight
 import com.example.ui.theme.TextMuted
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.OpenWith
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+
 @Composable
 fun TrumpIndicator(
     currentTrump: Suit,
@@ -62,12 +82,24 @@ fun TrumpIndicator(
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isSmallScreen = configuration.screenHeightDp < 600
 
+    var isMinimized by remember { mutableStateOf(false) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
     Card(
         modifier = modifier
+            .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+            .pointerInput(Unit) {
+                detectDragGestures { change, dragAmount ->
+                    change.consume()
+                    offsetX += dragAmount.x
+                    offsetY += dragAmount.y
+                }
+            }
             .testTag("trump_indicator"),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = DarkSurface.copy(alpha = 0.9f)
+            containerColor = DarkSurface.copy(alpha = 0.95f)
         ),
         border = CardDefaults.outlinedCardBorder().copy(
             brush = Brush.verticalGradient(
@@ -79,47 +111,82 @@ fun TrumpIndicator(
     ) {
         Column(
             modifier = Modifier
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Round Header
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // Header with Minimize Toggle and Drag Handle
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.OpenWith,
+                    contentDescription = "Move",
+                    tint = GoldPrimary.copy(alpha = 0.4f),
+                    modifier = Modifier.size(16.dp)
+                )
+
                 Text(
-                    text = "ROUND $roundNumber / $totalRounds",
+                    text = "R $roundNumber / $totalRounds",
                     color = GoldLight,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = "$cardCount CARDS",
-                    color = TextLight.copy(alpha = 0.8f),
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Black,
+                    modifier = Modifier.clickable { isMinimized = !isMinimized }
                 )
+
+                IconButton(
+                    onClick = { isMinimized = !isMinimized },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isMinimized) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                        contentDescription = if (isMinimized) "Expand" else "Minimize",
+                        tint = GoldPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
 
-            // Divider
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Brush.horizontalGradient(listOf(Color.Transparent, EmeraldBorder, Color.Transparent)))
-            )
-
-            // Suit Rotation
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            AnimatedVisibility(
+                visible = !isMinimized,
+                enter = expandVertically(),
+                exit = shrinkVertically()
             ) {
-                Suit.ROTATION_ORDER.forEach { suit ->
-                    val isActive = suit == currentTrump
-                    MnemonicPill(
-                        suit = suit,
-                        isActive = isActive,
-                        modifier = Modifier.fillMaxWidth()
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "$cardCount CARDS",
+                        color = TextLight.copy(alpha = 0.8f),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
                     )
+
+                    // Divider
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Brush.horizontalGradient(listOf(Color.Transparent, EmeraldBorder, Color.Transparent)))
+                    )
+
+                    // Suit Rotation
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Suit.ROTATION_ORDER.forEach { suit ->
+                            val isActive = suit == currentTrump
+                            MnemonicPill(
+                                suit = suit,
+                                isActive = isActive,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
                 }
             }
         }

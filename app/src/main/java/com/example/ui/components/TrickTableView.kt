@@ -149,35 +149,35 @@ fun TrickTableView(
                     val relIdx = if (playerIdx != -1) (playerIdx - myIdx + numPlayers) % numPlayers else 0
                     
                     val (xOffset, yOffset) = when (numPlayers) {
-                        2 -> if (relIdx == 0) 0.dp to 75.dp else 0.dp to (-75).dp
+                        2 -> if (relIdx == 0) 0.dp to 55.dp else 0.dp to (-55).dp
                         3 -> when (relIdx) {
-                            0 -> 0.dp to 75.dp
-                            1 -> 0.dp to (-75).dp
-                            2 -> (-110).dp to 0.dp
+                            0 -> 0.dp to 55.dp
+                            1 -> 0.dp to (-55).dp
+                            2 -> (-120).dp to 0.dp
                             else -> 0.dp to 0.dp
                         }
                         4 -> when (relIdx) {
-                            0 -> 0.dp to 75.dp
-                            1 -> 0.dp to (-75).dp
-                            2 -> (-110).dp to 0.dp
-                            3 -> 110.dp to 0.dp
+                            0 -> 0.dp to 55.dp
+                            1 -> 0.dp to (-55).dp
+                            2 -> (-120).dp to 0.dp
+                            3 -> 120.dp to 0.dp
                             else -> 0.dp to 0.dp
                         }
                         5 -> when (relIdx) {
-                            0 -> 0.dp to 75.dp
-                            1 -> (-85).dp to (-55).dp // Top Left
-                            2 -> 85.dp to (-55).dp  // Top Right
-                            3 -> (-120).dp to 15.dp  // Left
-                            4 -> 120.dp to 15.dp   // Right
+                            0 -> 0.dp to 55.dp
+                            1 -> (-90).dp to (-45).dp // Top Left
+                            2 -> 90.dp to (-45).dp  // Top Right
+                            3 -> (-130).dp to 15.dp  // Left
+                            4 -> 130.dp to 15.dp   // Right
                             else -> 0.dp to 0.dp
                         }
                         6 -> when (relIdx) {
-                            0 -> 0.dp to 75.dp
-                            1 -> (-85).dp to (-55).dp // Top Left
-                            2 -> 85.dp to (-55).dp  // Top Right
-                            3 -> (-120).dp to 15.dp  // Left
-                            4 -> 120.dp to 15.dp   // Right
-                            5 -> (-85).dp to 55.dp   // Bottom Left
+                            0 -> 0.dp to 55.dp
+                            1 -> (-90).dp to (-45).dp // Top Left
+                            2 -> 90.dp to (-45).dp  // Top Right
+                            3 -> (-130).dp to 15.dp  // Left
+                            4 -> 130.dp to 15.dp   // Right
+                            5 -> (-90).dp to 45.dp   // Bottom Left
                             else -> 0.dp to 0.dp
                         }
                         else -> 0.dp to 0.dp
@@ -186,44 +186,21 @@ fun TrickTableView(
                     val isTrump = played.card.suit == trumpSuit
                     val isWinner = trickWinner?.id == played.player.id
                     
-                    Column(
+                    Box(
                         modifier = Modifier
                             .align(Alignment.Center)
                             .offset(x = xOffset, y = yOffset),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(if (isSmallScreen) 4.dp else 6.dp)
+                        contentAlignment = Alignment.Center
                     ) {
                         PlayingCardView(
                             card = played.card,
                             isTrump = isTrump,
                             isPlayable = false,
                             isSelected = isWinner && isTrickFinished,
-                            width = if (isSmallScreen) 70.dp else 96.dp,
-                            height = if (isSmallScreen) 100.dp else 138.dp,
+                            width = if (isSmallScreen) 70.dp else 90.dp,
+                            height = if (isSmallScreen) 100.dp else 130.dp,
                             is3DMode = is3DMode
                         )
-
-                        // Name of player who played this card
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(
-                                    if (isWinner && isTrickFinished) GoldPrimary else DarkSurface.copy(alpha = 0.95f)
-                                )
-                                .border(
-                                    1.dp,
-                                    if (isWinner && isTrickFinished) GoldLight else EmeraldBorder.copy(alpha = 0.6f),
-                                    RoundedCornerShape(10.dp)
-                                )
-                                .padding(horizontal = if (isSmallScreen) 6.dp else 10.dp, vertical = if (isSmallScreen) 2.dp else 4.dp)
-                        ) {
-                            Text(
-                                text = played.player.name,
-                                color = if (isWinner && isTrickFinished) EmeraldDeep else TextLight,
-                                fontSize = if (isSmallScreen) 9.sp else 11.sp,
-                                fontWeight = if (isWinner && isTrickFinished) FontWeight.Black else FontWeight.Bold
-                            )
-                        }
                     }
                 }
             }
