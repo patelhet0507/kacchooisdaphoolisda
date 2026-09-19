@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.BorderStroke
@@ -40,10 +41,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,11 +54,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.rememberScrollState
@@ -68,9 +73,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import android.util.Log
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.animation.core.*
+import com.example.ui.components.*
+import com.example.ui.theme.DeepEmerald
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -152,7 +157,6 @@ fun HomeScreen(
     val isLoading by multiplayerViewModel.isLoading.collectAsStateWithLifecycle()
     val errorMessage by multiplayerViewModel.errorMessage.collectAsStateWithLifecycle()
 
-    // Automatically check for updates on app startup if enabled in settings
     LaunchedEffect(Unit) {
         if (appSettings.autoCheckUpdates) {
             val result = appUpdateManager.checkForUpdates(appSettings.githubRepo)
@@ -164,297 +168,191 @@ fun HomeScreen(
 
     LaunchedEffect(roomCode) {
         if (roomCode != null) {
-            Log.d("Multiplayer", "Room active: $roomCode, opening lobby")
             showMultiplayerDialog = false
             onOpenMultiplayerLobby()
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Fullscreen Background Image
+    Box(modifier = Modifier.fillMaxSize().background(DeepEmerald)) {
+        // Table Pattern Texture
         Image(
-            painter = painterResource(id = R.drawable.img_stitch_hero),
-            contentDescription = "Kaachu Phool Table Background",
+            painter = painterResource(id = R.drawable.img_table_texture),
+            contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-
-        // Dark Gradient Scrim Overlay for High Contrast
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            DarkBackground.copy(alpha = 0.70f),
-                            DarkBackground.copy(alpha = 0.85f),
-                            DarkBackground.copy(alpha = 0.96f)
-                        )
-                    )
-                )
+            contentScale = ContentScale.Crop,
+            alpha = 0.1f
         )
 
         Scaffold(
             containerColor = Color.Transparent
         ) { innerPadding ->
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .widthIn(max = 640.dp)
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top Action & Title Header
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "KAACHU PHOOL",
-                                color = Color.White,
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 1.2.sp
-                            )
-                            Text(
-                                text = "Traditional Indian Trick-Taking Game",
-                                color = GoldLight,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                letterSpacing = 0.5.sp
-                            )
-                        }
+                // Top Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.img_logo),
+                        contentDescription = "Kaachu Phool Logo",
+                        modifier = Modifier.size(60.dp)
+                    )
 
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // User Profile Avatar Quick Button
-                            val currentAvatar = CustomizationData.avatars.find { it.id == userState.selectedAvatar }?.emoji ?: "🦁"
-                            Box(
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape)
-                                    .background(DarkSurface.copy(alpha = 0.85f))
-                                    .border(1.dp, GoldPrimary.copy(alpha = 0.6f), CircleShape)
-                                    .clickable { showProfileDialog = true }
-                                    .testTag("home_profile_button"),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(text = currentAvatar, fontSize = 22.sp)
-                            }
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        val currentAvatar = CustomizationData.avatars.find { it.id == userState.selectedAvatar }?.emoji ?: "🦁"
+                        PlayerAvatar(emoji = currentAvatar, onClick = { showProfileDialog = true })
 
-                            // Settings Button
-                            IconButton(
-                                onClick = {
-                                    soundEffectsManager.playButtonTap()
-                                    showSettingsDialog = true
-                                },
-                                modifier = Modifier
-                                    .size(42.dp)
-                                    .clip(CircleShape)
-                                    .background(DarkSurface.copy(alpha = 0.85f))
-                                    .border(1.dp, GoldPrimary.copy(alpha = 0.6f), CircleShape)
-                                    .testTag("home_settings_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "Game Settings & Audio",
-                                    tint = GoldPrimary,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Main Sign-In Banner (REMOVED when logged in)
-                if (!userState.isLoggedIn) {
-                    item {
-                        Card(
+                        IconButton(
+                            onClick = { showSettingsDialog = true },
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .clickable { showGoogleLoginDialog = true },
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(containerColor = DarkSurface.copy(alpha = 0.90f)),
-                            border = CardDefaults.outlinedCardBorder().copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(GoldPrimary.copy(alpha = 0.6f))
-                            )
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(DarkSurface.copy(alpha = 0.6f))
+                                .border(1.dp, GoldPrimary.copy(alpha = 0.3f), CircleShape)
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(GoldPrimary.copy(alpha = 0.2f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(text = "🔑", fontSize = 24.sp)
-                                }
-
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Sign In for Cloud Sync",
-                                        color = TextLight,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp
-                                    )
-                                    Text(
-                                        text = "Sync stats, friends, & achievements across devices",
-                                        color = GoldLight,
-                                        fontSize = 11.sp
-                                    )
-                                }
-
-                                Button(
-                                    onClick = { showGoogleLoginDialog = true },
-                                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = "Sign In",
-                                        color = Color.Black,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
+                            Icon(Icons.Default.Settings, contentDescription = "Settings", tint = GoldPrimary)
                         }
                     }
                 }
 
-                // The Kaachu Phool Mnemonic Bar
-                item {
-                    Column(
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Hero Section
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "hero_anim")
+                    val floatOffset by infiniteTransition.animateFloat(
+                        initialValue = -10f,
+                        targetValue = 10f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(2000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "float"
+                    )
+
+                    Image(
+                        painter = painterResource(id = R.drawable.img_hero_cards),
+                        contentDescription = "Kaachu Phool Cards",
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
+                            .fillMaxSize()
+                            .padding(20.dp)
+                            .graphicsLayer { translationY = floatOffset },
+                        contentScale = ContentScale.Fit
+                    )
+
+                    Column(
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "THE TRUMP CYCLE (K-A-C-H-U-F-U-L)",
-                            color = TextMuted,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp,
-                            modifier = Modifier.padding(start = 4.dp)
+                            text = "KAACHU PHOOL",
+                            style = MaterialTheme.typography.displayMedium,
+                            color = GoldLight,
+                            letterSpacing = 4.sp
                         )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            MnemonicPill(code = "Ka", name = "Kali", symbol = "♠", isRed = false, modifier = Modifier.weight(1f))
-                            MnemonicPill(code = "Chu", name = "Chokat", symbol = "♦", isRed = true, modifier = Modifier.weight(1f))
-                            MnemonicPill(code = "Fu", name = "Fuli", symbol = "♣", isRed = false, modifier = Modifier.weight(1f))
-                            MnemonicPill(code = "L", name = "Laal", symbol = "♥", isRed = true, modifier = Modifier.weight(1f))
-                        }
+                        Text(
+                            text = "♠ ♣ ♥ ♦",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = GoldPrimary,
+                            letterSpacing = 8.sp
+                        )
                     }
                 }
 
-                // Primary Feature Grid
-                item {
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Main Actions
+                Column(
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    PremiumButton(
+                        text = "Play Online",
+                        onClick = { showMultiplayerDialog = true },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        PremiumButton(
+                            text = "Play With AI",
+                            onClick = { showQuickStartDialog = true },
+                            modifier = Modifier.weight(1f),
+                            isPrimary = false
+                        )
+                        PremiumButton(
+                            text = "Join Room",
+                            onClick = { showMultiplayerDialog = true },
+                            modifier = Modifier.weight(1f),
+                            isPrimary = false
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Statistics Section
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                ) {
+                    Text(
+                        text = "PLAYER STATISTICS",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextMuted,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        StatCard(label = "Wins", value = "${userState.winsCount}", modifier = Modifier.weight(1f))
+                        StatCard(label = "Played", value = "${userState.gamesPlayed}", modifier = Modifier.weight(1f))
+                        StatCard(label = "Streak", value = "0", modifier = Modifier.weight(1f)) // Placeholder for streak
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Recent Game History (keeping a simplified version)
+                if (lastMatches.isNotEmpty()) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                            .padding(horizontal = 24.dp)
                     ) {
                         Text(
-                            text = "PLAY",
+                            text = "RECENT ACTIVITY",
+                            style = MaterialTheme.typography.labelMedium,
                             color = TextMuted,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp,
-                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                            letterSpacing = 2.sp
                         )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            ActionCard(
-                                title = "Play vs AI",
-                                icon = "🤖",
-                                desc = "Offline practice",
-                                onClick = { showQuickStartDialog = true },
-                                modifier = Modifier.weight(1f),
-                                isPrimary = true
-                            )
-                            ActionCard(
-                                title = "Multiplayer",
-                                icon = "🌐",
-                                desc = "Play with friends",
-                                onClick = { showMultiplayerDialog = true },
-                                modifier = Modifier.weight(1f),
-                                isPrimary = true
-                            )
-                        }
-
-                        Text(
-                            text = "COMMUNITY & LEARN",
-                            color = TextMuted,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp,
-                            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            ActionCard(
-                                title = "Friends",
-                                icon = "👥",
-                                desc = "",
-                                onClick = { showFriendsDialog = true },
-                                modifier = Modifier.weight(1f)
-                            )
-                            ActionCard(
-                                title = "Scorepad",
-                                icon = "📝",
-                                desc = "",
-                                onClick = onOpenScorecard,
-                                modifier = Modifier.weight(1f)
-                            )
-                            ActionCard(
-                                title = "Rules",
-                                icon = "📖",
-                                desc = "",
-                                onClick = onOpenRules,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "RECENT HISTORY",
-                            color = TextMuted,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.5.sp,
-                            modifier = Modifier.padding(start = 4.dp)
-                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                         MatchHistorySlide(matches = lastMatches)
                     }
                 }
 
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
+                Spacer(modifier = Modifier.height(40.dp))
             }
         }
     }

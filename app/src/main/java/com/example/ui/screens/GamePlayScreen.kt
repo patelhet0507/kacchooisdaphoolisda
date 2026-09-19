@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -32,6 +34,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -46,9 +50,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.res.painterResource
+import com.example.R
+import com.example.ui.components.PremiumTrumpIndicator
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import com.example.ui.components.PremiumButton
+import com.example.ui.util.calculateWindowLayoutInfo
+import kotlinx.coroutines.delay
 import com.example.ui.components.OvalTableCanvas
 import kotlin.math.abs
 import androidx.compose.ui.text.font.FontWeight
@@ -75,9 +95,11 @@ import com.example.ui.components.TrumpIndicator
 import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.DarkSurfaceElevated
+import com.example.ui.theme.DeepEmerald
 import com.example.ui.theme.EmeraldBorder
 import com.example.ui.theme.EmeraldDeep
 import com.example.ui.theme.EmeraldLight
+import com.example.ui.theme.ErrorRed
 import com.example.ui.theme.GoldLight
 import com.example.ui.theme.GoldPrimary
 import com.example.ui.theme.TextLight
@@ -159,7 +181,6 @@ fun GamePlayScreen(
         }
     }
 
-    // Intercept hardware / system back gesture
     BackHandler {
         showQuitDialog = true
     }
@@ -168,258 +189,342 @@ fun GamePlayScreen(
         it.player.id == "user" || it.player.name == uiState.localPlayerName || !it.player.isBot
     } ?: playerSeats.firstOrNull()
 
-    val opponentSeats = playerSeats.filter { it.player.id != mySeat?.player?.id && it.player.name != mySeat?.player?.name }
+    val myIdx = playerSeats.indexOf(mySeat).coerceAtLeast(0)
+    val numPlayers = playerSeats.size
 
-    // Dynamic opponent layout mapping
-    val topOpponentSeats = when (opponentSeats.size) {
-        1 -> listOf(opponentSeats[0])
-        2 -> emptyList()
-        3 -> listOf(opponentSeats[1])
-        4 -> listOf(opponentSeats[1], opponentSeats[2])
-        else -> opponentSeats.drop(1).dropLast(1)
-    }
-    val leftOpponentSeat = when (opponentSeats.size) {
-        1 -> null
-        2 -> opponentSeats[0]
-        else -> opponentSeats.firstOrNull()
-    }
-    val rightOpponentSeat = when (opponentSeats.size) {
-        1 -> null
-        2 -> opponentSeats[1]
-        else -> opponentSeats.lastOrNull()
+    val sortedOpponents = (1 until numPlayers).map { relIdx ->
+        playerSeats[(myIdx + relIdx) % numPlayers]
     }
 
     if (uiState.isMultiplayer && uiState.players.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize().background(DarkBackground), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.fillMaxSize().background(DeepEmerald), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 androidx.compose.material3.CircularProgressIndicator(color = GoldPrimary)
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Waiting for game state...", color = GoldLight)
+                Text("Waiting for players...", color = GoldLight)
             }
         }
         return
     }
 
-    Scaffold(
-        containerColor = DarkBackground
-    ) { innerPadding ->
-        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-        val isSmallScreen = configuration.screenHeightDp < 600
-        val cardWidth = if (isSmallScreen) 72.dp else 100.dp
-        val cardHeight = if (isSmallScreen) 104.dp else 144.dp
+    Box(modifier = Modifier.fillMaxSize().background(DeepEmerald)) {
+        // Table Pattern
+        Image(
+            painter = painterResource(id = R.drawable.img_table_texture),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+            alpha = 0.05f
+        )
 
-        val density = androidx.compose.ui.platform.LocalDensity.current
+        var selectedCardId by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(userHand) {
+            if (userHand.none { it.id == selectedCardId }) {
+                selectedCardId = null
+            }
+        }
 
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            val screenWidth = maxWidth
-            val screenHeight = maxHeight
-
-            // 1. Oval Table (Centered, takes ~88% width, ~70% height)
-            Box(
+        Scaffold(
+            containerColor = Color.Transparent
+        ) { innerPadding ->
+            BoxWithConstraints(
                 modifier = Modifier
-                    .align(Alignment.Center)
-                    .fillMaxWidth(0.88f)
-                    .fillMaxHeight(0.7f)
-                    .padding(bottom = 40.dp) // Shift up slightly for hand space
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
-                TrickTableView(
-                    modifier = Modifier.fillMaxSize(),
-                    playedCards = tableState.playedCards,
-                    allPlayers = uiState.players.map { it.name },
-                    localPlayerName = uiState.localPlayerName,
-                    trumpSuit = tableState.trumpSuit,
-                    leadSuit = tableState.leadSuit,
-                    trickWinner = tableState.trickWinner,
-                    isTrickFinished = tableState.isTrickFinished,
-                    onNextTrickClick = { viewModel.continueNextTrick() },
-                    is3DMode = appSettings.is3DMode
-                )
-            }
+                val screenWidth = maxWidth
+                val screenHeight = maxHeight
+                val layoutInfo = calculateWindowLayoutInfo(screenWidth, screenHeight)
+                val isLandscape = layoutInfo.isLandscape
+                val isTablet = layoutInfo.isTablet
+                val isCompact = layoutInfo.isCompact
 
-            // 2. Top Opponent Seats
-            val topSeatsCount = topOpponentSeats.size
-            topOpponentSeats.forEachIndexed { index, seat ->
-                val xOffset = if (topSeatsCount > 1) {
-                    val spread = 120.dp
-                    with(density) { (index - (topSeatsCount - 1) / 2f) * spread.toPx() }
-                } else 0f
-                
-                PlayerSeatView(
-                    player = seat.player,
-                    bid = seat.bid,
-                    tricksWon = seat.tricksWon,
-                    isDealer = seat.isDealer,
-                    isCurrentTurn = seat.isCurrentTurn,
-                    turnActionText = if (seat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                    totalScore = seat.totalScore,
-                    activeEmote = seat.activeEmote,
-                    is3DMode = appSettings.is3DMode,
-                    cardCount = seat.cardsCount,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .offset { IntOffset(xOffset.toInt(), with(density) { (-65).dp.toPx().toInt() }) }
-                )
-            }
-
-            // 3. Left Opponent Seat
-            if (leftOpponentSeat != null) {
-                PlayerSeatView(
-                    player = leftOpponentSeat.player,
-                    bid = leftOpponentSeat.bid,
-                    tricksWon = leftOpponentSeat.tricksWon,
-                    isDealer = leftOpponentSeat.isDealer,
-                    isCurrentTurn = leftOpponentSeat.isCurrentTurn,
-                    turnActionText = if (leftOpponentSeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                    totalScore = leftOpponentSeat.totalScore,
-                    activeEmote = leftOpponentSeat.activeEmote,
-                    is3DMode = appSettings.is3DMode,
-                    cardCount = leftOpponentSeat.cardsCount,
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .offset(x = (-70).dp, y = (-30).dp)
-                )
-            }
-
-            // 4. Right Opponent Seat
-            if (rightOpponentSeat != null) {
-                PlayerSeatView(
-                    player = rightOpponentSeat.player,
-                    bid = rightOpponentSeat.bid,
-                    tricksWon = rightOpponentSeat.tricksWon,
-                    isDealer = rightOpponentSeat.isDealer,
-                    isCurrentTurn = rightOpponentSeat.isCurrentTurn,
-                    turnActionText = if (rightOpponentSeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bidding..." else "Playing...") else null,
-                    totalScore = rightOpponentSeat.totalScore,
-                    activeEmote = rightOpponentSeat.activeEmote,
-                    is3DMode = appSettings.is3DMode,
-                    cardCount = rightOpponentSeat.cardsCount,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .offset(x = 70.dp, y = (-30).dp)
-                )
-            }
-
-            // 5. Top Bar Controls
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .align(Alignment.TopCenter),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { showQuitDialog = true }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = GoldPrimary)
+                // Dynamically calculated table dimensions
+                val tableWidth = when {
+                    isTablet && isLandscape -> (maxWidth * 0.54f).coerceIn(500.dp, 720.dp)
+                    isTablet -> (maxWidth * 0.72f).coerceIn(440.dp, 640.dp)
+                    isLandscape -> (maxWidth * 0.56f).coerceIn(320.dp, 540.dp)
+                    else -> (maxWidth - 32.dp).coerceIn(280.dp, 420.dp)
                 }
-                
-                Row {
-                    IconButton(onClick = { showSettingsDialog = true }) {
-                        Icon(Icons.Default.Settings, "Settings", tint = GoldLight)
-                    }
-                    IconButton(onClick = { viewModel.restartCurrentGame() }) {
-                        Icon(Icons.Default.Refresh, "Restart", tint = TextMuted)
-                    }
+                val tableHeight = when {
+                    isTablet && isLandscape -> (maxHeight * 0.48f).coerceIn(300.dp, 440.dp)
+                    isTablet -> (maxHeight * 0.40f).coerceIn(280.dp, 400.dp)
+                    isLandscape -> (maxHeight * 0.52f).coerceIn(160.dp, 230.dp)
+                    else -> (maxHeight * 0.36f).coerceIn(170.dp, 260.dp)
                 }
-            }
+                val tableCenterYOffset = when {
+                    isTablet -> (-35).dp
+                    isLandscape -> (-18).dp
+                    else -> (-28).dp
+                }
 
-            // 6. Bottom User Area
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 12.dp)
-            ) {
-                // Trump Indicator (Movable & Minimizable)
-                TrumpIndicator(
-                    currentTrump = uiState.currentTrump,
-                    roundNumber = uiState.currentRoundIndex + 1,
-                    totalRounds = uiState.rounds.size,
-                    cardCount = uiState.currentRoundCardCount,
+                // Table Center Anchor
+                val tableCenterX = maxWidth / 2
+                val tableCenterY = (maxHeight / 2) + tableCenterYOffset
+
+                // Game Table (Visually centered)
+                Box(
                     modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 24.dp, top = 24.dp)
-                        .width(140.dp)
-                )
-
-                // User seat on the left
-                if (mySeat != null) {
-                    PlayerSeatView(
-                        player = mySeat.player,
-                        bid = mySeat.bid,
-                        tricksWon = mySeat.tricksWon,
-                        isDealer = mySeat.isDealer,
-                        isCurrentTurn = mySeat.isCurrentTurn,
-                        turnActionText = if (mySeat.isCurrentTurn) (if (uiState.phase == GamePhase.BIDDING) "Bid!" else "Play!") else null,
-                        totalScore = mySeat.totalScore,
-                        activeEmote = mySeat.activeEmote,
-                        isBottomUser = true,
-                        is3DMode = appSettings.is3DMode,
-                        cardCount = mySeat.cardsCount,
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 16.dp, bottom = 8.dp)
+                        .size(tableWidth, tableHeight)
+                        .align(Alignment.Center)
+                        .offset(y = tableCenterYOffset)
+                ) {
+                    TrickTableView(
+                        modifier = Modifier.fillMaxSize(),
+                        playedCards = tableState.playedCards,
+                        allPlayers = uiState.players.map { it.name },
+                        localPlayerName = uiState.localPlayerName,
+                        trumpSuit = tableState.trumpSuit,
+                        leadSuit = tableState.leadSuit,
+                        trickWinner = tableState.trickWinner,
+                        isTrickFinished = tableState.isTrickFinished,
+                        onNextTrickClick = { viewModel.continueNextTrick() },
+                        is3DMode = appSettings.is3DMode
                     )
                 }
 
-                // Cards in hand (Centered, fan arrangement)
-                val isMyTurnToPlay = uiState.phase == GamePhase.PLAYING && mySeat?.isCurrentTurn == true
-                val playableCards = if (isMyTurnToPlay) KaachuPhoolEngine.getPlayableCards(userHand, uiState.leadSuit) else emptyList()
+                // Opponents anchored relative to the game table
+                val playerDistance = if (isTablet) 44.dp else if (isLandscape) 32.dp else 22.dp
+                sortedOpponents.forEachIndexed { index, seat ->
+                    val (posX, posY) = when (sortedOpponents.size) {
+                        1 -> {
+                            // 2-Player game: Opponent directly across
+                            tableCenterX to (tableCenterY - (tableHeight / 2) - playerDistance)
+                        }
+                        2 -> {
+                            // 3-Player game: Opponents at top-left and top-right
+                            if (index == 0) {
+                                (tableCenterX - (tableWidth * 0.38f) - playerDistance * 0.8f) to (tableCenterY - (tableHeight / 2) - playerDistance * 0.7f)
+                            } else {
+                                (tableCenterX + (tableWidth * 0.38f) + playerDistance * 0.8f) to (tableCenterY - (tableHeight / 2) - playerDistance * 0.7f)
+                            }
+                        }
+                        else -> {
+                            // 4-Player game: Left, Top, Right
+                            when (index) {
+                                0 -> (tableCenterX - (tableWidth / 2) - playerDistance) to tableCenterY
+                                1 -> tableCenterX to (tableCenterY - (tableHeight / 2) - playerDistance)
+                                else -> (tableCenterX + (tableWidth / 2) + playerDistance) to tableCenterY
+                            }
+                        }
+                    }
 
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth(0.7f)
-                        .height(cardHeight + 40.dp),
-                    contentAlignment = Alignment.BottomCenter
-                ) {
-                    userHand.forEachIndexed { index, card ->
-                        val totalCards = userHand.size
-                        val maxFanAngle = 25f
-                        val normalizedPosition = if (totalCards > 1) {
-                            (index - (totalCards - 1) / 2f) / (totalCards - 1)
-                        } else 0f
-                        
-                        val rotation = normalizedPosition * maxFanAngle
-                        val yOffset = abs(normalizedPosition) * 24f // increased arc
-                        val xOffset = normalizedPosition * (totalCards * 22f) // increased spread
-
-                        PlayingCardView(
-                            card = card,
-                            isPlayable = playableCards.contains(card),
-                            isTrump = card.suit == tableState.trumpSuit,
-                            width = cardWidth,
-                            height = cardHeight,
-                            is3DMode = appSettings.is3DMode,
-                            onClick = { if (isMyTurnToPlay && playableCards.contains(card)) viewModel.playUserCard(card) },
-                            modifier = Modifier
-                                .offset { IntOffset(with(density) { xOffset.dp.toPx().toInt() }, with(density) { yOffset.dp.toPx().toInt() }) }
-                                .graphicsLayer { rotationZ = rotation }
+                    Box(
+                        modifier = Modifier.offset(x = posX - 42.dp, y = posY - 36.dp)
+                    ) {
+                        PlayerSeatView(
+                            player = seat.player,
+                            bid = seat.bid,
+                            tricksWon = seat.tricksWon,
+                            isDealer = seat.isDealer,
+                            isCurrentTurn = seat.isCurrentTurn,
+                            totalScore = seat.totalScore,
+                            activeEmote = seat.activeEmote,
+                            cardCount = seat.cardsCount
                         )
                     }
                 }
 
-                // Score + Emotes on the right
-                Column(
+                // Top Controls & Status Bar (Respects cutouts & status bars)
+                Row(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = 8.dp),
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .align(Alignment.TopCenter),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Box(
+                    IconButton(
+                        onClick = { showQuitDialog = true },
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(DarkSurface)
-                            .border(1.dp, GoldPrimary.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                            .size(44.dp)
+                            .background(DarkSurface.copy(alpha = 0.7f), CircleShape)
                     ) {
-                        Text("Score: ${mySeat?.totalScore ?: 0}", color = GoldLight, fontWeight = FontWeight.Bold)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Leave Match", tint = GoldPrimary)
                     }
-                    EmotePickerBar(onEmoteSelected = { viewModel.sendEmote(it) })
+
+                    // Centered match info chip
+                    Surface(
+                        color = DarkSurface.copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GoldPrimary.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "ROUND ${uiState.currentRoundIndex + 1}/${uiState.rounds.size.coerceAtLeast(1)}",
+                                color = GoldLight,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp
+                            )
+                            tableState.trumpSuit?.let { trump ->
+                                Text(
+                                    text = "TRUMP: ${trump.symbol}",
+                                    color = if (trump.isRed) ErrorRed else GoldLight,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        IconButton(
+                            onClick = { showSettingsDialog = true },
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(DarkSurface.copy(alpha = 0.7f), CircleShape)
+                        ) {
+                            Icon(Icons.Default.Settings, "Settings", tint = GoldPrimary)
+                        }
+                    }
+                }
+
+                // Bottom Player Hand & Controls (Safe above system navigation)
+                val isMyTurnToPlay = uiState.phase == GamePhase.PLAYING && mySeat?.isCurrentTurn == true
+                val playableCards = if (isMyTurnToPlay) KaachuPhoolEngine.getPlayableCards(userHand, uiState.leadSuit) else emptyList()
+                val selectedCard = userHand.find { it.id == selectedCardId }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    // User Seat (Bottom-Left)
+                    if (mySeat != null) {
+                        PlayerSeatView(
+                            player = mySeat.player,
+                            bid = mySeat.bid,
+                            tricksWon = mySeat.tricksWon,
+                            isDealer = mySeat.isDealer,
+                            isCurrentTurn = mySeat.isCurrentTurn,
+                            totalScore = mySeat.totalScore,
+                            activeEmote = mySeat.activeEmote,
+                            isBottomUser = true,
+                            modifier = Modifier
+                                .align(Alignment.BottomStart)
+                                .padding(bottom = 6.dp)
+                        )
+                    }
+
+                    // Center Column: Action Button (above) + Hand (below)
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 4.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Play Card Action Button (Placed cleanly above cards, never overlaps!)
+                        AnimatedVisibility(
+                            visible = isMyTurnToPlay && selectedCard != null && playableCards.contains(selectedCard),
+                            enter = fadeIn() + slideInVertically { it / 2 },
+                            exit = fadeOut() + slideOutVertically { it / 2 }
+                        ) {
+                            PremiumButton(
+                                text = "PLAY ${selectedCard?.rank?.symbol ?: ""} ${selectedCard?.suit?.symbol ?: ""}",
+                                onClick = {
+                                    selectedCard?.let { card ->
+                                        if (playableCards.contains(card)) {
+                                            viewModel.playUserCard(card)
+                                            selectedCardId = null
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .padding(bottom = 6.dp)
+                                    .height(44.dp)
+                            )
+                        }
+
+                        // Card Hand with Dynamic Overlap & Scaling
+                        val availableHandWidth = if (isLandscape) {
+                            (screenWidth * 0.58f).coerceAtMost(680.dp)
+                        } else {
+                            (screenWidth - 140.dp).coerceAtLeast(180.dp)
+                        }
+
+                        val baseCardWidth = if (isTablet) 76.dp else if (isCompact) 56.dp else 66.dp
+                        val baseCardHeight = baseCardWidth * 1.45f
+                        val totalCards = userHand.size
+
+                        val availableHandWidthVal = availableHandWidth.value
+                        val baseCardWidthVal = baseCardWidth.value
+                        val stepVal = if (totalCards <= 1) {
+                            0f
+                        } else {
+                            val unconstrainedStep = baseCardWidthVal * 0.62f
+                            val maxStepAllowed = (availableHandWidthVal - baseCardWidthVal) / (totalCards - 1).toFloat()
+                            unconstrainedStep.coerceAtMost(maxStepAllowed).coerceAtLeast(14f)
+                        }
+                        val handTotalWidthVal = if (totalCards <= 1) baseCardWidthVal else baseCardWidthVal + (stepVal * (totalCards - 1))
+                        val startOffsetVal = (availableHandWidthVal - handTotalWidthVal) / 2f
+
+                        Box(
+                            modifier = Modifier
+                                .width(availableHandWidth)
+                                .height(baseCardHeight + 32.dp),
+                            contentAlignment = Alignment.BottomCenter
+                        ) {
+                            userHand.forEachIndexed { index, card ->
+                                val isSelected = card.id == selectedCardId
+                                val cardX = (startOffsetVal + stepVal * index).dp
+                                val targetY = if (isSelected) (-22).dp else 0.dp
+                                val animY by animateDpAsState(
+                                    targetValue = targetY,
+                                    animationSpec = spring(dampingRatio = 0.8f, stiffness = 350f),
+                                    label = "card_select_y"
+                                )
+
+                                PlayingCardView(
+                                    card = card,
+                                    isPlayable = playableCards.contains(card),
+                                    isTrump = card.suit == tableState.trumpSuit,
+                                    isSelected = isSelected,
+                                    width = baseCardWidth,
+                                    height = baseCardHeight,
+                                    onClick = {
+                                        if (isMyTurnToPlay && playableCards.contains(card)) {
+                                            if (selectedCardId == card.id) {
+                                                viewModel.playUserCard(card)
+                                                selectedCardId = null
+                                            } else {
+                                                selectedCardId = card.id
+                                                soundEffectsManager.playCardPlay()
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .offset(x = cardX, y = animY)
+                                )
+                            }
+                        }
+                    }
+
+                    // Emote Picker & Trump Badge (Bottom-Right)
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(bottom = 6.dp),
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        EmotePickerBar(onEmoteSelected = { viewModel.sendEmote(it) })
+
+                        PremiumTrumpIndicator(
+                            suit = tableState.trumpSuit,
+                            round = uiState.currentRoundIndex + 1,
+                            totalRounds = uiState.rounds.size,
+                            cardsInRound = uiState.currentRoundCardCount
+                        )
+                    }
                 }
             }
         }

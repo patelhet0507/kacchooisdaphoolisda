@@ -2,59 +2,49 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Velvet & Felt Greens
-val EmeraldDeep = Color(0xFF061A12)
-val EmeraldFelt = Color(0xFF0B2B1B)
-val EmeraldSurface = Color(0xFF103D28)
-val EmeraldBorder = Color(0xFF10B981)
-val EmeraldLight = Color(0xFF34D399)
+// Royal Emerald Palette
+val DeepEmerald = Color(0xFF031C0E)
+val DarkEmerald = Color(0xFF082F14)
+val EmeraldDeep = Color(0xFF031C0E)
+val EmeraldFelt = Color(0xFF082F14)
+val EmeraldSurface = Color(0xFF0A3D1C)
+val EmeraldBorder = Color(0xFF1B5E20)
+val EmeraldLight = Color(0xFF2E7D32)
 
-// Royal Gold Accents
-val GoldPrimary = Color(0xFFF59E0B)
-val GoldLight = Color(0xFFFBBF24)
-val GoldDark = Color(0xFFD97706)
-val GoldContainer = Color(0xFF78350F)
-
-// Stitch Cyber & Gaming Accents
-val StitchBackground = Color(0xFF080D1A)
-val StitchSurface = Color(0xFF0F172A)
-val StitchSurfaceElevated = Color(0xFF1E293B)
-val StitchCard = Color(0xFF131C31)
-val StitchBorder = Color(0xFF23304B)
-val StitchCyan = Color(0xFF06B6D4)
-val StitchPurple = Color(0xFF8B5CF6)
-val StitchPink = Color(0xFFEC4899)
-
-// Playing Card & Suit Colors
-val SuitSpade = Color(0xFF0F172A)
-val SuitClub = Color(0xFF1E293B)
-val SuitHeart = Color(0xFFEF4444)
-val SuitDiamond = Color(0xFFF43F5E)
+// Antique Gold Accents
+val AntiqueGold = Color(0xFFD4A843)
+val BrightGold = Color(0xFFFDE047)
+val GoldPrimary = Color(0xFFD4A843)
+val GoldLight = Color(0xFFFDE047)
+val GoldDark = Color(0xFFB8860B)
+val GoldContainer = Color(0xFF43320D)
 
 // Neutral & Text Colors
-val CardWhite = Color(0xFFFFFFFF)
-val CardBackground = Color(0xFFF8FAFC)
-val CardBorder = Color(0xFFE2E8F0)
-val TextLight = Color(0xFFF8FAFC)
-val TextMuted = Color(0xFF94A3B8)
-val DarkBackground = Color(0xFF080D1A)
-val DarkSurface = Color(0xFF0F172A)
-val DarkSurfaceElevated = Color(0xFF1E293B)
+val CardWhite = Color(0xFFFFFDF5) // Warm white
+val CardBackground = Color(0xFFFFFDF5)
+val CardBorder = Color(0xFFE5E0D0)
+val TextLight = Color(0xFFFFFDF5)
+val TextMuted = Color(0xFFA8B8AD)
+val DarkBackground = Color(0xFF031C0E)
+val DarkSurface = Color(0xFF082F14)
+val DarkSurfaceElevated = Color(0xFF0D451E)
 
-// Game Table & Seats Redesign
-val WoodRail = Color(0xFF5C3A21)
-val WoodRailLight = Color(0xFF8B5A2B)
-val WoodRailDark = Color(0xFF3D2117)
-val ChairCushion = Color(0xFF3D2B1F)
-val ChairCushionDark = Color(0xFF2C1A12)
-val StitchLine = Color(0xFFD4AF37).copy(alpha = 0.15f)
-val FeltCenter = Color(0xFF16A34A)
-val FeltMid = Color(0xFF15803D)
-val FeltEdge = Color(0xFF166534)
-val FeltDeep = Color(0xFF14532D)
+// Glassmorphism
+val GlassBackground = Color(0x33FFFFFF)
+val GlassBorder = Color(0x4DFFFFFF)
 
-// Badges & Status
-val SuccessGreen = Color(0xFF10B981)
-val ErrorRed = Color(0xFFEF4444)
-val WarningAmber = Color(0xFFF59E0B)
-val HookForbiddenColor = Color(0xFFDC2626)
+// Game Table & Seats
+val WoodRail = Color(0xFF4E342E)
+val WoodRailDark = Color(0xFF3E2723)
+val ChairCushion = Color(0xFF263238)
+val ChairCushionDark = Color(0xFF102027)
+
+// Suit Colors
+val SuitSpade = Color(0xFF1F2937)
+val SuitClub = Color(0xFF1F2937)
+val SuitHeart = Color(0xFFEF4444)
+val SuitDiamond = Color(0xFFEF4444)
+val ErrorRed = Color(0xFFF87171)
+val SuccessGreen = Color(0xFF4ADE80)
+val HookForbiddenColor = Color(0xFFF87171)
+val WarningAmber = Color(0xFFFACC15)

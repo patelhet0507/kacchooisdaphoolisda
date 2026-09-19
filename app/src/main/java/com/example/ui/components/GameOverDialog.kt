@@ -38,9 +38,8 @@ fun GameOverDialog(
     val sortedByScore = playerStates.sortedByDescending { it.totalScore }
     val winner = sortedByScore.firstOrNull()
 
-    val configuration = LocalConfiguration.current
-    val maxDialogHeight = (configuration.screenHeightDp * 0.88f).dp
-    val dialogWidthFraction = if (configuration.screenWidthDp > 600) 0.65f else 0.92f
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val maxDialogHeight = (configuration.screenHeightDp * 0.90f).dp
 
     Dialog(
         onDismissRequest = { /* Modal */ },
@@ -50,197 +49,98 @@ fun GameOverDialog(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            ConfettiOverlay(modifier = Modifier.fillMaxSize(), particleCount = 90)
+            ConfettiOverlay(modifier = Modifier.fillMaxSize(), particleCount = 100)
 
-            Card(
+            GlassCard(
                 modifier = Modifier
-                    .fillMaxWidth(dialogWidthFraction)
-                    .heightIn(max = maxDialogHeight)
-                    .padding(12.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                border = BorderStroke(1.5.dp, GoldPrimary.copy(alpha = 0.5f))
+                    .fillMaxWidth()
+                    .widthIn(max = 520.dp)
+                    .padding(horizontal = 16.dp, vertical = 20.dp)
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(max = maxDialogHeight)
+                        .verticalScroll(rememberScrollState())
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
                     // Header
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("🏆", fontSize = 48.sp)
                         Text(
-                            text = "🏆",
-                            fontSize = 42.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Game Finished!",
+                            text = "GAME FINISHED",
+                            style = MaterialTheme.typography.titleLarge,
                             color = GoldLight,
-                            fontSize = 22.sp,
                             fontWeight = FontWeight.Black,
-                            textAlign = TextAlign.Center
+                            letterSpacing = 2.sp
                         )
                         if (winner != null) {
-                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "Winner: ${winner.player.name} 🎉",
+                                text = "WINNER: ${winner.player.name.uppercase()}",
+                                style = MaterialTheme.typography.labelSmall,
                                 color = GoldPrimary,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
 
-                    // Scrollable Body
+                    // Scoreboard
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState()),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        // Newly Unlocked Achievements Notification Banner
-                        if (newlyUnlockedAchievements.isNotEmpty()) {
-                            newlyUnlockedAchievements.forEach { achievement ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = GoldPrimary.copy(alpha = 0.2f)),
-                                    border = CardDefaults.outlinedCardBorder().copy(
-                                        brush = androidx.compose.ui.graphics.SolidColor(GoldPrimary)
-                                    ),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(10.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                    ) {
-                                        Text(text = achievement.emoji, fontSize = 24.sp)
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = "🏆 Achievement Unlocked!",
-                                                color = GoldLight,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Black
-                                            )
-                                            Text(
-                                                text = achievement.title,
-                                                color = TextLight,
-                                                fontSize = 13.sp,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            Text(
-                                                text = achievement.description,
-                                                color = TextMuted,
-                                                fontSize = 10.sp
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
                         sortedByScore.forEachIndexed { index, state ->
-                            val medal = when (index) {
-                                0 -> "🥇"
-                                1 -> "🥈"
-                                2 -> "🥉"
-                                else -> "#${index + 1}"
-                            }
-
-                            val isFirst = index == 0
-
-                            Row(
+                            val isWinner = index == 0
+                            Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isFirst) GoldPrimary.copy(alpha = 0.15f) else DarkSurfaceElevated)
-                                    .border(
-                                        1.5.dp,
-                                        if (isFirst) GoldPrimary else EmeraldBorder.copy(alpha = 0.3f),
-                                        RoundedCornerShape(12.dp)
-                                    )
-                                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                    .background(if (isWinner) GoldPrimary.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.03f))
+                                    .border(1.dp, if (isWinner) GoldPrimary else GoldPrimary.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                                    .padding(12.dp)
                             ) {
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(if (index == 0) "🥇" else if (index == 1) "🥈" else if (index == 2) "🥉" else "#${index + 1}", fontSize = 18.sp)
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(state.player.avatarEmoji, fontSize = 20.sp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            state.player.name.uppercase(),
+                                            color = if (isWinner) GoldLight else TextLight,
+                                            fontWeight = FontWeight.Black,
+                                            style = MaterialTheme.typography.labelLarge
+                                        )
+                                    }
                                     Text(
-                                        text = medal,
-                                        fontSize = if (index < 3) 20.sp else 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TextLight
-                                    )
-                                    Text(
-                                        text = state.player.avatarEmoji,
-                                        fontSize = 18.sp
-                                    )
-                                    Text(
-                                        text = state.player.name,
-                                        color = if (isFirst) GoldLight else TextLight,
-                                        fontSize = 14.sp,
-                                        fontWeight = if (isFirst) FontWeight.Black else FontWeight.SemiBold
+                                        "${state.totalScore} PTS",
+                                        color = if (isWinner) GoldPrimary else GoldLight,
+                                        fontWeight = FontWeight.Black
                                     )
                                 }
-
-                                Text(
-                                    text = "${state.totalScore} pts",
-                                    color = if (isFirst) GoldPrimary else TextLight,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Black
-                                )
                             }
                         }
                     }
 
-                    // Footer Buttons
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
+                    // Actions
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        PremiumButton(
+                            text = "PLAY AGAIN",
                             onClick = onPlayAgain,
-                            colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("play_again_button")
-                        ) {
-                            Text(
-                                text = "Play Again 🃏",
-                                color = EmeraldDeep,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 14.sp
-                            )
-                        }
-
-                        OutlinedButton(
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        PremiumButton(
+                            text = "MAIN MENU",
                             onClick = onHomeClick,
-                            shape = RoundedCornerShape(12.dp),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(EmeraldBorder)
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("home_button")
-                        ) {
-                            Text(
-                                text = "Back to Main Menu",
-                                color = TextLight,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp
-                            )
-                        }
+                            modifier = Modifier.fillMaxWidth(),
+                            isPrimary = false
+                        )
                     }
                 }
             }

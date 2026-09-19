@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,157 +49,74 @@ fun PlayerSeatView(
 
     val infiniteTransition = rememberInfiniteTransition(label = "turn_glow")
     val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.7f,
+        initialValue = 0.4f,
+        targetValue = 0.8f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000),
+            animation = tween(1200),
             repeatMode = RepeatMode.Reverse
         ),
         label = "glow_alpha"
     )
-    val glowScale by infiniteTransition.animateFloat(
-        initialValue = 1.0f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glow_scale"
-    )
 
-    val avatarSize = if (isSmallScreen) {
-        if (isBottomUser) 38.dp else 32.dp
-    } else {
-        if (isBottomUser) 54.dp else 46.dp
-    }
+    val avatarSize = if (isBottomUser) 52.dp else if (isSmallScreen) 40.dp else 46.dp
 
     Column(
-        modifier = modifier.testTag("player_seat_${player.id}"),
+        modifier = modifier
+            .widthIn(max = 88.dp)
+            .testTag("player_seat_${player.id}"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(contentAlignment = Alignment.Center) {
-            // Turn indicator glow ring
+            // Animated Turn Indicator
             if (isCurrentTurn) {
                 Box(
                     modifier = Modifier
                         .size(avatarSize + 12.dp)
-                        .graphicsLayer {
-                            scaleX = glowScale
-                            scaleY = glowScale
-                        }
-                        .border(2.dp, GoldPrimary.copy(alpha = glowAlpha), CircleShape)
+                        .border(
+                            2.dp,
+                            Brush.sweepGradient(listOf(GoldPrimary, GoldLight, GoldPrimary)),
+                            CircleShape
+                        )
+                        .graphicsLayer { alpha = glowAlpha }
                 )
             }
 
-            // Chair Visual
-            Box(
-                modifier = Modifier
-                    .size(if (isBottomUser) 76.dp else 64.dp, if (isBottomUser) 40.dp else 34.dp)
-                    .offset(y = if (isBottomUser) 16.dp else 12.dp)
-                    .shadow(if (is3DMode) 8.dp else 4.dp, RoundedCornerShape(50))
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(ChairCushion, ChairCushionDark)
-                        ),
-                        shape = RoundedCornerShape(50)
-                    )
-                    .border(1.dp, WoodRail.copy(alpha = 0.5f), RoundedCornerShape(50))
-            )
-            
-            if (is3DMode) {
-                // Backrest (simplified arc)
-                Canvas(modifier = Modifier
-                    .size(if (isBottomUser) 60.dp else 50.dp, if (isBottomUser) 24.dp else 20.dp)
-                    .offset(y = if (isBottomUser) (-22).dp else (-18).dp)
-                ) {
-                    drawArc(
-                        brush = Brush.verticalGradient(listOf(ChairCushion, ChairCushionDark)),
-                        startAngle = 180f,
-                        sweepAngle = 180f,
-                        useCenter = true
-                    )
-                    drawArc(
-                        color = Color.White.copy(alpha = 0.1f),
-                        startAngle = 180f,
-                        sweepAngle = 180f,
-                        useCenter = false,
-                        style = Stroke(width = 1f)
-                    )
-                }
-            }
-
-            // Card fan indicators behind avatar
-            if (cardCount > 0 && !isBottomUser) {
-                Row(
-                    modifier = Modifier.offset(y = (-avatarSize/2) - 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy((-8).dp)
-                ) {
-                    repeat(min(cardCount, 3)) { i ->
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp, 16.dp)
-                                .graphicsLayer { rotationZ = (i - 1) * 15f }
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(Color(0xFFB91C1C)) // Red card back
-                                .border(0.5.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(2.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("♣", color = Color.White.copy(alpha = 0.3f), fontSize = 6.sp)
-                        }
-                    }
-                }
-            }
-
-            // Main avatar circle
+            // Avatar Circle
             Box(
                 modifier = Modifier
                     .size(avatarSize)
-                    .shadow(if (is3DMode) 10.dp else 4.dp, CircleShape)
                     .clip(CircleShape)
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(Color(player.colorHex), Color(player.colorHex).copy(alpha = 0.7f))
-                        )
-                    )
+                    .background(DeepEmerald)
                     .border(
-                        width = if (isCurrentTurn) 2.dp else 1.dp,
-                        color = if (isCurrentTurn) GoldPrimary else Color.White.copy(alpha = 0.3f),
-                        shape = CircleShape
+                        if (isCurrentTurn) 2.dp else 1.dp,
+                        if (isCurrentTurn) GoldPrimary else GoldPrimary.copy(alpha = 0.3f),
+                        CircleShape
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = player.avatarEmoji,
-                    fontSize = if (isSmallScreen) {
-                        if (isBottomUser) 18.sp else 16.sp
-                    } else {
-                        if (isBottomUser) 28.sp else 24.sp
-                    }
+                    fontSize = if (isBottomUser) 28.sp else 24.sp
                 )
             }
 
-            // Dealer chip "D"
+            // Dealer Chip
             if (isDealer) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .offset(x = 4.dp, y = (-4).dp)
-                        .size(if (isSmallScreen) 16.dp else 20.dp)
-                        .shadow(4.dp, CircleShape)
+                        .size(20.dp)
                         .clip(CircleShape)
                         .background(GoldPrimary)
                         .border(1.dp, GoldLight, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "D",
-                        color = EmeraldDeep,
-                        fontSize = if (isSmallScreen) 9.sp else 11.sp,
-                        fontWeight = FontWeight.Black
-                    )
+                    Text("D", color = DeepEmerald, fontSize = 10.sp, fontWeight = FontWeight.Black)
                 }
             }
 
+            // Emote
             if (!activeEmote.isNullOrBlank()) {
                 EmoteBubbleView(
                     emoteEmoji = activeEmote,
@@ -207,79 +125,50 @@ fun PlayerSeatView(
             }
         }
 
-        Spacer(modifier = Modifier.height(if (isSmallScreen) 8.dp else 12.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
-        // Player Name Plate
-        Box(
-            modifier = Modifier
-                .width(if (isSmallScreen) 70.dp else 86.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(WoodRailDark)
-                .border(1.dp, WoodRail, RoundedCornerShape(4.dp))
-                .padding(vertical = 2.dp),
-            contentAlignment = Alignment.Center
+        // Name & Score Plate
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
+            Text(
+                text = if (isBottomUser) "YOU" else player.name.uppercase(),
+                color = if (isCurrentTurn) GoldLight else TextLight,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = if (isBottomUser) "You" else player.name,
-                    color = GoldLight,
-                    fontSize = if (isSmallScreen) 10.sp else 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "($totalScore)",
-                    color = GoldPrimary,
-                    fontSize = if (isSmallScreen) 9.sp else 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        // Status / Bid & Tricks Badge
-        Box(
-            modifier = Modifier
-                .padding(top = 2.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(DarkSurface.copy(alpha = 0.8f))
-                .border(0.5.dp, GoldPrimary.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
-                .padding(horizontal = 6.dp, vertical = 1.dp)
-        ) {
-            if (isCurrentTurn && turnActionText != null) {
-                Text(
-                    text = turnActionText,
-                    color = GoldLight,
-                    fontSize = if (isSmallScreen) 8.sp else 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            } else {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                // Bid/Won Status
+                val isGoalMet = bid != null && tricksWon == bid
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(if (isGoalMet) SuccessGreen.copy(alpha = 0.2f) else DarkSurface.copy(alpha = 0.6f))
+                        .border(0.5.dp, if (isGoalMet) SuccessGreen.copy(alpha = 0.5f) else GoldPrimary.copy(alpha = 0.2f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "Bid: ${bid?.toString() ?: "-"}",
-                        color = if (bid != null) TextLight else TextMuted,
-                        fontSize = if (isSmallScreen) 8.sp else 10.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "•",
-                        color = TextMuted,
-                        fontSize = if (isSmallScreen) 7.sp else 8.sp
-                    )
-                    val isGoalMet = bid != null && tricksWon == bid
-                    Text(
-                        text = "Won: $tricksWon",
-                        color = if (isGoalMet) SuccessGreen else GoldLight,
-                        fontSize = if (isSmallScreen) 8.sp else 10.sp,
+                        text = "${bid ?: "-"}/$tricksWon",
+                        color = if (isGoalMet) SuccessGreen else GoldPrimary,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
+                
+                // Total Score
+                Text(
+                    text = "($totalScore)",
+                    color = TextMuted,
+                    fontSize = 10.sp
+                )
             }
         }
     }

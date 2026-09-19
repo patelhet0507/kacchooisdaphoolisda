@@ -13,14 +13,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -58,184 +56,106 @@ fun RoundSummaryDialog(
     onContinueClick: () -> Unit
 ) {
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
-    val maxDialogHeight = (configuration.screenHeightDp * 0.88f).dp
-    val dialogWidthFraction = if (configuration.screenWidthDp > 600) 0.65f else 0.92f
+    val maxDialogHeight = (configuration.screenHeightDp * 0.90f).dp
 
     Dialog(
         onDismissRequest = { /* Modal */ },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Card(
+        GlassCard(
             modifier = Modifier
-                .fillMaxWidth(dialogWidthFraction)
-                .heightIn(max = maxDialogHeight)
-                .padding(12.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            border = BorderStroke(1.5.dp, GoldPrimary.copy(alpha = 0.5f))
+                .fillMaxWidth()
+                .widthIn(max = 520.dp)
+                .padding(horizontal = 16.dp, vertical = 20.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(max = maxDialogHeight)
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Title
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                // Header
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Round $roundNumber Summary 📊",
+                        text = "ROUND $roundNumber SUMMARY",
+                        style = MaterialTheme.typography.titleLarge,
                         color = GoldLight,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Trump was ${trumpSuit.displayName} (${trumpSuit.symbol} ${trumpSuit.mnemonic})",
-                        color = TextMuted,
-                        fontSize = 11.sp
+                        text = "TRUMP: ${trumpSuit.symbol} ${trumpSuit.displayName.uppercase()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = trumpSuit.suitColor
                     )
                 }
 
-                // Scrollable Body
+                // Stats List
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                    modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Table Header
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(DarkSurfaceElevated)
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(text = "Player", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.8f))
-                        Text(text = "Bid", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                        Text(text = "Won", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-                        Text(text = "Round", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.Center)
-                        Text(text = "Total", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1.2f), textAlign = TextAlign.End)
-                    }
-
-                    // Table Rows
                     playerStates.forEach { state ->
                         val isSuccess = state.bid != null && state.bid == state.tricksWon
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSuccess) SuccessGreen.copy(alpha = 0.08f) else Color.Transparent)
-                                .border(
-                                    1.dp,
-                                    if (isSuccess) SuccessGreen.copy(alpha = 0.3f) else EmeraldBorder.copy(alpha = 0.2f),
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .padding(horizontal = 8.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Name
-                            Row(
-                                modifier = Modifier.weight(1.8f),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                Text(text = state.player.avatarEmoji, fontSize = 12.sp)
-                                Text(
-                                    text = state.player.name,
-                                    color = TextLight,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-
-                            // Bid
-                            Text(
-                                text = "${state.bid ?: "-"}",
-                                color = TextLight,
-                                fontSize = 12.sp,
-                                modifier = Modifier.weight(1f),
-                                textAlign = TextAlign.Center
-                            )
-
-                            // Won
-                            Text(
-                                text = "${state.tricksWon}",
-                                color = if (isSuccess) SuccessGreen else TextLight,
-                                fontSize = 12.sp,
-                                fontWeight = if (isSuccess) FontWeight.Bold else FontWeight.Normal,
-                                modifier = Modifier.weight(1f),
-                                textAlign = TextAlign.Center
-                            )
-
-                            // Round Score
-                            Text(
-                                text = if (state.roundScore > 0) "+${state.roundScore}" else "0",
-                                color = if (isSuccess) SuccessGreen else ErrorRed,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.weight(1.2f),
-                                textAlign = TextAlign.Center
-                            )
-
-                            // Total Score
-                            Text(
-                                text = "${state.totalScore}",
-                                color = GoldPrimary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Black,
-                                modifier = Modifier.weight(1.2f),
-                                textAlign = TextAlign.End
-                            )
-                        }
-                    }
-
-                    // Next round preview
-                    if (!isLastRound && nextTrumpSuit != null) {
-                        Spacer(modifier = Modifier.height(2.dp))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(DarkSurfaceElevated)
-                                .padding(horizontal = 10.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
+                                .background(if (isSuccess) SuccessGreen.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.02f))
+                                .border(0.5.dp, if (isSuccess) SuccessGreen.copy(alpha = 0.3f) else GoldPrimary.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                                .padding(10.dp)
                         ) {
-                            Text(
-                                text = "Next Round Trump: ${nextTrumpSuit.displayName} ${nextTrumpSuit.symbol} (${nextTrumpSuit.mnemonic})",
-                                color = GoldLight,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1.5f)) {
+                                    Text(state.player.avatarEmoji, fontSize = 16.sp)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = state.player.name.uppercase(),
+                                        color = TextLight,
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                                
+                                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("BID/WON", fontSize = 8.sp, color = TextMuted)
+                                        Text("${state.bid ?: "-"}/${state.tricksWon}", color = if (isSuccess) SuccessGreen else GoldLight, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                    }
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text("ROUND", fontSize = 8.sp, color = TextMuted)
+                                        Text("+${state.roundScore}", color = if (isSuccess) SuccessGreen else ErrorRed, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text("TOTAL", fontSize = 8.sp, color = TextMuted)
+                                        Text("${state.totalScore}", color = GoldPrimary, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Button(
-                    onClick = onContinueClick,
-                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("summary_continue_button")
-                ) {
+                if (!isLastRound && nextTrumpSuit != null) {
                     Text(
-                        text = if (isLastRound) "View Game Results 🏆" else "Start Next Round »",
-                        color = EmeraldDeep,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 13.sp
+                        text = "NEXT TRUMP: ${nextTrumpSuit.symbol} ${nextTrumpSuit.displayName.uppercase()}",
+                        color = GoldLight.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.labelSmall
                     )
                 }
+
+                PremiumButton(
+                    text = if (isLastRound) "VIEW RESULTS" else "NEXT ROUND",
+                    onClick = onContinueClick,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
     }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,6 +26,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -35,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -46,6 +49,7 @@ import com.example.engine.SoundEffectsManager
 import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.DarkSurfaceElevated
+import com.example.ui.theme.DeepEmerald
 import com.example.ui.theme.EmeraldBorder
 import com.example.ui.theme.EmeraldDeep
 import com.example.ui.theme.ErrorRed
@@ -80,205 +84,122 @@ fun BiddingDialog(
     var showHookExplanation by remember { mutableStateOf(false) }
 
     val configuration = LocalConfiguration.current
-    val maxDialogHeight = (configuration.screenHeightDp * 0.88f).dp
-    val dialogWidthFraction = if (configuration.screenWidthDp > 600) 0.65f else 0.92f
+    val maxDialogHeight = (configuration.screenHeightDp * 0.90f).dp
 
     Dialog(
-        onDismissRequest = { /* Modal: must select a bid */ },
+        onDismissRequest = { /* Modal */ },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Card(
+        GlassCard(
             modifier = Modifier
-                .fillMaxWidth(dialogWidthFraction)
-                .heightIn(max = maxDialogHeight)
-                .padding(12.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            border = BorderStroke(1.5.dp, GoldPrimary.copy(alpha = 0.5f))
+                .fillMaxWidth()
+                .widthIn(max = 500.dp)
+                .padding(horizontal = 16.dp, vertical = 20.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(max = maxDialogHeight)
+                    .verticalScroll(rememberScrollState())
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Header
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Make Your Judgement (Bid) 🎯",
+                        text = "YOUR JUDGEMENT",
+                        style = MaterialTheme.typography.titleLarge,
                         color = GoldLight,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "How many tricks will you win in this round?",
+                        text = "HOW MANY TRICKS WILL YOU WIN?",
+                        style = MaterialTheme.typography.labelSmall,
                         color = TextMuted,
-                        fontSize = 12.sp,
                         textAlign = TextAlign.Center
                     )
                 }
 
-                // Scrollable content area
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    // Hook Rule Alert for dealer
-                    if (isDealer && forbiddenBid != null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(ErrorRed.copy(alpha = 0.15f))
-                                .border(1.dp, ErrorRed.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
-                                .clickable {
-                                    soundEffectsManager.playDealerHookAlert()
-                                    showHookExplanation = true
-                                }
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Block,
-                                    contentDescription = "Forbidden Hook Rule",
-                                    tint = ErrorRed,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Column {
-                                    Text(
-                                        text = "DEALER HOOK: Cannot bid $forbiddenBid",
-                                        color = ErrorRed,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "Tap to view rule explanation",
-                                        color = TextMuted,
-                                        fontSize = 10.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Grid of selectable bids from 0 to totalCards
-                    FlowRow(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        for (bidOption in 0..totalCards) {
-                            val isForbidden = isDealer && forbiddenBid != null && bidOption == forbiddenBid
-                            val isSelected = selectedBid == bidOption
-
-                            val bgColor = when {
-                                isForbidden -> HookForbiddenColor.copy(alpha = 0.2f)
-                                isSelected -> GoldPrimary
-                                else -> DarkSurfaceElevated
-                            }
-
-                            val textColor = when {
-                                isForbidden -> ErrorRed
-                                isSelected -> EmeraldDeep
-                                else -> TextLight
-                            }
-
-                            val borderColor = when {
-                                isForbidden -> ErrorRed.copy(alpha = 0.6f)
-                                isSelected -> GoldLight
-                                else -> EmeraldBorder.copy(alpha = 0.4f)
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(bgColor)
-                                    .border(if (isSelected) 2.dp else 1.dp, borderColor, RoundedCornerShape(10.dp))
-                                    .clickable {
-                                        if (isForbidden) {
-                                            soundEffectsManager.playDealerHookAlert()
-                                            showHookExplanation = true
-                                        } else {
-                                            soundEffectsManager.playButtonTap()
-                                            selectedBid = bidOption
-                                        }
-                                    }
-                                    .testTag("bid_option_$bidOption"),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = bidOption.toString(),
-                                        color = textColor,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Black
-                                    )
-                                    if (isForbidden) {
-                                        Text(
-                                            text = "HOOK",
-                                            color = ErrorRed,
-                                            fontSize = 8.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Footer Buttons
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            selectedBid?.let {
-                                soundEffectsManager.playButtonTap()
-                                onBidSelected(it)
-                            }
-                        },
-                        enabled = selectedBid != null,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = GoldPrimary,
-                            disabledContainerColor = DarkSurfaceElevated
-                        ),
-                        shape = RoundedCornerShape(12.dp),
+                // Hook Alert
+                if (isDealer && forbiddenBid != null) {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .testTag("confirm_bid_button")
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(ErrorRed.copy(alpha = 0.1f))
+                            .border(1.dp, ErrorRed.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .clickable {
+                                soundEffectsManager.playDealerHookAlert()
+                                showHookExplanation = true
+                            }
+                            .padding(10.dp)
                     ) {
-                        Text(
-                            text = if (selectedBid != null) "Confirm Bid: $selectedBid" else "Select a number",
-                            color = if (selectedBid != null) EmeraldDeep else TextMuted,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                    }
-
-                    if (onLeaveMatch != null) {
-                        TextButton(
-                            onClick = onLeaveMatch,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("bidding_leave_button")
-                        ) {
-                            Text("Leave Match", color = Color(0xFFEF4444), fontSize = 13.sp)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.Block, null, tint = ErrorRed, modifier = Modifier.size(16.dp))
+                            Text(
+                                text = "DEALER HOOK: CANNOT BID $forbiddenBid",
+                                color = ErrorRed,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
+                    }
+                }
+
+                // Grid
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    for (bidOption in 0..totalCards) {
+                        val isForbidden = isDealer && forbiddenBid != null && bidOption == forbiddenBid
+                        val isSelected = selectedBid == bidOption
+
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) GoldPrimary else if (isForbidden) ErrorRed.copy(alpha = 0.05f) else Color.White.copy(alpha = 0.05f))
+                                .border(
+                                    width = if (isSelected) 2.dp else 1.dp,
+                                    brush = if (isSelected) Brush.linearGradient(listOf(GoldLight, GoldPrimary)) else androidx.compose.ui.graphics.SolidColor(if (isForbidden) ErrorRed.copy(alpha = 0.3f) else GoldPrimary.copy(alpha = 0.2f)),
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                                .clickable {
+                                    if (isForbidden) {
+                                        soundEffectsManager.playDealerHookAlert()
+                                        showHookExplanation = true
+                                    } else {
+                                        soundEffectsManager.playButtonTap()
+                                        selectedBid = bidOption
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = bidOption.toString(),
+                                color = if (isSelected) DeepEmerald else if (isForbidden) ErrorRed else GoldLight,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Black
+                            )
+                        }
+                    }
+                }
+
+                // Action
+                PremiumButton(
+                    text = if (selectedBid != null) "CONFIRM BID: $selectedBid" else "SELECT A BID",
+                    onClick = { selectedBid?.let { onBidSelected(it) } },
+                    modifier = Modifier.fillMaxWidth(),
+                    isPrimary = selectedBid != null
+                )
+
+                if (onLeaveMatch != null) {
+                    TextButton(onClick = onLeaveMatch) {
+                        Text("LEAVE MATCH", color = ErrorRed.copy(alpha = 0.8f), style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
@@ -293,8 +214,9 @@ fun BiddingDialog(
         ) {
             Card(
                 modifier = Modifier
-                    .fillMaxWidth(dialogWidthFraction)
-                    .padding(16.dp),
+                    .fillMaxWidth()
+                    .widthIn(max = 480.dp)
+                    .padding(horizontal = 16.dp, vertical = 20.dp),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = DarkSurface),
                 border = BorderStroke(1.5.dp, GoldPrimary.copy(alpha = 0.5f))
@@ -302,6 +224,8 @@ fun BiddingDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(max = maxDialogHeight)
+                        .verticalScroll(rememberScrollState())
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {

@@ -69,68 +69,39 @@ fun SettingsDialog(
     var tempRepoText by remember { mutableStateOf(appSettings.githubRepo) }
 
     val configuration = LocalConfiguration.current
-    val maxDialogHeight = (configuration.screenHeightDp * 0.88f).dp
-    val dialogWidthFraction = if (configuration.screenWidthDp > 600) 0.65f else 0.92f
+    val maxDialogHeight = (configuration.screenHeightDp * 0.90f).dp
 
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Card(
+        GlassCard(
             modifier = Modifier
-                .fillMaxWidth(dialogWidthFraction)
-                .heightIn(max = maxDialogHeight)
-                .padding(12.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            border = BorderStroke(1.5.dp, GoldPrimary.copy(alpha = 0.5f))
+                .fillMaxWidth()
+                .widthIn(max = 560.dp)
+                .padding(horizontal = 16.dp, vertical = 20.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Header with Title & Close Icon
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(GoldPrimary.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                tint = GoldPrimary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                        Text(
-                            text = "Game Settings ⚙️",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = GoldLight
-                        )
-                    }
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = TextMuted
-                        )
+                    Text(
+                        text = "SETTINGS",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = GoldLight,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, null, tint = TextMuted)
                     }
                 }
 
@@ -139,530 +110,67 @@ fun SettingsDialog(
                         .fillMaxWidth()
                         .weight(1f, fill = false)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    if (statusNotification != null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF064E3B).copy(alpha = 0.6f))
-                                .border(1.dp, Color(0xFF10B981), RoundedCornerShape(8.dp))
-                                .padding(10.dp)
-                        ) {
-                            Text(
-                                text = statusNotification!!,
-                                color = Color(0xFF6EE7B7),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                    }
-
-                // ====================================================
-                // 1. SOUND EFFECTS & AUDIO
-                // ====================================================
-                SettingsSectionCard(title = "CARD SOUND EFFECTS & AUDIO", icon = Icons.Default.VolumeUp) {
-                    // Sound Master Switch
-                    SettingsToggleRow(
-                        title = "Card Sound Effects",
-                        subtitle = "Tactile card deal, slap, flip, trick win & fanfare audio",
-                        checked = appSettings.soundEffectsEnabled,
-                        onCheckedChange = {
-                            settingsManager.setSoundEffectsEnabled(it)
-                            if (it) soundEffectsManager.playButtonTap()
-                        },
-                        testTag = "toggle_sound_effects"
-                    )
-
-                    // Volume Slider
-                    if (appSettings.soundEffectsEnabled) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Sound Volume",
-                                    color = TextLight,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = "${(appSettings.soundVolume * 100).toInt()}%",
-                                    color = GoldLight,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            Slider(
-                                value = appSettings.soundVolume,
-                                onValueChange = { settingsManager.setSoundVolume(it) },
-                                onValueChangeFinished = { soundEffectsManager.playCardPlay() },
-                                colors = SliderDefaults.colors(
-                                    thumbColor = GoldPrimary,
-                                    activeTrackColor = GoldPrimary,
-                                    inactiveTrackColor = DarkSurfaceElevated
-                                ),
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-
-                    // Haptic Feedback
-                    SettingsToggleRow(
-                        title = "Haptic Vibrations",
-                        subtitle = "Tactile feedback when tapping cards and placing bids",
-                        checked = appSettings.hapticFeedbackEnabled,
-                        onCheckedChange = {
-                            settingsManager.setHapticFeedbackEnabled(it)
-                            if (it) soundEffectsManager.vibrate(30, 150)
-                        },
-                        testTag = "toggle_haptics"
-                    )
-
-                    // Interactive Sound Test Board
-                    if (appSettings.soundEffectsEnabled) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "TEST SOUND EFFECTS",
-                                color = TextMuted,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.8.sp
-                            )
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                SoundTestChip("🃏 Deal", Modifier.weight(1f)) {
-                                    soundEffectsManager.playCardDeal()
-                                }
-                                SoundTestChip("🂠 Play Slap", Modifier.weight(1f)) {
-                                    soundEffectsManager.playCardPlay()
-                                }
-                                SoundTestChip("🏆 Trick Win", Modifier.weight(1f)) {
-                                    soundEffectsManager.playTrickWin()
-                                }
-                            }
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                SoundTestChip("🎺 Victory", Modifier.weight(1f)) {
-                                    soundEffectsManager.playRoundWin()
-                                }
-                                SoundTestChip("👑 Trump", Modifier.weight(1f)) {
-                                    soundEffectsManager.playTrumpAnnounce()
-                                }
-                                SoundTestChip("⚠️ Hook Alert", Modifier.weight(1f)) {
-                                    soundEffectsManager.playDealerHookAlert()
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ====================================================
-                // 2. ACCOUNT & CLOUD SYNCHRONIZATION
-                // ====================================================
-                SettingsSectionCard(title = "ACCOUNT & CLOUD DATA", icon = Icons.Default.AccountCircle) {
-                    val avatarEmoji = CustomizationData.avatars.find { it.id == userProfile.selectedAvatar }?.emoji ?: "🦁"
-                    
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(DarkSurfaceElevated)
-                            .padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(GoldPrimary.copy(alpha = 0.25f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(text = avatarEmoji, fontSize = 20.sp)
-                        }
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = userProfile.googleName,
-                                color = TextLight,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = if (userProfile.isLoggedIn) {
-                                    if (userProfile.googleEmail.isNotBlank()) userProfile.googleEmail else "Authenticated"
-                                } else {
-                                    "Guest / Local Profile"
-                                },
-                                color = if (userProfile.isLoggedIn) Color(0xFF34D399) else TextMuted,
-                                fontSize = 11.sp
-                            )
-                        }
-
-                        if (!userProfile.isLoggedIn) {
-                            Button(
-                                onClick = {
-                                    onDismiss()
-                                    onOpenAuth()
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text("Sign In", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-
-                    // Account Actions
-                    if (userProfile.isLoggedIn) {
-                        Button(
-                            onClick = { showLogoutConfirmDialog = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceElevated),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFE5E7EB).copy(alpha = 0.2f))
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ExitToApp,
-                                contentDescription = null,
-                                tint = TextLight,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Log Out from Account", color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-
-                    // Delete Account Button (Destructive)
-                    OutlinedButton(
-                        onClick = { showDeleteConfirmDialog = true },
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = Color(0xFF7F1D1D).copy(alpha = 0.15f),
-                            contentColor = Color(0xFFF87171)
-                        ),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
-                            brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFEF4444).copy(alpha = 0.6f))
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("delete_account_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DeleteForever,
-                            contentDescription = null,
-                            tint = Color(0xFFF87171),
-                            modifier = Modifier.size(16.dp)
+                    // Audio Section
+                    SettingsSectionCard(title = "AUDIO & HAPTICS", icon = Icons.Default.VolumeUp) {
+                        SettingsToggleRow(
+                            title = "Sound Effects",
+                            subtitle = "Card deal, slap, flip, and fanfare",
+                            checked = appSettings.soundEffectsEnabled,
+                            onCheckedChange = { settingsManager.setSoundEffectsEnabled(it) }
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Delete Account & Wipe Data",
-                            color = Color(0xFFF87171),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                        SettingsToggleRow(
+                            title = "Haptic Feedback",
+                            subtitle = "Vibrations on card actions",
+                            checked = appSettings.hapticFeedbackEnabled,
+                            onCheckedChange = { settingsManager.setHapticFeedbackEnabled(it) }
                         )
                     }
-                }
 
-                // ====================================================
-                // 3. GAMEPLAY & CARD PREFERENCES
-                // ====================================================
-                SettingsSectionCard(title = "GAMEPLAY PREFERENCES", icon = Icons.Default.Style) {
-                    SettingsToggleRow(
-                        title = "Auto-Sort Hand",
-                        subtitle = "Automatically sort dealt cards by suit (♠ ♦ ♣ ♥) and descending rank",
-                        checked = appSettings.autoSortHand,
-                        onCheckedChange = { settingsManager.setAutoSortHand(it) }
-                    )
-
-                    SettingsToggleRow(
-                        title = "Dealer Hook Rule Warning",
-                        subtitle = "Show warning notification if dealer selects forbidden hook bid",
-                        checked = appSettings.dealerHookWarning,
-                        onCheckedChange = { settingsManager.setDealerHookWarning(it) }
-                    )
-
-                    SettingsToggleRow(
-                        title = "Fast Bot Turns",
-                        subtitle = "Reduce AI thinking delay for ultra-fast single-player matches",
-                        checked = appSettings.fastBotTurns,
-                        onCheckedChange = { settingsManager.setFastBotTurns(it) }
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "GAMEPLAY VIEW MODE",
-                        color = GoldLight,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { settingsManager.set3DMode(false) },
+                    // Account Section
+                    SettingsSectionCard(title = "ACCOUNT", icon = Icons.Default.AccountCircle) {
+                        val avatarEmoji = CustomizationData.avatars.find { it.id == userProfile.selectedAvatar }?.emoji ?: "🦁"
+                        Row(
                             modifier = Modifier
-                                .weight(1f)
-                                .testTag("btn_2d_mode"),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (!appSettings.is3DMode) GoldPrimary else DarkSurfaceElevated
-                            ),
-                            shape = RoundedCornerShape(8.dp)
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.05f))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(
-                                text = "2D Classic",
-                                color = if (!appSettings.is3DMode) Color.Black else TextLight,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
-                        }
-                        Button(
-                            onClick = { settingsManager.set3DMode(true) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("btn_3d_mode"),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (appSettings.is3DMode) GoldPrimary else DarkSurfaceElevated
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text(
-                                text = "3D Avatar Mode",
-                                color = if (appSettings.is3DMode) Color.Black else TextLight,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                onDismiss()
-                                onOpenCustomization()
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkSurfaceElevated),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(GoldPrimary.copy(alpha = 0.5f))
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("🎨 Themes & Avatars", color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                onDismiss()
-                                onOpenRules()
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkSurfaceElevated),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(EmeraldLight.copy(alpha = 0.5f))
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Text("📖 Rules Guide", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-
-                // ====================================================
-                // 4. UPDATES & GITHUB RELEASES
-                // ====================================================
-                SettingsSectionCard(title = "APP UPDATES & RELEASES", icon = Icons.Default.SystemUpdate) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "GitHub Repository",
-                                color = TextLight,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Text(
-                                text = appSettings.githubRepo,
-                                color = GoldLight,
-                                fontSize = 11.sp
-                            )
-                        }
-                        IconButton(
-                            onClick = {
-                                tempRepoText = appSettings.githubRepo
-                                showRepoEditDialog = true
-                            },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = "Edit Repo", tint = GoldLight, modifier = Modifier.size(18.dp))
-                        }
-                    }
-
-                    SettingsToggleRow(
-                        title = "Auto-Check Updates on Launch",
-                        subtitle = "Alert when a new release or APK is published to GitHub",
-                        checked = appSettings.autoCheckUpdates,
-                        onCheckedChange = { settingsManager.setAutoCheckUpdates(it) }
-                    )
-
-                    // Current Update Status Display
-                    when (val state = updateState) {
-                        is UpdateCheckState.Checking -> {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = GoldPrimary
-                                )
-                                Text("Checking GitHub for latest release...", color = GoldLight, fontSize = 11.sp)
-                            }
-                        }
-                        is UpdateCheckState.UpdateAvailable -> {
                             Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(EmeraldDeep)
-                                    .border(1.dp, EmeraldLight.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                                    .padding(8.dp)
+                                modifier = Modifier.size(40.dp).clip(CircleShape).background(GoldPrimary.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text("✨ New Update: ${state.release.tagName}", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                        if (state.release.apkFileName != null) {
-                                            Text(state.release.apkFileName, color = TextLight, fontSize = 10.sp)
-                                        }
-                                    }
-                                    Button(
-                                        onClick = { showUpdateModal = state.release },
-                                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldLight),
-                                        shape = RoundedCornerShape(6.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                                    ) {
-                                        Text("View / Download", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
+                                Text(avatarEmoji, fontSize = 20.sp)
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(userProfile.googleName, color = TextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                Text(if (userProfile.isLoggedIn) "Authenticated" else "Guest", color = if (userProfile.isLoggedIn) SuccessGreen else TextMuted, fontSize = 11.sp)
+                            }
+                            if (!userProfile.isLoggedIn) {
+                                PremiumButton(text = "SIGN IN", onClick = onOpenAuth)
                             }
                         }
-                        is UpdateCheckState.UpToDate -> {
-                            Text(
-                                text = "✓ App is up to date (Version ${state.currentVersion})",
-                                color = EmeraldLight,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
-                        is UpdateCheckState.Error -> {
-                            Text(
-                                text = "Notice: ${state.message}",
-                                color = Color(0xFFFCA5A5),
-                                fontSize = 11.sp
-                            )
-                        }
-                        UpdateCheckState.Idle -> Unit
                     }
 
-                    // Action Buttons for Update
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                coroutineScope.launch {
-                                    val res = appUpdateManager.checkForUpdates(appSettings.githubRepo, force = true)
-                                    if (res is UpdateCheckState.UpdateAvailable) {
-                                        showUpdateModal = res.release
-                                    }
-                                }
-                            },
-                            modifier = Modifier
-                                .weight(1.3f)
-                                .testTag("btn_check_updates"),
-                            colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Check for Updates", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                appUpdateManager.openReleasesPageInBrowser(appSettings.githubRepo)
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkSurfaceElevated),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(GoldPrimary.copy(alpha = 0.5f))
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Icon(Icons.Default.OpenInBrowser, contentDescription = null, tint = GoldLight, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Releases", color = GoldLight, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                        }
+                    // Preferences
+                    SettingsSectionCard(title = "GAMEPLAY", icon = Icons.Default.Style) {
+                        SettingsToggleRow(
+                            title = "Auto-Sort Hand",
+                            subtitle = "Sort by suit and rank automatically",
+                            checked = appSettings.autoSortHand,
+                            onCheckedChange = { settingsManager.setAutoSortHand(it) }
+                        )
+                        SettingsToggleRow(
+                            title = "3D Avatar Mode",
+                            subtitle = "Enable 3D table and animations",
+                            checked = appSettings.is3DMode,
+                            onCheckedChange = { settingsManager.set3DMode(it) }
+                        )
                     }
-                }
-
-                // ====================================================
-                // 5. ABOUT APP
-                // ====================================================
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Kaachu Phool • v${appUpdateManager.currentVersionName} (${appUpdateManager.currentVersionCode})",
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = "Traditional Indian Trick-Taking Card Game (Judgement)",
-                        color = TextMuted.copy(alpha = 0.7f),
-                        fontSize = 10.sp
-                    )
-                }
                 }
             }
         }

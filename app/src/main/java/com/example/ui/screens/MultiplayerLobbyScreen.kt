@@ -25,6 +25,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -67,6 +69,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -90,6 +93,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -98,6 +102,7 @@ import com.example.model.ChatMessage
 import com.example.model.GameMode
 import com.example.model.ScoringRule
 import com.example.ui.theme.DarkBackground
+import com.example.ui.theme.DeepEmerald
 import com.example.ui.theme.DarkSurface
 import com.example.ui.theme.DarkSurfaceElevated
 import com.example.ui.theme.EmeraldBorder
@@ -107,9 +112,12 @@ import com.example.ui.theme.EmeraldLight
 import com.example.ui.theme.GoldDark
 import com.example.ui.theme.GoldLight
 import com.example.ui.theme.GoldPrimary
+import com.example.ui.theme.SuccessGreen
 import com.example.ui.theme.TextLight
 import com.example.ui.theme.TextMuted
 import com.example.ui.components.OvalTableCanvas
+import com.example.ui.components.PremiumButton
+import com.example.ui.components.GlassCard
 import com.example.viewmodel.MultiplayerViewModel
 import kotlinx.coroutines.launch
 
@@ -340,22 +348,23 @@ fun MultiplayerLobbyScreen(
     }
 
     Scaffold(
-        containerColor = DarkBackground,
+        containerColor = DeepEmerald,
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(
-                            text = "Multiplayer Lobby",
+                            text = "MULTIPLAYER LOBBY",
+                            style = MaterialTheme.typography.titleMedium,
                             color = GoldLight,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp
                         )
                         Text(
-                            text = "Room: ${roomCode ?: "Connecting..."}",
-                            color = EmeraldLight,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
+                            text = "ROOM: ${roomCode ?: "CONNECTING..."}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = GoldPrimary,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 },
@@ -367,12 +376,11 @@ fun MultiplayerLobbyScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Leave Room",
-                            tint = TextLight
+                            tint = GoldPrimary
                         )
                     }
                 },
                 actions = {
-                    // Copy Room Code Button
                     IconButton(onClick = {
                         roomCode?.let { code ->
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -387,211 +395,153 @@ fun MultiplayerLobbyScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkSurface)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(innerPadding),
+            contentAlignment = Alignment.TopCenter
         ) {
-            // Room Code Banner Card with Copy & Share Utilities
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                border = CardDefaults.outlinedCardBorder().copy(
-                    brush = Brush.horizontalGradient(listOf(GoldPrimary, EmeraldLight))
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .widthIn(max = 720.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+            // Room Header
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "ROOM CODE",
-                                color = TextMuted,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
-                            )
-                            Text(
-                                text = roomCode ?: "------",
-                                color = GoldLight,
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 3.sp
-                            )
-                            Text(
-                                text = "${players.size}/6 Players Joined",
-                                color = if (players.size >= 4) EmeraldLight else GoldPrimary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
+                    Column {
+                        Text(
+                            text = "ROOM CODE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                        Text(
+                            text = roomCode ?: "------",
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = GoldLight,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 4.sp
+                        )
+                        Text(
+                            text = "${players.size}/6 PLAYERS JOINED",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (players.size >= 4) SuccessGreen else GoldPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
 
-                        Column(horizontalAlignment = Alignment.End) {
-                            if (isHost && players.size < 6) {
-                                Button(
-                                    onClick = {
-                                        val botNames = listOf("Bot Aarav", "Bot Priya", "Bot Rohan", "Bot Ananya", "Bot Kabir")
-                                        val nextBot = botNames.firstOrNull { !players.contains(it) } ?: "Bot Player"
-                                        viewModel.addBot(nextBot)
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldBorder),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.testTag("add_bot_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PersonAdd,
-                                        contentDescription = null,
-                                        tint = TextLight,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Add Bot", fontSize = 12.sp, color = TextLight)
-                                }
+                    if (isHost && players.size < 6) {
+                        PremiumButton(
+                            text = "ADD BOT",
+                            isPrimary = false,
+                            onClick = {
+                                val botNames = listOf("Bot Aarav", "Bot Priya", "Bot Rohan", "Bot Ananya", "Bot Kabir")
+                                val nextBot = botNames.firstOrNull { !players.contains(it) } ?: "Bot Player"
+                                viewModel.addBot(nextBot)
+                            },
+                            modifier = Modifier.width(110.dp),
+                            icon = { Icon(Icons.Default.PersonAdd, null, tint = GoldPrimary, modifier = Modifier.size(14.dp)) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    PremiumButton(
+                        text = if (isCopiedAnimActive) "COPIED" else "COPY CODE",
+                        isPrimary = false,
+                        onClick = {
+                            roomCode?.let { code ->
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Kaachu Phool Room Code", code))
+                                isCopiedAnimActive = true
+                                Toast.makeText(context, "Room Code $code copied to clipboard!", Toast.LENGTH_SHORT).show()
                             }
-                        }
-                    }
+                        },
+                        modifier = Modifier.weight(1f),
+                        icon = { Icon(if (isCopiedAnimActive) Icons.Default.Check else Icons.Default.ContentCopy, null, modifier = Modifier.size(16.dp)) }
+                    )
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Utility Action Buttons (Copy & Share)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        // Copy Code Button with Success Toast / Animation
-                        Button(
-                            onClick = {
-                                roomCode?.let { code ->
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    clipboard.setPrimaryClip(ClipData.newPlainText("Kaachu Phool Room Code", code))
-                                    isCopiedAnimActive = true
-                                    Toast.makeText(context, "Room Code $code copied to clipboard!", Toast.LENGTH_SHORT).show()
+                    PremiumButton(
+                        text = "INVITE",
+                        onClick = {
+                            roomCode?.let { code ->
+                                val shareUrl = "https://kacchooisdaphoolisda.vercel.app/?room=$code"
+                                val shareText = "Join my Kaachu Phool multiplayer game! Room Code: $code\nPlay now: $shareUrl"
+                                val sendIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                    type = "text/plain"
                                 }
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isCopiedAnimActive) EmeraldLight else DarkSurfaceElevated
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, if (isCopiedAnimActive) EmeraldBorder else GoldPrimary),
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("copy_room_code_button")
-                        ) {
-                            Icon(
-                                imageVector = if (isCopiedAnimActive) Icons.Default.Check else Icons.Default.ContentCopy,
-                                contentDescription = null,
-                                tint = if (isCopiedAnimActive) EmeraldDeep else GoldPrimary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (isCopiedAnimActive) "Copied!" else "Copy Code",
-                                fontSize = 12.sp,
-                                color = if (isCopiedAnimActive) EmeraldDeep else GoldLight,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        // Share Invite Link Button (opens app or falls back to Vercel web URL)
-                        Button(
-                            onClick = {
-                                roomCode?.let { code ->
-                                    val shareUrl = "https://kacchooisdaphoolisda.vercel.app/?room=$code"
-                                    val shareText = "Join my Kaachu Phool multiplayer game! Room Code: $code\nPlay now or download the app: $shareUrl"
-                                    val sendIntent = Intent().apply {
-                                        action = Intent.ACTION_SEND
-                                        putExtra(Intent.EXTRA_TEXT, shareText)
-                                        type = "text/plain"
-                                    }
-                                    val shareIntent = Intent.createChooser(sendIntent, "Share Room Invite")
-                                    context.startActivity(shareIntent)
-                                    Toast.makeText(context, "Share invite generated!", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("share_room_link_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = null,
-                                tint = EmeraldDeep,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Share Link",
-                                fontSize = 12.sp,
-                                color = EmeraldDeep,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                                context.startActivity(Intent.createChooser(sendIntent, "Share Room Invite"))
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        icon = { Icon(Icons.Default.Share, null, modifier = Modifier.size(16.dp)) }
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Players Table Layout (Poker Style)
-            Text(
-                text = "TABLE PREVIEW",
-                color = TextMuted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                modifier = Modifier.padding(start = 4.dp, bottom = 6.dp)
-            )
-            
+            // Table Preview
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkSurface),
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color.White.copy(alpha = 0.03f))
+                    .border(1.dp, GoldPrimary.copy(alpha = 0.1f), RoundedCornerShape(24.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                OvalTableCanvas(
-                    modifier = Modifier.fillMaxSize(),
-                    is3DMode = false
-                )
+                OvalTableCanvas(modifier = Modifier.fillMaxSize(), is3DMode = false)
                 
-                // Position players around the table
+                // Room info in middle of table
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "TABLE",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = GoldPrimary.copy(alpha = 0.4f),
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = roomCode ?: "...",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = GoldLight,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+
+                // Players around table
                 val totalSlots = 6
-                val playersList = players
-                
                 for (i in 0 until totalSlots) {
-                    val playerName = playersList.getOrNull(i)
-                    val isPlayerHost = playerName != null && (playerName == room?.hostName || playerName == playersList.firstOrNull())
+                    val playerName = players.getOrNull(i)
+                    val isPlayerHost = playerName != null && (playerName == room?.hostName || playerName == players.firstOrNull())
                     val isSpeaking = playerName != null && room?.activeSpeakers?.get(playerName) == true
                     val isSelf = playerName != null && playerName == localPlayerName
                     
-                    // Circular positioning logic
-                    val angle = (i * (360f / totalSlots)) - 90f // Start from bottom
-                    val radiusX = 130.dp
-                    val radiusY = 70.dp
+                    val angle = (i * (360f / totalSlots)) - 90f
+                    val radiusX = 140.dp
+                    val radiusY = 75.dp
                     
                     val xOffset = (kotlin.math.cos(Math.toRadians(angle.toDouble())) * radiusX.value).dp
                     val yOffset = (kotlin.math.sin(Math.toRadians(angle.toDouble())) * radiusY.value).dp
                     
-                    Box(
-                        modifier = Modifier
-                            .offset(x = xOffset, y = yOffset)
-                    ) {
+                    Box(modifier = Modifier.offset(x = xOffset, y = yOffset)) {
                         if (playerName != null) {
                             PlayerLobbyChip(
                                 name = playerName,
@@ -602,115 +552,48 @@ fun MultiplayerLobbyScreen(
                                 onKickClick = { playerToKick = playerName }
                             )
                         } else {
-                            // Empty slot
                             Box(
                                 modifier = Modifier
-                                    .size(60.dp)
+                                    .size(54.dp)
                                     .clip(CircleShape)
-                                    .background(DarkSurfaceElevated.copy(alpha = 0.4f))
-                                    .border(1.dp, EmeraldBorder.copy(alpha = 0.2f), CircleShape),
+                                    .background(Color.White.copy(alpha = 0.05f))
+                                    .border(1.dp, GoldPrimary.copy(alpha = 0.05f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = "Empty",
-                                    color = TextMuted.copy(alpha = 0.5f),
-                                    fontSize = 9.sp
-                                )
+                                Text("+", color = TextMuted, fontSize = 16.sp)
                             }
                         }
                     }
                 }
-                
-                // Room info in middle of table
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "ROOM",
-                        color = GoldPrimary.copy(alpha = 0.6f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text(
-                        text = roomCode ?: "...",
-                        color = GoldLight,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            // Chat & Voice area
+            GlassCard(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Voice Bar
+                    VoiceChatBar(
+                        isRecording = isRecording,
+                        isPlaying = isPlaying,
+                        hasMicPermission = hasMicPermission,
+                        onRequestMicPermission = { micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+                        onStartRecording = { if (hasMicPermission) viewModel.startVoiceRecording() else micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+                        onStopRecording = { viewModel.stopVoiceRecordingAndSend() },
+                        onQuickVoiceReaction = { viewModel.sendChatMessage("🎙️ $it") }
+                    )
 
-            // In-App Voice Chat Bar
-            VoiceChatBar(
-                isRecording = isRecording,
-                isPlaying = isPlaying,
-                hasMicPermission = hasMicPermission,
-                onRequestMicPermission = {
-                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                },
-                onStartRecording = {
-                    if (hasMicPermission) {
-                        viewModel.startVoiceRecording()
-                    } else {
-                        micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                    }
-                },
-                onStopRecording = {
-                    viewModel.stopVoiceRecordingAndSend()
-                },
-                onQuickVoiceReaction = { text ->
-                    viewModel.sendChatMessage("🎙️ $text")
-                }
-            )
+                    Spacer(modifier = Modifier.height(12.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Chat Messages Feed
-            Text(
-                text = "IN-ROOM LIVE CHAT",
-                color = TextMuted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.sp,
-                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
-            )
-
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                shape = RoundedCornerShape(14.dp),
-                colors = CardDefaults.cardColors(containerColor = DarkSurface),
-                border = CardDefaults.outlinedCardBorder().copy(
-                    brush = Brush.verticalGradient(listOf(EmeraldBorder.copy(alpha = 0.5f), DarkSurface))
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(8.dp)
-                ) {
+                    // Chat List
                     LazyColumn(
                         state = listState,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 8.dp)
                     ) {
                         if (messages.isEmpty()) {
                             item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(24.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "No messages yet. Say hi to your fellow players!",
-                                        color = TextMuted,
-                                        fontSize = 12.sp,
-                                        textAlign = TextAlign.Center
-                                    )
+                                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                                    Text("NO MESSAGES YET", style = MaterialTheme.typography.labelSmall, color = TextMuted, letterSpacing = 2.sp)
                                 }
                             }
                         } else {
@@ -718,130 +601,76 @@ fun MultiplayerLobbyScreen(
                                 ChatBubble(
                                     message = message,
                                     isSelf = message.senderName == localPlayerName,
-                                    onPlayVoiceNote = {
-                                        room?.voiceNotes?.get(message.id)?.let { note ->
-                                            viewModel.playVoiceNote(note)
-                                        }
-                                    }
+                                    onPlayVoiceNote = { room?.voiceNotes?.get(message.id)?.let { viewModel.playVoiceNote(it) } }
                                 )
                             }
                         }
                     }
 
-                    // Chat Input Row
+                    // Input
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 6.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         OutlinedTextField(
                             value = chatInputText,
                             onValueChange = { chatInputText = it },
-                            placeholder = { Text("Type a message...", color = TextMuted, fontSize = 13.sp) },
+                            placeholder = { Text("TYPE MESSAGE...", style = MaterialTheme.typography.labelSmall, color = TextMuted) },
                             singleLine = true,
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("chat_input_field"),
-                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = GoldPrimary,
-                                unfocusedBorderColor = EmeraldBorder,
+                                unfocusedBorderColor = GoldPrimary.copy(alpha = 0.2f),
                                 focusedTextColor = TextLight,
                                 unfocusedTextColor = TextLight,
-                                focusedContainerColor = DarkSurfaceElevated,
-                                unfocusedContainerColor = DarkSurfaceElevated
+                                cursorColor = GoldPrimary,
+                                focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                unfocusedContainerColor = Color.White.copy(alpha = 0.02f)
                             )
                         )
 
                         IconButton(
-                            onClick = {
-                                if (chatInputText.isNotBlank()) {
-                                    viewModel.sendChatMessage(chatInputText)
-                                    chatInputText = ""
-                                }
-                            },
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(GoldPrimary)
-                                .testTag("send_chat_button")
+                            onClick = { if (chatInputText.isNotBlank()) { viewModel.sendChatMessage(chatInputText); chatInputText = "" } },
+                            modifier = Modifier.size(48.dp).clip(RoundedCornerShape(12.dp)).background(GoldPrimary)
                         ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Send,
-                                contentDescription = "Send",
-                                tint = EmeraldDeep,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Icon(Icons.AutoMirrored.Filled.Send, null, tint = DeepEmerald, modifier = Modifier.size(20.dp))
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Host Start Game / Waiting Button
+            // Start Game Footer
             if (isHost) {
-                Button(
+                PremiumButton(
+                    text = if (players.size >= 2) "START MATCH (${players.size} PLAYERS)" else "WAITING FOR PLAYERS...",
                     onClick = {
                         viewModel.startMultiplayerMatch(selectedMode, selectedScoringRule)
                         onStartGame(localPlayerName, selectedMode, selectedScoringRule, players.size)
                     },
+                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                )
+            } else {
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp)
-                        .testTag("host_start_game_button"),
-                    colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
-                    shape = RoundedCornerShape(14.dp)
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.05f))
+                        .border(1.dp, GoldPrimary.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = EmeraldDeep,
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (players.size >= 2) "Start Match (${players.size} Players)" else "Waiting for Players to Join...",
-                        color = EmeraldDeep,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-            } else {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated),
-                    border = CardDefaults.outlinedCardBorder().copy(
-                        brush = Brush.horizontalGradient(listOf(EmeraldBorder, GoldPrimary.copy(alpha = 0.5f)))
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = GoldPrimary,
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(color = GoldPrimary, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "Waiting for host to start the game...",
-                            color = GoldLight,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                        Text("WAITING FOR HOST TO START...", style = MaterialTheme.typography.labelLarge, color = GoldLight, letterSpacing = 1.sp)
                     }
                 }
             }
         }
     }
+}
 }
 
 @Composable
@@ -856,77 +685,56 @@ private fun PlayerLobbyChip(
     val infiniteTransition = rememberInfiniteTransition(label = "speaking_wave")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isSpeaking) 1.15f else 1f,
+        targetValue = if (isSpeaking) 1.1f else 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(400),
+            animation = tween(600),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse"
     )
 
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            isSpeaking -> EmeraldLight
-            isHost -> GoldPrimary
-            else -> EmeraldBorder
-        },
-        label = "border_color"
-    )
-
     Box(
         modifier = Modifier
-            .width(86.dp)
-            .height(76.dp)
-            .scale(if (isSpeaking) pulseScale else 1f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (isSelf) DarkSurfaceElevated else DarkSurface)
-            .border(if (isSpeaking) 2.dp else 1.dp, borderColor, RoundedCornerShape(12.dp))
-            .padding(6.dp),
+            .size(72.dp)
+            .scale(pulseScale)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.05f))
+            .border(
+                2.dp,
+                when {
+                    isSpeaking -> SuccessGreen
+                    isHost -> GoldPrimary
+                    isSelf -> GoldLight.copy(alpha = 0.5f)
+                    else -> Color.White.copy(alpha = 0.1f)
+                },
+                CircleShape
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
-                    .background(if (isSpeaking) EmeraldLight.copy(alpha = 0.3f) else GoldPrimary.copy(alpha = 0.2f)),
+                    .background(if (isHost) GoldPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.05f)),
                 contentAlignment = Alignment.Center
             ) {
-                if (isSpeaking) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = "Speaking",
-                        tint = EmeraldLight,
-                        modifier = Modifier.size(16.dp)
-                    )
-                } else if (isHost) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Host",
-                        tint = GoldPrimary,
-                        modifier = Modifier.size(16.dp)
-                    )
+                if (isHost) {
+                    Icon(Icons.Default.Star, null, tint = GoldPrimary, modifier = Modifier.size(16.dp))
                 } else {
-                    Text(
-                        text = name.take(1).uppercase(),
-                        color = TextLight,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text(name.take(1).uppercase(), color = GoldLight, fontWeight = FontWeight.Black, fontSize = 14.sp)
                 }
             }
-
             Spacer(modifier = Modifier.height(4.dp))
-
             Text(
-                text = if (isSelf) "$name (You)" else name,
-                color = if (isSpeaking) EmeraldLight else if (isHost) GoldLight else TextLight,
-                fontSize = 10.sp,
-                fontWeight = if (isHost || isSelf) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 1
+                text = if (isSelf) "YOU" else name.uppercase(),
+                color = if (isHost) GoldLight else TextLight,
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 4.dp)
             )
         }
 
@@ -934,20 +742,13 @@ private fun PlayerLobbyChip(
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = 2.dp, y = (-2).dp)
-                    .size(18.dp)
+                    .size(20.dp)
                     .clip(CircleShape)
                     .background(Color(0xFFE53935))
-                    .clickable { onKickClick() }
-                    .testTag("kick_player_button_$name"),
+                    .clickable { onKickClick() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Kick $name",
-                    tint = Color.White,
-                    modifier = Modifier.size(12.dp)
-                )
+                Icon(Icons.Default.Close, null, tint = Color.White, modifier = Modifier.size(12.dp))
             }
         }
     }
@@ -963,114 +764,80 @@ private fun VoiceChatBar(
     onStopRecording: () -> Unit,
     onQuickVoiceReaction: (String) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated),
-        border = CardDefaults.outlinedCardBorder().copy(
-            brush = Brush.horizontalGradient(listOf(EmeraldBorder, GoldPrimary.copy(alpha = 0.4f)))
-        )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White.copy(alpha = 0.05f))
+            .border(1.dp, GoldPrimary.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+            .padding(12.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(10.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = if (isRecording) Icons.Default.Mic else Icons.Default.MicOff,
-                        contentDescription = null,
-                        tint = if (isRecording) Color(0xFFEF4444) else EmeraldLight,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isRecording) "RECORDING VOICE NOTE..." else if (isPlaying) "PLAYING VOICE AUDIO..." else "IN-APP VOICE CHAT",
-                        color = if (isRecording) Color(0xFFEF4444) else GoldLight,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                // Push To Talk Button
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isRecording) Color(0xFFEF4444) else EmeraldDeep)
-                        .border(1.dp, if (isRecording) Color.Red else EmeraldLight, RoundedCornerShape(12.dp))
-                        .pointerInput(hasMicPermission) {
-                            detectTapGestures(
-                                onPress = {
-                                    if (!hasMicPermission) {
-                                        onRequestMicPermission()
-                                    } else {
-                                        onStartRecording()
-                                        tryAwaitRelease()
-                                        onStopRecording()
-                                    }
-                                }
-                            )
-                        }
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
-                        .testTag("push_to_talk_button"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = "Hold to Speak",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (isRecording) "Release to Send" else "Hold to Speak",
-                            color = Color.White,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (isRecording) Icons.Default.Mic else Icons.Default.MicOff,
+                    contentDescription = null,
+                    tint = if (isRecording) Color.Red else SuccessGreen,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isRecording) "RECORDING..." else if (isPlaying) "PLAYING..." else "VOICE CHAT",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = GoldLight,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp
+                )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Quick Voice & Reaction Phrases
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val quickPhrases = listOf(
-                    "Good Luck! 🍀",
-                    "Kaachu Phool! 🌸",
-                    "♠ Kali Trump!",
-                    "♦ Chokat Trump!",
-                    "♣ Fuli Trump!",
-                    "♥ Laal Trump!",
-                    "Nice Trick! 👏",
-                    "Watch out Dealer Hook! 🪝"
-                )
-                items(quickPhrases) { phrase ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(DarkSurface)
-                            .border(1.dp, EmeraldBorder.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                            .clickable { onQuickVoiceReaction(phrase) }
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            text = phrase,
-                            color = TextLight,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Medium
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isRecording) Color.Red.copy(alpha = 0.2f) else GoldPrimary.copy(alpha = 0.1f))
+                    .border(1.dp, if (isRecording) Color.Red else GoldPrimary, RoundedCornerShape(8.dp))
+                    .pointerInput(hasMicPermission) {
+                        detectTapGestures(
+                            onPress = {
+                                if (!hasMicPermission) onRequestMicPermission()
+                                else {
+                                    onStartRecording()
+                                    tryAwaitRelease()
+                                    onStopRecording()
+                                }
+                            }
                         )
                     }
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Icon(Icons.Default.Mic, null, tint = if (isRecording) Color.Red else GoldPrimary, modifier = Modifier.size(14.dp))
+                    Text(
+                        text = if (isRecording) "RELEASE" else "HOLD TO SPEAK",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isRecording) Color.Red else GoldLight,
+                        fontWeight = FontWeight.Black
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            val quickPhrases = listOf("Good Luck! 🍀", "Kaachu Phool! 🌸", "Nice Trick! 👏", "Bad luck! 😅")
+            items(quickPhrases) { phrase ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(Color.White.copy(alpha = 0.05f))
+                        .clickable { onQuickVoiceReaction(phrase) }
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(phrase, color = TextLight, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -1084,20 +851,16 @@ private fun ChatBubble(
     onPlayVoiceNote: () -> Unit
 ) {
     val isSystem = message.isSystem
-    val isVoice = message.text.startsWith("🎤")
+    val isVoice = message.text.startsWith("🎙️") || message.text.startsWith("🎤")
 
     if (isSystem) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 2.dp),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), contentAlignment = Alignment.Center) {
             Text(
-                text = message.text,
-                color = EmeraldLight.copy(alpha = 0.8f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
+                text = message.text.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = GoldPrimary.copy(alpha = 0.6f),
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.sp,
                 textAlign = TextAlign.Center
             )
         }
@@ -1106,56 +869,35 @@ private fun ChatBubble(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = if (isSelf) Arrangement.End else Arrangement.Start
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = 12.dp,
-                            topEnd = 12.dp,
-                            bottomStart = if (isSelf) 12.dp else 2.dp,
-                            bottomEnd = if (isSelf) 2.dp else 12.dp
-                        )
-                    )
-                    .background(if (isSelf) GoldPrimary.copy(alpha = 0.2f) else DarkSurfaceElevated)
-                    .border(
-                        1.dp,
-                        if (isSelf) GoldPrimary.copy(alpha = 0.5f) else EmeraldBorder.copy(alpha = 0.4f),
-                        RoundedCornerShape(12.dp)
-                    )
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-            ) {
-                Column {
-                    Text(
-                        text = message.senderName,
-                        color = if (isSelf) GoldLight else EmeraldLight,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    if (isVoice) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { onPlayVoiceNote() }
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                contentDescription = "Play voice note",
-                                tint = GoldPrimary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = message.text,
-                                color = GoldLight,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    } else {
+            Column(horizontalAlignment = if (isSelf) Alignment.End else Alignment.Start) {
+                Text(
+                    text = message.senderName.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isSelf) GoldPrimary else SuccessGreen,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 8.sp,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(
+                            topStart = if (isSelf) 12.dp else 2.dp,
+                            topEnd = if (isSelf) 2.dp else 12.dp,
+                            bottomStart = 12.dp,
+                            bottomEnd = 12.dp
+                        ))
+                        .background(if (isSelf) GoldPrimary.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.05f))
+                        .border(1.dp, if (isSelf) GoldPrimary.copy(alpha = 0.3f) else Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                        .clickable(enabled = isVoice) { if (isVoice) onPlayVoiceNote() }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (isVoice) Icon(Icons.AutoMirrored.Filled.VolumeUp, null, tint = GoldPrimary, modifier = Modifier.size(16.dp))
                         Text(
                             text = message.text,
-                            color = TextLight,
-                            fontSize = 12.sp
+                            color = if (isVoice) GoldLight else TextLight,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isVoice) FontWeight.Bold else FontWeight.Normal
                         )
                     }
                 }
