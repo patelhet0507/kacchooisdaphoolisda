@@ -171,8 +171,17 @@ class RoomManager {
         flow.value = initialRoom
 
         try {
-            syncRoomToFirebase(cleanRoomId, initialRoom)
-            Log.d("RoomManager", "Room $cleanRoomId created and pushed to Firebase")
+            val map = gameRoomToMap(initialRoom)
+            val ref = roomsRef?.child(cleanRoomId)
+            if (ref != null) {
+                try {
+                    ref.keepSynced(true)
+                } catch (_: Exception) {}
+                withTimeoutOrNull(6000L) {
+                    ref.setValue(map).await()
+                }
+                Log.d("RoomManager", "Room $cleanRoomId created and pushed to Firebase")
+            }
         } catch (t: Throwable) {
             Log.w("RoomManager", "Firebase room creation sync notice: ${t.message}")
         }
@@ -182,7 +191,7 @@ class RoomManager {
     private suspend fun fetchRoomSnapshot(ref: DatabaseReference): DataSnapshot? {
         ensureAuth()
         return try {
-            withTimeoutOrNull(4000L) {
+            withTimeoutOrNull(8000L) {
                 suspendCancellableCoroutine { continuation ->
                     val listener = object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
@@ -216,99 +225,156 @@ class RoomManager {
         val cleanRoomId = roomId.trim()
         val basePlayer = player.trim().replace(Regex("[.#$\\[\\]/]"), "").ifBlank { "Player" }
         
-        val ref = roomsRef?.child(cleanRoomId) ?: return@withContext JoinRoomStatus.ERROR
-        
-        try {
-            ref.keepSynced(true)
-        } catch (e: Exception) {}
+        val localRoom = localRooms[cleanRoomId]?.value
+        val ref = roomsRef?.child(cleanRoomId)
 
-        return@withContext suspendCancellableCoroutine { continuation ->
-            ref.runTransaction(object : Transaction.Handler {
-                override fun doTransaction(mutableData: MutableData): Transaction.Result {
-                    val currentRoomMap = mutableData.value as? Map<String, Any?>
-                    if (currentRoomMap == null) {
-                        return Transaction.success(mutableData)
-                    }
-
-                    val gameState = currentRoomMap["gameState"]?.toString() ?: "WAITING"
-                    if (gameState == "DISBANDED" || gameState == "GAME_OVER") {
-                         return Transaction.abort()
-                    }
-
-                    val players = (currentRoomMap["players"] as? List<*>)?.mapNotNull { it?.toString() }?.toMutableList() ?: mutableListOf()
-                    val kicked = (currentRoomMap["kickedPlayers"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
-
-                    if (kicked.contains(basePlayer)) {
-                        return Transaction.abort()
-                    }
-
-                    if (players.contains(basePlayer)) {
-                        // Already in, nothing to do but succeed
-                        return Transaction.success(mutableData)
-                    }
-
-                    if (players.size >= 6) {
-                        return Transaction.abort()
-                    }
-
-                    var safePlayer = basePlayer
-                    var counter = 2
-                    while (players.contains(safePlayer)) {
-                        safePlayer = "$basePlayer $counter"
-                        counter++
-                    }
-
-                    players.add(safePlayer)
-                    
-                    val messages = (currentRoomMap["messages"] as? Map<String, Any?>)?.toMutableMap() ?: mutableMapOf()
-                    val msgId = "msg_${System.currentTimeMillis()}"
-                    messages[msgId] = mapOf(
-                        "id" to msgId,
-                        "senderName" to "System",
-                        "text" to "$safePlayer joined the room!",
-                        "timestamp" to System.currentTimeMillis(),
-                        "isSystem" to true
-                    )
-
-                    val updatedMap = currentRoomMap.toMutableMap()
-                    updatedMap["players"] = players
-                    updatedMap["messages"] = messages
-                    
-                    mutableData.value = updatedMap
-                    return Transaction.success(mutableData)
-                }
-
-                override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
-                    if (error != null) {
-                        Log.e("RoomManager", "Join transaction error: ${error.message}")
-                        if (continuation.isActive) continuation.resume(JoinRoomStatus.ERROR)
-                    } else if (committed) {
-                        if (snapshot?.exists() == true) {
-                            // Bug D: Verification read
-                            val verified = parseRoomFromSnapshot(snapshot)
-                            if (verified != null) getOrCreateLocalFlow(cleanRoomId).value = verified
-                            
-                            if (continuation.isActive) continuation.resume(JoinRoomStatus.SUCCESS)
-                        } else {
-                            if (continuation.isActive) continuation.resume(JoinRoomStatus.ROOM_NOT_FOUND)
-                        }
-                    } else {
-                        // Aborted
-                        if (snapshot?.exists() == true) {
-                            val players = snapshot.child("players").children.count()
-                            val kicked = snapshot.child("kickedPlayers").children.any { it.value?.toString() == basePlayer }
-                            when {
-                                kicked -> if (continuation.isActive) continuation.resume(JoinRoomStatus.ERROR)
-                                players >= 6 -> if (continuation.isActive) continuation.resume(JoinRoomStatus.ROOM_FULL)
-                                else -> if (continuation.isActive) continuation.resume(JoinRoomStatus.ERROR)
-                            }
-                        } else {
-                            if (continuation.isActive) continuation.resume(JoinRoomStatus.ROOM_NOT_FOUND)
-                        }
-                    }
-                }
-            })
+        if (ref != null) {
+            try {
+                ref.keepSynced(true)
+            } catch (_: Exception) {}
         }
+
+        // Try getting snapshot from Firebase
+        var snapshot: DataSnapshot? = null
+        if (ref != null) {
+            snapshot = try {
+                withTimeoutOrNull(6000L) {
+                    ref.get().await()
+                }
+            } catch (e: Exception) {
+                Log.w("RoomManager", "ref.get() fallback to listener: ${e.message}")
+                fetchRoomSnapshot(ref)
+            }
+        }
+
+        val existingRoom: GameRoom? = if (snapshot != null && snapshot.exists()) {
+            parseRoomFromSnapshot(snapshot)
+        } else {
+            localRoom
+        }
+
+        if (existingRoom == null) {
+            // Also try atomic transaction fallback if ref exists
+            if (ref != null) {
+                return@withContext suspendCancellableCoroutine { continuation ->
+                    ref.runTransaction(object : Transaction.Handler {
+                        override fun doTransaction(mutableData: MutableData): Transaction.Result {
+                            val currentRoomMap = mutableData.value as? Map<String, Any?>
+                                ?: return Transaction.abort()
+
+                            val gameState = currentRoomMap["gameState"]?.toString() ?: "WAITING"
+                            if (gameState == "DISBANDED" || gameState == "GAME_OVER") {
+                                return Transaction.abort()
+                            }
+
+                            val players = (currentRoomMap["players"] as? List<*>)?.mapNotNull { it?.toString() }?.toMutableList() ?: mutableListOf()
+                            val kicked = (currentRoomMap["kickedPlayers"] as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
+
+                            if (kicked.contains(basePlayer)) {
+                                return Transaction.abort()
+                            }
+
+                            if (players.contains(basePlayer)) {
+                                return Transaction.success(mutableData)
+                            }
+
+                            if (players.size >= 6) {
+                                return Transaction.abort()
+                            }
+
+                            var safePlayer = basePlayer
+                            var counter = 2
+                            while (players.contains(safePlayer)) {
+                                safePlayer = "$basePlayer $counter"
+                                counter++
+                            }
+
+                            players.add(safePlayer)
+                            
+                            val messages = (currentRoomMap["messages"] as? Map<String, Any?>)?.toMutableMap() ?: mutableMapOf()
+                            val msgId = "msg_${System.currentTimeMillis()}"
+                            messages[msgId] = mapOf(
+                                "id" to msgId,
+                                "senderName" to "System",
+                                "text" to "$safePlayer joined the room!",
+                                "timestamp" to System.currentTimeMillis(),
+                                "isSystem" to true
+                            )
+
+                            val updatedMap = currentRoomMap.toMutableMap()
+                            updatedMap["players"] = players
+                            updatedMap["messages"] = messages
+                            
+                            mutableData.value = updatedMap
+                            return Transaction.success(mutableData)
+                        }
+
+                        override fun onComplete(error: DatabaseError?, committed: Boolean, snap: DataSnapshot?) {
+                            if (error != null) {
+                                Log.e("RoomManager", "Join transaction error: ${error.message}")
+                                if (continuation.isActive) continuation.resume(JoinRoomStatus.ERROR)
+                            } else if (committed && snap?.exists() == true) {
+                                val verified = parseRoomFromSnapshot(snap)
+                                if (verified != null) getOrCreateLocalFlow(cleanRoomId).value = verified
+                                if (continuation.isActive) continuation.resume(JoinRoomStatus.SUCCESS)
+                            } else {
+                                if (continuation.isActive) continuation.resume(JoinRoomStatus.ROOM_NOT_FOUND)
+                            }
+                        }
+                    })
+                }
+            } else {
+                return@withContext JoinRoomStatus.ROOM_NOT_FOUND
+            }
+        }
+
+        // Room exists! Validate state
+        if (existingRoom.gameState == "DISBANDED" || existingRoom.gameState == "GAME_OVER") {
+            return@withContext JoinRoomStatus.ERROR
+        }
+        if (existingRoom.kickedPlayers.contains(basePlayer)) {
+            return@withContext JoinRoomStatus.ERROR
+        }
+        if (existingRoom.players.size >= 6 && !existingRoom.players.contains(basePlayer)) {
+            return@withContext JoinRoomStatus.ROOM_FULL
+        }
+
+        // Add player if not already in room
+        var safePlayer = basePlayer
+        var counter = 2
+        while (existingRoom.players.contains(safePlayer) && !existingRoom.players.contains(basePlayer)) {
+            safePlayer = "$basePlayer $counter"
+            counter++
+        }
+
+        val updatedPlayers = if (existingRoom.players.contains(basePlayer)) {
+            existingRoom.players
+        } else {
+            existingRoom.players + safePlayer
+        }
+
+        val updatedMessages = if (existingRoom.players.contains(basePlayer)) {
+            existingRoom.messages
+        } else {
+            val msgId = "msg_${System.currentTimeMillis()}"
+            existingRoom.messages + (msgId to ChatMessage(
+                id = msgId,
+                senderName = "System",
+                text = "$safePlayer joined the room!",
+                timestamp = System.currentTimeMillis(),
+                isSystem = true
+            ))
+        }
+
+        val updatedRoom = existingRoom.copy(
+            players = updatedPlayers,
+            messages = updatedMessages
+        )
+
+        getOrCreateLocalFlow(cleanRoomId).value = updatedRoom
+        syncRoomToFirebase(cleanRoomId, updatedRoom)
+
+        return@withContext JoinRoomStatus.SUCCESS
     }
 
     suspend fun leaveRoom(roomId: String, player: String) = withContext(Dispatchers.IO) {
@@ -862,13 +928,11 @@ class RoomManager {
                                     trySend(room)
                                 }
                             } else {
-                                // Room deleted or not yet on server
-                                localFlow.value?.let { local ->
-                                    if (local.gameState != "DISBANDED") {
-                                        // If we thought we were in a room but it's gone, notify UI
-                                        localFlow.value = null
-                                        trySend(null)
-                                    }
+                                // Room deleted on server
+                                val currentLocal = localFlow.value
+                                if (currentLocal != null && currentLocal.gameState == "DISBANDED") {
+                                    localFlow.value = null
+                                    trySend(null)
                                 }
                             }
                         } catch (t: Throwable) {

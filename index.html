@@ -330,7 +330,7 @@
 
   <!-- Download Section -->
   <section id="download" class="py-20 sm:py-24 px-5 sm:px-6 relative z-10 border-t border-emeraldBorder/30 bg-gradient-to-b from-transparent to-emerald-950/80">
-    <div class="max-w-4xl mx-auto text-center space-y-8 glass-card rounded-3xl p-8 sm:p-16 border border-goldPrimary/30 shadow-2xl">
+    <div class="max-w-4xl mx-auto text-center space-y-8 glass-card rounded-3xl p-8 sm:p-14 border border-goldPrimary/30 shadow-2xl">
       <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-goldPrimary/10 border border-goldPrimary/20 text-goldPrimary text-xs font-mono uppercase tracking-widest">
         <span></span> Latest Stable Release
       </div>
@@ -348,12 +348,87 @@
         </a>
       </div>
 
-      <div id="releasesList" class="max-w-md mx-auto pt-4 space-y-3 text-left">
+      <div id="releasesList" class="max-w-md mx-auto pt-2 space-y-3 text-left">
         <!-- Dynamically populated release items -->
       </div>
 
-      <p class="text-xs text-emerald-300/40 font-mono pt-4">
-        Compatible with Android 7.0 and above. No special permissions required.
+      <!-- Detailed System Requirements & Network Specifications -->
+      <div class="pt-8 border-t border-emeraldBorder/30 text-left">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="font-display text-lg sm:text-xl font-bold text-goldPrimary flex items-center gap-2">
+            <span>⚙️</span> System Requirements & Specifications
+          </h3>
+          <span class="text-xs font-mono text-emerald-300/60 bg-emerald-900/50 px-3 py-1 rounded-full border border-emeraldBorder">Android APK</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- OS & Hardware -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3">
+            <div class="flex items-center gap-2 text-white font-semibold text-sm">
+              <span class="text-goldPrimary">📱</span> Operating System & Hardware
+            </div>
+            <ul class="text-xs sm:text-sm text-emerald-100/75 space-y-2 font-sans">
+              <li class="flex items-start gap-2">
+                <span class="text-goldPrimary font-mono font-bold">OS:</span>
+                <span>Android 7.0 (Nougat, API Level 24) or later (Android 9.0+ recommended)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-goldPrimary font-mono font-bold">RAM:</span>
+                <span>Minimum 2 GB RAM (3 GB+ recommended for smooth 60fps animations)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-goldPrimary font-mono font-bold">Display:</span>
+                <span>Supports Phones, Foldables & Tablets (Compact, Medium & Expanded screens)</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Storage Space -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3">
+            <div class="flex items-center gap-2 text-white font-semibold text-sm">
+              <span class="text-goldPrimary">💾</span> Storage Space
+            </div>
+            <ul class="text-xs sm:text-sm text-emerald-100/75 space-y-2 font-sans">
+              <li class="flex items-start gap-2">
+                <span class="text-goldPrimary font-mono font-bold">APK Download:</span>
+                <span>~20 MB to 25 MB installer package</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-goldPrimary font-mono font-bold">Installed Footprint:</span>
+                <span>~45 MB to 60 MB free internal storage (includes Room DB & cache)</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-goldPrimary font-mono font-bold">Permissions:</span>
+                <span>Zero broad storage permissions needed; uses zero-permission app sandbox</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Network & Multiplayer Recommendations -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3 md:col-span-2">
+            <div class="flex items-center gap-2 text-white font-semibold text-sm">
+              <span class="text-goldPrimary">🌐</span> Network Recommendations for Multiplayer
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm text-emerald-100/75">
+              <div class="p-3 rounded-xl bg-emerald-950/40 border border-emeraldBorder/20">
+                <p class="font-bold text-white mb-1">Single Player (Solo)</p>
+                <p class="text-emerald-200/70 text-xs leading-relaxed">100% Offline capability. No active internet or cellular connection required.</p>
+              </div>
+              <div class="p-3 rounded-xl bg-emerald-950/40 border border-emeraldBorder/20">
+                <p class="font-bold text-white mb-1">Online Multiplayer</p>
+                <p class="text-emerald-200/70 text-xs leading-relaxed">Stable 3G/4G/5G or Wi-Fi recommended with latency under 200ms for live card sync.</p>
+              </div>
+              <div class="p-3 rounded-xl bg-emerald-950/40 border border-emeraldBorder/20">
+                <p class="font-bold text-white mb-1">Data Consumption</p>
+                <p class="text-emerald-200/70 text-xs leading-relaxed">Ultra-low footprint (~15 KB per match round; ~25 KB per 5s voice note).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-xs text-emerald-300/40 font-mono pt-2">
+        Compatible with Android 7.0 and above. No unnecessary device permissions requested.
       </p>
     </div>
   </section>
@@ -372,146 +447,6 @@
       </div>
     </div>
   </footer>
-
-  <!-- Scripts -->
-  <script>
-    // Mobile Navigation Drawer Toggle
-    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-    const closeMenuBtn = document.getElementById('closeMenuBtn');
-    const mobileMenu = document.getElementById('mobileMenu');
-    const mobileLinks = document.querySelectorAll('.mobile-link');
-
-    function toggleMenu() {
-      const isOpen = mobileMenu.classList.contains('opacity-100');
-      if (isOpen) {
-        mobileMenu.classList.remove('opacity-100', 'pointer-events-auto');
-        mobileMenu.classList.add('opacity-0', 'pointer-events-none');
-      } else {
-        mobileMenu.classList.remove('opacity-0', 'pointer-events-none');
-        mobileMenu.classList.add('opacity-100', 'pointer-events-auto');
-      }
-    }
-
-    mobileMenuBtn?.addEventListener('click', toggleMenu);
-    closeMenuBtn?.addEventListener('click', toggleMenu);
-    mobileLinks.forEach(link => link.addEventListener('click', toggleMenu));
-
-    // Lightweight Canvas Particle Constellation
-    const canvas = document.getElementById('webgl-canvas');
-    const ctx = canvas.getContext('2d');
-    let width = canvas.width = window.innerWidth;
-    let height = canvas.height = window.innerHeight;
-
-    window.addEventListener('resize', () => {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    });
-
-    const particleCount = window.innerWidth < 768 ? 25 : 45;
-    const particles = Array.from({ length: particleCount }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.35,
-      vy: (Math.random() - 0.5) * 0.35,
-      radius: Math.random() * 2 + 1
-    }));
-
-    function animateParticles() {
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = 'rgba(212, 168, 67, 0.25)';
-      ctx.strokeStyle = 'rgba(212, 168, 67, 0.08)';
-
-      particles.forEach((p, index) => {
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (p.x < 0) p.x = width;
-        if (p.x > width) p.x = 0;
-        if (p.y < 0) p.y = height;
-        if (p.y > height) p.y = 0;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-
-        for (let j = index + 1; j < particles.length; j++) {
-          const p2 = particles[j];
-          const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
-          if (dist < 120) {
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        }
-      });
-      requestAnimationFrame(animateParticles);
-    }
-    animateParticles();
-
-    // GSAP ScrollTrigger Animations
-    gsap.registerPlugin(ScrollTrigger);
-
-    gsap.utils.toArray('.scroll-card').forEach((card, i) => {
-      gsap.fromTo(card,
-        { opacity: 0, y: 40 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.8,
-          delay: (i % 3) * 0.1,
-          ease: 'power3.out',
-          scrollTrigger: {
-            trigger: card,
-            start: 'top 88%',
-            toggleActions: 'play none none none'
-          }
-        }
-      );
-    });
-
-    // Fetch GitHub Releases for Latest APK link
-    async function fetchReleases() {
-      try {
-        const res = await fetch('https://api.github.com/repos/patelhet0507/kacchooisdaphoolisda/releases');
-        if (!res.ok) return;
-        const releases = await res.json();
-        if (releases && releases.length > 0) {
-          const latest = releases[0];
-          let downloadUrl = latest.html_url;
-          if (latest.assets && latest.assets.length > 0) {
-            const apk = latest.assets.find(a => a.name.endsWith('.apk'));
-            if (apk) downloadUrl = apk.browser_download_url;
-          }
-          const btn = document.getElementById('mainDownloadBtn');
-          const badge = document.getElementById('downloadVersionBadge');
-          if (btn) btn.href = downloadUrl;
-          if (badge) badge.textContent = latest.tag_name;
-
-          const listEl = document.getElementById('releasesList');
-          if (listEl && releases.length > 1) {
-            listEl.innerHTML = '<p class="text-xs font-mono text-goldPrimary mb-2">Previous Releases:</p>';
-            releases.slice(1, 3).forEach(rel => {
-              let rUrl = rel.html_url;
-              if (rel.assets && rel.assets.length > 0) {
-                const a = rel.assets.find(x => x.name.endsWith('.apk'));
-                if (a) rUrl = a.browser_download_url;
-              }
-              listEl.innerHTML += `
-                <a href="${rUrl}" class="flex items-center justify-between p-3 rounded-xl bg-black/30 border border-emeraldBorder hover:border-goldPrimary transition-all text-xs font-mono">
-                  <span>${rel.tag_name}</span>
-                  <span class="text-goldPrimary">Download APK →</span>
-                </a>
-              `;
-            });
-          }
-        }
-      } catch (e) {
-        console.log('Releases fetch info:', e);
-      }
-    }
-    fetchReleases();
-  </script>
 
   <!-- Share Modal Dialog -->
   <div id="shareModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300">
