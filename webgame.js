@@ -1,11 +1,12 @@
 /**
  * Kaachu Phool — Web Browser Engine (AI & Real-Time Multiplayer)
  * Features:
- * - Immersive Fullscreen Card Table (Zero-scroll design, perfect viewport fit)
+ * - Real-Time Zero-Bot Human-Only Multiplayer (All joined players play together on 1 single room)
+ * - Automatic Fullscreen Activation & Viewport Focus on Felt Table
+ * - 30-Second Turn Countdown Timer & Circular Progress Bar around Active Player Avatar
  * - Compulsory Multiplayer Login & Player Profile Session System
- * - Ka-Chu-Fu-L Mnemonic Trump Rotation & Intelligent Bot Heuristics
- * - Firebase Realtime Database Cloud Multiplayer Sync & Lobby
- * - Synthesized Audio Engine, Floating Reaction Emojis & Scorecard Archives
+ * - Ka-Chu-Fu-L Mnemonic Trump Rotation & Adaptive Player Pod Ergonomics (2, 3, or 4 players)
+ * - Full Firebase Realtime Database Sync for Deal, Bids, Tricks, Emotes & Scorecards
  */
 
 // Web Audio Synthesizer
@@ -134,6 +135,24 @@ class SoundManager {
       osc.stop(this.ctx.currentTime + 0.15);
     } catch (e) {}
   }
+
+  playWarningTick() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(880, this.ctx.currentTime);
+      gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.05);
+    } catch (e) {}
+  }
 }
 
 const soundManager = new SoundManager();
@@ -191,7 +210,7 @@ window.KaachuPhoolWeb = {
   },
   
   // Active Game State
-  players: [],
+  players: [], // List of active human players (and bots if single-player)
   roundIndex: 0,
   roundsSequence: [],
   dealerIndex: 0,
@@ -207,12 +226,18 @@ window.KaachuPhoolWeb = {
   trickWinnerMessage: '',
   isBiddingPhase: false,
   isTrickFinished: false,
+
+  // 30-Second Turn Timer State
+  TURN_TIMEOUT_SEC: 30,
+  turnTimeRemaining: 30,
+  turnTimerInterval: null,
   
   // Firebase Realtime Multiplayer
   rtdb: null,
   roomCode: null,
   isHost: false,
-  unsubscribeRoom: null,
+  multiplayerGameRef: null,
+  multiplayerRoomRef: null,
 
   init() {
     this.loadPersistedAuth();
@@ -241,7 +266,6 @@ window.KaachuPhoolWeb = {
   },
 
   updateAuthUI() {
-    const statusCard = document.getElementById('webMultiAuthStatusCard');
     const avatarBadge = document.getElementById('webMultiAuthAvatarBadge');
     const nameLabel = document.getElementById('webMultiAuthNameLabel');
     const statusPill = document.getElementById('webMultiAuthStatusPill');
@@ -309,7 +333,15 @@ window.KaachuPhoolWeb = {
     const startSingleBtn = document.getElementById('webStartSinglePlayerBtn');
     startSingleBtn?.addEventListener('click', () => {
       soundManager.playClick();
+      this.autoEnterFullscreen();
       this.startSinglePlayerGame();
+    });
+
+    // Quick Join Single Shared Public Room (Room 777777)
+    const quickJoinSingleBtn = document.getElementById('webQuickJoinSingleRoomBtn');
+    quickJoinSingleBtn?.addEventListener('click', () => {
+      soundManager.playClick();
+      this.joinSingleSharedRoom();
     });
 
     // Multiplayer Room Creation & Joining
@@ -368,10 +400,20 @@ window.KaachuPhoolWeb = {
     });
 
     document.querySelectorAll('.emoji-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', () => {
         const emoji = btn.dataset.emoji;
-        this.triggerFloatingEmoji(emoji, 'You');
+        const myName = this.currentUser ? this.currentUser.displayName : 'You';
+        this.triggerFloatingEmoji(emoji, myName);
         document.getElementById('webEmojiTray')?.classList.add('hidden');
+
+        // Broadcast to multiplayer room if online
+        if (this.mode === 'MULTIPLAYER' && this.rtdb && this.roomCode) {
+          this.rtdb.ref(`rooms/${this.roomCode}/emotes`).set({
+            emoji: emoji,
+            senderName: myName,
+            timestamp: Date.now()
+          });
+        }
       });
     });
 
@@ -468,9 +510,9 @@ window.KaachuPhoolWeb = {
     const instantGuestBtn = document.getElementById('webInstantGuestBtn');
     instantGuestBtn?.addEventListener('click', () => {
       soundManager.playClick();
-      const randomNames = ['AcePlayer', 'KaachuKing', 'GujjuMaster', 'TrumpWizard', 'DesiHero', 'FuliAce'];
+      const randomNames = ['AcePlayer', 'KaachuKing', 'GujjuMaster', 'TrumpWizard', 'DesiHero', 'FuliAce', 'RoyalPlayer'];
       const chosenName = randomNames[Math.floor(Math.random() * randomNames.length)] + '_' + Math.floor(10 + Math.random() * 90);
-      const avatars = ['🦁', '👑', '⚡', '💎', '🌸', '🐯'];
+      const avatars = ['🦁', '👑', '⚡', '💎', '🌸', '🐯', '🎴'];
       const chosenAvatar = avatars[Math.floor(Math.random() * avatars.length)];
       const user = {
         uid: 'user_' + Math.random().toString(36).substr(2, 9),
@@ -511,6 +553,7 @@ window.KaachuPhoolWeb = {
     const lobbyLeaveBtn = document.getElementById('webLobbyLeaveBtn');
     lobbyLeaveBtn?.addEventListener('click', () => {
       soundManager.playClick();
+      this.leaveMultiplayerRoom();
       this.showSetupScreen();
     });
   },
@@ -544,19 +587,29 @@ window.KaachuPhoolWeb = {
     }
   },
 
+  autoEnterFullscreen() {
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } catch (e) {}
+  },
+
   toggleFullscreen() {
     const icon = document.getElementById('webFullscreenIcon');
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => {
-        if (icon) icon.textContent = '🗕';
-      }).catch(err => {
-        console.log("Fullscreen request fallback:", err);
-      });
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().then(() => {
+          if (icon) icon.textContent = '🗕';
+        }).catch(err => {
+          console.log("Fullscreen request fallback:", err);
+        });
+      }
     } else {
       if (document.exitFullscreen) {
         document.exitFullscreen().then(() => {
           if (icon) icon.textContent = '⛶';
-        });
+        }).catch(() => {});
       }
     }
   },
@@ -580,6 +633,7 @@ window.KaachuPhoolWeb = {
   },
 
   showSetupScreen() {
+    this.stopTurnTimer();
     // Restore normal window scrolling
     document.body.classList.remove('overflow-hidden');
     document.documentElement.classList.remove('overflow-hidden');
@@ -589,6 +643,147 @@ window.KaachuPhoolWeb = {
     document.getElementById('webGameTableSection')?.classList.add('hidden');
     document.getElementById('webGameOverOverlay')?.classList.add('hidden');
     document.getElementById('webScorecardModal')?.classList.add('hidden');
+  },
+
+  // 30-Second Turn Countdown Timer with Circular SVG Progress Ring
+  startTurnTimer() {
+    this.stopTurnTimer();
+    this.turnTimeRemaining = this.TURN_TIMEOUT_SEC;
+
+    const positions = ['bottom', 'left', 'top', 'right'];
+    const activePos = positions[this.currentTurnIndex];
+
+    // Reset all timer rings and badges
+    positions.forEach(pos => {
+      const ring = document.getElementById(`webPod_${pos}_timerRing`);
+      const badge = document.getElementById(`webPod_${pos}_timerBadge`);
+      if (ring) {
+        ring.classList.add('hidden');
+        ring.style.strokeDashoffset = '0';
+      }
+      if (badge) badge.classList.add('hidden');
+    });
+
+    const activeRing = document.getElementById(`webPod_${activePos}_timerRing`);
+    const activeBadge = document.getElementById(`webPod_${activePos}_timerBadge`);
+
+    if (activeRing) activeRing.classList.remove('hidden');
+    if (activeBadge) {
+      activeBadge.classList.remove('hidden');
+      activeBadge.textContent = '30s';
+    }
+
+    const circumference = 113.1; // 2 * pi * 18
+    let lastSecondInt = 30;
+
+    this.turnTimerInterval = setInterval(() => {
+      this.turnTimeRemaining = Math.max(0, this.turnTimeRemaining - 0.1);
+      const progress = (this.TURN_TIMEOUT_SEC - this.turnTimeRemaining) / this.TURN_TIMEOUT_SEC;
+      const offset = circumference * progress;
+
+      if (activeRing) {
+        activeRing.style.strokeDashoffset = offset.toFixed(1);
+        if (this.turnTimeRemaining > 15) {
+          activeRing.style.stroke = '#d4a843'; // Gold
+        } else if (this.turnTimeRemaining > 5) {
+          activeRing.style.stroke = '#f97316'; // Warning Orange
+        } else {
+          activeRing.style.stroke = '#ef4444'; // Urgent Red
+        }
+      }
+
+      const curSecInt = Math.ceil(this.turnTimeRemaining);
+      if (activeBadge) {
+        activeBadge.textContent = `${curSecInt}s`;
+        if (this.turnTimeRemaining > 15) {
+          activeBadge.style.color = '#fde047';
+          activeBadge.style.borderColor = 'rgba(212,168,67,0.5)';
+        } else if (this.turnTimeRemaining > 5) {
+          activeBadge.style.color = '#fdba74';
+          activeBadge.style.borderColor = 'rgba(249,115,22,0.6)';
+        } else {
+          activeBadge.style.color = '#fca5a5';
+          activeBadge.style.borderColor = 'rgba(239,68,68,0.8)';
+        }
+      }
+
+      // Play subtle warning tick when <= 5s
+      if (curSecInt !== lastSecondInt) {
+        lastSecondInt = curSecInt;
+        const activePlayer = this.players[this.currentTurnIndex];
+        const isMyTurn = activePlayer && (activePlayer.id === 'user_local' || (this.currentUser && activePlayer.id === this.currentUser.uid));
+        if (curSecInt <= 5 && curSecInt > 0 && isMyTurn) {
+          soundManager.playWarningTick();
+        }
+      }
+
+      // Check if 30s elapsed -> force play
+      if (this.turnTimeRemaining <= 0) {
+        this.stopTurnTimer();
+        this.onTurnTimeout();
+      }
+    }, 100);
+  },
+
+  stopTurnTimer() {
+    if (this.turnTimerInterval) {
+      clearInterval(this.turnTimerInterval);
+      this.turnTimerInterval = null;
+    }
+    ['bottom', 'left', 'top', 'right'].forEach(pos => {
+      const ring = document.getElementById(`webPod_${pos}_timerRing`);
+      const badge = document.getElementById(`webPod_${pos}_timerBadge`);
+      if (ring) ring.classList.add('hidden');
+      if (badge) badge.classList.add('hidden');
+    });
+  },
+
+  onTurnTimeout() {
+    const activePlayer = this.players[this.currentTurnIndex];
+    if (!activePlayer) return;
+
+    if (this.mode === 'MULTIPLAYER') {
+      const myUid = this.currentUser ? this.currentUser.uid : 'user_local';
+      // If it's my turn or I'm the host managing timeout
+      if (activePlayer.id === myUid || this.isHost) {
+        if (this.isBiddingPhase) {
+          const cardsCount = this.roundsSequence[this.roundIndex] || 1;
+          const forcedBid = this.calculateBotBid(activePlayer.id, cardsCount);
+          document.getElementById('webBiddingControls')?.classList.add('hidden');
+          this.triggerFloatingEmoji('⏱️', `${activePlayer.name}: Auto-Bid ${forcedBid}`);
+          this.submitMultiplayerBid(activePlayer.id, forcedBid);
+        } else {
+          const hand = this.dealtHands[activePlayer.id] || [];
+          const legalCards = this.getLegalCards(hand);
+          const cardToPlay = legalCards.length > 0 ? legalCards[0] : hand[0];
+          if (cardToPlay) {
+            this.triggerFloatingEmoji('⏱️', `${activePlayer.name}: Time Expired!`);
+            this.submitMultiplayerPlayCard(activePlayer.id, cardToPlay);
+          }
+        }
+      }
+      return;
+    }
+
+    // Single Player Timeout Fallback
+    if (this.isBiddingPhase) {
+      const cardsCount = this.roundsSequence[this.roundIndex];
+      const forcedBid = this.calculateBotBid(activePlayer.id, cardsCount);
+      this.bids[activePlayer.id] = forcedBid;
+      document.getElementById('webBiddingControls')?.classList.add('hidden');
+      this.triggerFloatingEmoji('⏱️', `${activePlayer.name}: Auto-Bid ${forcedBid}`);
+      soundManager.playClick();
+      this.advanceBidding();
+    } else {
+      const hand = this.dealtHands[activePlayer.id] || [];
+      const legalCards = this.getLegalCards(hand);
+      const cardToPlay = legalCards.length > 0 ? legalCards[0] : hand[0];
+
+      if (cardToPlay) {
+        this.triggerFloatingEmoji('⏱️', `${activePlayer.name}: Time Expired!`);
+        this.playCard(activePlayer.id, cardToPlay);
+      }
+    }
   },
 
   startSinglePlayerGame() {
@@ -605,7 +800,7 @@ window.KaachuPhoolWeb = {
     this.gameConfig.scoringRule = ruleSel?.value || 'STANDARD';
     this.gameConfig.botDifficulty = diffSel?.value || 'MEDIUM';
 
-    // Setup 4 Players
+    // Setup 4 Players for offline mode
     this.players = [
       { id: 'user_local', name: this.gameConfig.playerName, avatar: this.gameConfig.playerAvatar, isBot: false },
       ...DEFAULT_BOTS
@@ -664,7 +859,6 @@ window.KaachuPhoolWeb = {
     this.dealtHands = {};
     this.players.forEach((p, idx) => {
       const hand = deck.slice(idx * cardsCount, (idx + 1) * cardsCount);
-      // Sort hand by suit and val
       hand.sort((a, b) => (a.suit === b.suit ? b.val - a.val : a.suit.localeCompare(b.suit)));
       this.dealtHands[p.id] = hand;
     });
@@ -683,13 +877,16 @@ window.KaachuPhoolWeb = {
     const currentPlayer = this.players[this.currentTurnIndex];
     const cardsCount = this.roundsSequence[this.roundIndex];
 
+    // Start 30s turn timer
+    this.startTurnTimer();
+
     if (currentPlayer.isBot) {
       setTimeout(() => {
         const botBid = this.calculateBotBid(currentPlayer.id, cardsCount);
         this.bids[currentPlayer.id] = botBid;
         soundManager.playClick();
         this.advanceBidding();
-      }, 650);
+      }, 700);
     } else {
       // User turn to bid -> show bid modal / chip buttons
       this.showUserBiddingControls(cardsCount);
@@ -703,7 +900,7 @@ window.KaachuPhoolWeb = {
     hand.forEach(c => {
       if (c.suit === this.trumpSuit) {
         expectedTricks += c.val >= 10 ? 1 : 0.6;
-      } else if (c.val >= 13) { // Ace or King
+      } else if (c.val >= 13) {
         expectedTricks += 0.7;
       }
     });
@@ -721,7 +918,7 @@ window.KaachuPhoolWeb = {
     const header = document.createElement('div');
     header.className = 'w-full text-center space-y-1';
     header.innerHTML = `
-      <div class="text-[11px] font-mono text-goldPrimary uppercase tracking-widest font-bold">Predict Tricks</div>
+      <div class="text-[11px] font-mono text-goldPrimary uppercase tracking-widest font-bold">Predict Tricks (30s Timer)</div>
       <div class="text-sm sm:text-base font-display font-extrabold text-white">How many tricks will you win?</div>
       <div class="text-[10px] font-mono text-emerald-200">Round ${this.roundIndex + 1} (${maxCards} ${maxCards === 1 ? 'Card' : 'Cards'})</div>
     `;
@@ -736,9 +933,16 @@ window.KaachuPhoolWeb = {
       btn.textContent = i;
       btn.onclick = () => {
         soundManager.playClick();
-        this.bids['user_local'] = i;
+        this.stopTurnTimer();
         container.classList.add('hidden');
-        this.advanceBidding();
+
+        if (this.mode === 'MULTIPLAYER') {
+          const myUid = this.currentUser ? this.currentUser.uid : 'user_local';
+          this.submitMultiplayerBid(myUid, i);
+        } else {
+          this.bids['user_local'] = i;
+          this.advanceBidding();
+        }
       };
       btnGrid.appendChild(btn);
     }
@@ -746,12 +950,12 @@ window.KaachuPhoolWeb = {
   },
 
   advanceBidding() {
+    this.stopTurnTimer();
     this.renderTableUI();
 
     // Check if all players have bid
     if (Object.keys(this.bids).length === this.players.length) {
       this.isBiddingPhase = false;
-      // Start playing phase
       this.currentTurnIndex = (this.dealerIndex + 1) % this.players.length;
       this.renderTableUI();
       this.processPlayingTurn();
@@ -766,6 +970,7 @@ window.KaachuPhoolWeb = {
     if (this.isBiddingPhase || this.isTrickFinished) return;
 
     const currentPlayer = this.players[this.currentTurnIndex];
+    this.startTurnTimer();
 
     if (currentPlayer.isBot) {
       setTimeout(() => {
@@ -773,7 +978,7 @@ window.KaachuPhoolWeb = {
         this.playCard(currentPlayer.id, playedCard);
       }, 750);
     } else {
-      // User turn -> highlight playable cards
+      // User turn
       this.renderTableUI();
     }
   },
@@ -798,12 +1003,15 @@ window.KaachuPhoolWeb = {
   },
 
   playCard(playerId, card) {
+    this.stopTurnTimer();
     soundManager.playCard();
 
     // Remove card from hand
     const hand = this.dealtHands[playerId];
-    const idx = hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
-    if (idx !== -1) hand.splice(idx, 1);
+    if (hand) {
+      const idx = hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
+      if (idx !== -1) hand.splice(idx, 1);
+    }
 
     // Set lead suit if first card in trick
     if (this.currentTrickCards.length === 0) {
@@ -825,6 +1033,7 @@ window.KaachuPhoolWeb = {
   },
 
   evaluateTrickWinner() {
+    this.stopTurnTimer();
     let winningEntry = this.currentTrickCards[0];
 
     for (let i = 1; i < this.currentTrickCards.length; i++) {
@@ -840,9 +1049,11 @@ window.KaachuPhoolWeb = {
     }
 
     const winner = this.players.find(p => p.id === winningEntry.playerId);
-    this.tricksWon[winner.id] = (this.tricksWon[winner.id] || 0) + 1;
-    this.trickWinnerMessage = `👑 ${winner.name} won trick!`;
-    soundManager.playTrickWin();
+    if (winner) {
+      this.tricksWon[winner.id] = (this.tricksWon[winner.id] || 0) + 1;
+      this.trickWinnerMessage = `👑 ${winner.name} won trick!`;
+      soundManager.playTrickWin();
+    }
 
     this.renderTableUI();
 
@@ -853,12 +1064,14 @@ window.KaachuPhoolWeb = {
       this.trickWinnerMessage = '';
 
       // Check if round complete
-      const userHand = this.dealtHands['user_local'] || [];
+      const myId = (this.currentUser && this.mode === 'MULTIPLAYER') ? this.currentUser.uid : 'user_local';
+      const userHand = this.dealtHands[myId] || [];
       if (userHand.length === 0) {
         this.finishRound();
       } else {
-        // Winner leads next trick
-        this.currentTurnIndex = this.players.findIndex(p => p.id === winner.id);
+        if (winner) {
+          this.currentTurnIndex = this.players.findIndex(p => p.id === winner.id);
+        }
         this.renderTableUI();
         this.processPlayingTurn();
       }
@@ -866,7 +1079,7 @@ window.KaachuPhoolWeb = {
   },
 
   finishRound() {
-    // Calculate round scores
+    this.stopTurnTimer();
     const roundScores = {};
     const rule = this.gameConfig.scoringRule;
 
@@ -898,7 +1111,6 @@ window.KaachuPhoolWeb = {
 
     this.roundIndex++;
     if (this.roundIndex >= this.roundsSequence.length) {
-      // Game Over!
       soundManager.playVictory();
       this.showGameOverOverlay();
     } else {
@@ -908,6 +1120,7 @@ window.KaachuPhoolWeb = {
   },
 
   showGameOverOverlay() {
+    this.stopTurnTimer();
     const overlay = document.getElementById('webGameOverOverlay');
     const winnerText = document.getElementById('webGameOverWinnerText');
     const statsList = document.getElementById('webGameOverStatsList');
@@ -924,12 +1137,11 @@ window.KaachuPhoolWeb = {
       }
     });
 
-    if (winnerText) {
+    if (winnerText && winner) {
       winnerText.textContent = `${winner.avatar} ${winner.name} Wins the Match! (${highestScore} pts)`;
     }
 
     if (statsList) {
-      // Sort players by score
       const sorted = [...this.players].sort((a, b) => (this.scores[b.id] || 0) - (this.scores[a.id] || 0));
       const medals = ['🥇', '🥈', '🥉', '4th'];
 
@@ -962,32 +1174,71 @@ window.KaachuPhoolWeb = {
       trumpLabel.innerHTML = `<span class="${trumpObj.color} text-base font-bold mr-1">${trumpObj.symbol}</span> <span class="font-bold text-white">${trumpObj.name}</span>`;
     }
 
+    const curPlayer = this.players[this.currentTurnIndex] || this.players[0];
+    const myId = (this.currentUser && this.mode === 'MULTIPLAYER') ? this.currentUser.uid : 'user_local';
+    const isMyTurn = curPlayer && curPlayer.id === myId;
+
     let statusMsg = 'Game Ready';
     if (this.trickWinnerMessage) {
       statusMsg = this.trickWinnerMessage;
     } else if (this.isBiddingPhase) {
-      const curPlayer = this.players[this.currentTurnIndex];
-      statusMsg = `Bidding: ${curPlayer.name}'s turn...`;
+      statusMsg = isMyTurn ? '⭐ YOUR TURN TO BID (30s)' : `Bidding: ${curPlayer ? curPlayer.name : ''}'s turn (30s)...`;
     } else {
-      const curPlayer = this.players[this.currentTurnIndex];
-      statusMsg = curPlayer.id === 'user_local' ? '⭐ YOUR TURN TO PLAY A CARD' : `${curPlayer.name} is playing...`;
+      statusMsg = isMyTurn ? '⭐ YOUR TURN TO PLAY A CARD (30s)' : `${curPlayer ? curPlayer.name : ''} is playing (30s)...`;
     }
 
     if (statusText) statusText.textContent = statusMsg;
     if (mobileStatusPill) mobileStatusPill.textContent = statusMsg;
 
-    // Render 4 Player Pods
-    const positions = ['bottom', 'left', 'top', 'right'];
-    this.players.forEach((p, idx) => {
-      const pos = positions[idx];
+    // Arrange player pods based on active player count (2, 3, or 4 players - ZERO BOTS)
+    // Local player is always at 'bottom'
+    let localPlayerIndex = this.players.findIndex(p => p.id === myId);
+    if (localPlayerIndex === -1) localPlayerIndex = 0;
+
+    const numPlayers = this.players.length;
+    const podBoxes = {
+      bottom: document.getElementById('webPod_bottom_box'),
+      top: document.getElementById('webPod_top_box'),
+      left: document.getElementById('webPod_left_box'),
+      right: document.getElementById('webPod_right_box')
+    };
+
+    // Reset visibility of all pods
+    Object.values(podBoxes).forEach(box => {
+      if (box) box.parentElement.classList.remove('invisible', 'hidden');
+    });
+
+    let seatMapping = {}; // podPosition -> player object
+    if (numPlayers === 2) {
+      seatMapping.bottom = this.players[localPlayerIndex];
+      seatMapping.top = this.players[(localPlayerIndex + 1) % 2];
+      if (podBoxes.left) podBoxes.left.parentElement.classList.add('invisible');
+      if (podBoxes.right) podBoxes.right.parentElement.classList.add('invisible');
+    } else if (numPlayers === 3) {
+      seatMapping.bottom = this.players[localPlayerIndex];
+      seatMapping.left = this.players[(localPlayerIndex + 1) % 3];
+      seatMapping.right = this.players[(localPlayerIndex + 2) % 3];
+      if (podBoxes.top) podBoxes.top.parentElement.classList.add('invisible');
+    } else {
+      // 4 Players
+      seatMapping.bottom = this.players[localPlayerIndex];
+      seatMapping.left = this.players[(localPlayerIndex + 1) % 4];
+      seatMapping.top = this.players[(localPlayerIndex + 2) % 4];
+      seatMapping.right = this.players[(localPlayerIndex + 3) % 4];
+    }
+
+    Object.entries(seatMapping).forEach(([pos, p]) => {
+      if (!p) return;
       const nameEl = document.getElementById(`webPod_${pos}_name`);
       const bidEl = document.getElementById(`webPod_${pos}_bid`);
       const scoreEl = document.getElementById(`webPod_${pos}_score`);
-      const podBox = document.getElementById(`webPod_${pos}_box`);
+      const podBox = podBoxes[pos];
       const avatarEl = document.getElementById(`webPod_${pos}_avatar`);
 
-      if (nameEl) nameEl.textContent = p.name;
-      if (avatarEl) avatarEl.textContent = p.avatar;
+      const isCurrentActive = curPlayer && curPlayer.id === p.id;
+
+      if (nameEl) nameEl.textContent = p.id === myId ? `👑 You` : p.name;
+      if (avatarEl) avatarEl.textContent = p.avatar || '👤';
       if (bidEl) {
         const bid = this.bids[p.id] !== undefined ? this.bids[p.id] : '?';
         const won = this.tricksWon[p.id] || 0;
@@ -996,7 +1247,7 @@ window.KaachuPhoolWeb = {
       if (scoreEl) scoreEl.textContent = `${this.scores[p.id] || 0} pts`;
 
       if (podBox) {
-        if (idx === this.currentTurnIndex) {
+        if (isCurrentActive) {
           podBox.className = `px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-goldPrimary/20 border-2 border-goldPrimary text-center shadow-[0_0_20px_rgba(212,168,67,0.5)] transition-all flex items-center gap-2 min-w-[120px] max-w-[240px] ring-2 ring-goldPrimary/40 animate-pulse`;
         } else {
           podBox.className = `px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-black/75 backdrop-blur-md border border-goldPrimary/30 text-center shadow-xl transition-all flex items-center gap-2 min-w-[120px] max-w-[240px]`;
@@ -1048,13 +1299,13 @@ window.KaachuPhoolWeb = {
     const handContainer = document.getElementById('webUserHandContainer');
     if (handContainer) {
       handContainer.innerHTML = '';
-      const userHand = this.dealtHands['user_local'] || [];
-      const isUserTurn = !this.isBiddingPhase && !this.isTrickFinished && this.players[this.currentTurnIndex].id === 'user_local';
+      const userHand = this.dealtHands[myId] || [];
+      const isUserTurnToPlay = !this.isBiddingPhase && !this.isTrickFinished && isMyTurn;
       const legalCards = this.getLegalCards(userHand);
 
       userHand.forEach(card => {
         const suitObj = SUITS.find(s => s.id === card.suit) || SUITS[0];
-        const isLegal = isUserTurn && legalCards.some(lc => lc.suit === card.suit && lc.rank === card.rank);
+        const isLegal = isUserTurnToPlay && legalCards.some(lc => lc.suit === card.suit && lc.rank === card.rank);
 
         const cardBtn = document.createElement('button');
         const cardSizeClass = userHand.length > 7 ? 'w-12 sm:w-16 h-18 sm:h-24' : 'w-14 sm:w-20 h-20 sm:h-28';
@@ -1071,7 +1322,11 @@ window.KaachuPhoolWeb = {
 
         if (isLegal) {
           cardBtn.onclick = () => {
-            this.playCard('user_local', card);
+            if (this.mode === 'MULTIPLAYER') {
+              this.submitMultiplayerPlayCard(myId, card);
+            } else {
+              this.playCard('user_local', card);
+            }
           };
         }
 
@@ -1089,15 +1344,73 @@ window.KaachuPhoolWeb = {
         <td class="p-2 font-bold text-goldPrimary">R${h.round} (${h.cardsCount}c)</td>
         ${this.players.map(p => `
           <td class="p-2">
-            <span class="${h.scores[p.id] >= 0 ? 'text-emerald-300 font-bold' : 'text-rose-400 font-bold'}">${h.scores[p.id]}</span>
-            <span class="text-white/50 text-[10px] ml-1">(${h.totals[p.id]})</span>
+            <span class="${(h.scores[p.id] || 0) >= 0 ? 'text-emerald-300 font-bold' : 'text-rose-400 font-bold'}">${h.scores[p.id] || 0}</span>
+            <span class="text-white/50 text-[10px] ml-1">(${h.totals[p.id] || 0})</span>
           </td>
         `).join('')}
       </tr>
     `).join('');
   },
 
-  // Multiplayer Engine Realtime Methods (Compulsory Login Enforced)
+  // Real-Time Multiplayer Engine (ALL PLAYERS JOIN 1 ROOM, ZERO BOTS)
+  async joinSingleSharedRoom() {
+    if (!this.currentUser) {
+      alert("🔒 Multiplayer Login is compulsory! Please sign in or create an account.");
+      document.getElementById('webMultiAuthModal')?.classList.remove('hidden');
+      return;
+    }
+
+    const SINGLE_ROOM_CODE = "777777";
+    await this.joinOrCreateNamedRoom(SINGLE_ROOM_CODE);
+  },
+
+  async joinOrCreateNamedRoom(code) {
+    if (!this.rtdb) {
+      alert("Connecting to multiplayer server... Try again in 2 seconds.");
+      this.setupFirebase();
+      return;
+    }
+
+    this.roomCode = code;
+    this.mode = 'MULTIPLAYER';
+
+    const roomRef = this.rtdb.ref(`rooms/${code}`);
+    const snapshot = await roomRef.once('value');
+    const myPlayer = {
+      id: this.currentUser.uid,
+      uid: this.currentUser.uid,
+      name: this.currentUser.displayName,
+      avatar: this.currentUser.avatar || '👑',
+      isBot: false
+    };
+
+    if (!snapshot.exists()) {
+      // Create room as host
+      this.isHost = true;
+      await roomRef.set({
+        roomId: code,
+        hostName: myPlayer.name,
+        hostUid: myPlayer.uid,
+        players: [myPlayer],
+        gameState: 'WAITING',
+        createdAt: Date.now()
+      });
+      this.showLobbyUI(code, myPlayer.name, [myPlayer]);
+    } else {
+      // Room exists: join room
+      const data = snapshot.val();
+      let players = data.players || [];
+      if (!players.some(p => p.uid === myPlayer.uid)) {
+        players.push(myPlayer);
+        await roomRef.update({ players: players });
+      }
+      this.isHost = (data.hostUid === myPlayer.uid);
+      this.showLobbyUI(code, data.hostName, players);
+    }
+
+    this.listenMultiplayerRoom(code);
+  },
+
   async createMultiplayerRoom() {
     if (!this.currentUser) {
       alert("🔒 Multiplayer Login is compulsory! Please sign in or create an account.");
@@ -1105,29 +1418,8 @@ window.KaachuPhoolWeb = {
       return;
     }
 
-    if (!this.rtdb) {
-      alert("Firebase Realtime Database connecting... Please try again in 3 seconds.");
-      this.setupFirebase();
-      return;
-    }
-
-    const hostName = this.currentUser.displayName || 'Host Player';
     const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
-    this.roomCode = roomCode;
-    this.isHost = true;
-    this.mode = 'MULTIPLAYER';
-
-    const roomRef = this.rtdb.ref(`rooms/${roomCode}`);
-    await roomRef.set({
-      roomId: roomCode,
-      hostName: hostName,
-      players: [{ name: hostName, avatar: this.currentUser.avatar || '👑', uid: this.currentUser.uid }],
-      gameState: 'WAITING',
-      createdAt: Date.now()
-    });
-
-    this.showLobbyUI(roomCode, hostName, [{ name: hostName, avatar: this.currentUser.avatar || '👑' }]);
-    this.listenMultiplayerRoom(roomCode);
+    await this.joinOrCreateNamedRoom(roomCode);
   },
 
   async joinMultiplayerRoom() {
@@ -1137,46 +1429,33 @@ window.KaachuPhoolWeb = {
       return;
     }
 
-    if (!this.rtdb) {
-      alert("Firebase connection initializing...");
-      this.setupFirebase();
-      return;
-    }
-
     const codeInput = document.getElementById('webJoinRoomCodeInput');
     const code = codeInput?.value.trim();
-    const name = this.currentUser.displayName || 'Guest Player';
 
     if (!code || code.length !== 6) {
       alert("Please enter a valid 6-digit room code.");
       return;
     }
 
-    this.roomCode = code;
-    this.isHost = false;
-    this.mode = 'MULTIPLAYER';
+    await this.joinOrCreateNamedRoom(code);
+  },
 
-    const roomRef = this.rtdb.ref(`rooms/${code}`);
-    const snapshot = await roomRef.once('value');
-
-    if (!snapshot.exists()) {
-      alert("Room not found! Check the 6-digit room code.");
-      return;
+  leaveMultiplayerRoom() {
+    if (this.rtdb && this.roomCode && this.currentUser) {
+      const roomRef = this.rtdb.ref(`rooms/${this.roomCode}`);
+      roomRef.once('value').then(snap => {
+        if (snap.exists()) {
+          const data = snap.val();
+          let players = (data.players || []).filter(p => p.uid !== this.currentUser.uid);
+          if (players.length === 0) {
+            roomRef.remove();
+          } else {
+            roomRef.update({ players });
+          }
+        }
+      });
     }
-
-    const data = snapshot.val();
-    let players = data.players || [];
-    if (typeof players[0] === 'string') {
-      players = players.map(p => ({ name: p, avatar: '👤' }));
-    }
-
-    if (!players.some(p => p.name === name)) {
-      players.push({ name: name, avatar: this.currentUser.avatar || '🦁', uid: this.currentUser.uid });
-      await roomRef.update({ players });
-    }
-
-    this.showLobbyUI(code, data.hostName, players);
-    this.listenMultiplayerRoom(code);
+    this.roomCode = null;
   },
 
   showLobbyUI(code, hostName, players) {
@@ -1189,17 +1468,18 @@ window.KaachuPhoolWeb = {
     const startBtn = document.getElementById('webLobbyStartBtn');
 
     if (codeEl) codeEl.textContent = code;
-    if (countEl) countEl.textContent = `${players.length} / 4 Players`;
+    if (countEl) countEl.textContent = `${players.length} Players in Lobby (No Bots)`;
 
     if (playersEl) {
       playersEl.innerHTML = players.map(p => {
-        const pName = typeof p === 'string' ? p : p.name;
-        const pAvatar = typeof p === 'string' ? '👤' : (p.avatar || '👤');
+        const pName = p.name || 'Player';
+        const pAvatar = p.avatar || '👤';
+        const isHost = (pName === hostName || p.uid === this.currentUser?.uid && this.isHost);
         return `
           <div class="flex items-center gap-3 p-3 rounded-2xl bg-black/60 border border-goldPrimary/30 font-bold text-sm">
-            <span class="text-xl">${pAvatar}</span>
+            <span class="text-2xl">${pAvatar}</span>
             <span class="text-white">${pName}</span>
-            ${pName === hostName ? '<span class="text-xs bg-goldPrimary/20 text-goldPrimary px-2 py-0.5 rounded-full font-mono ml-auto border border-goldPrimary/40">HOST</span>' : '<span class="text-xs text-emerald-300 font-mono ml-auto">READY</span>'}
+            ${isHost ? '<span class="text-xs bg-goldPrimary/20 text-goldPrimary px-2.5 py-0.5 rounded-full font-mono ml-auto border border-goldPrimary/40">HOST</span>' : '<span class="text-xs text-emerald-300 font-mono ml-auto">READY</span>'}
           </div>
         `;
       }).join('');
@@ -1208,9 +1488,11 @@ window.KaachuPhoolWeb = {
     if (startBtn) {
       if (this.isHost) {
         startBtn.classList.remove('hidden');
+        startBtn.textContent = `🚀 START MATCH (${players.length} PLAYERS • NO BOTS)`;
         startBtn.onclick = () => {
           soundManager.playClick();
-          this.rtdb.ref(`rooms/${code}`).update({ gameState: 'PLAYING' });
+          this.autoEnterFullscreen();
+          this.launchMultiplayerMatch(players);
         };
       } else {
         startBtn.classList.add('hidden');
@@ -1218,21 +1500,309 @@ window.KaachuPhoolWeb = {
     }
   },
 
+  launchMultiplayerMatch(playersList) {
+    if (!this.rtdb || !this.roomCode) return;
+
+    // Filter to real human players ONLY (ZERO BOTS)
+    this.players = playersList.map(p => ({
+      id: p.uid || p.id,
+      uid: p.uid || p.id,
+      name: p.name,
+      avatar: p.avatar || '👑',
+      isBot: false
+    }));
+
+    this.roundsSequence = GAME_MODES.QUICK.rounds;
+    this.roundIndex = 0;
+    this.dealerIndex = 0;
+    this.scores = {};
+    this.players.forEach(p => this.scores[p.id] = 0);
+    this.scoresHistory = [];
+
+    // Deal cards for round 1
+    const cardsCount = this.roundsSequence[0];
+    const deck = [];
+    SUITS.forEach(s => {
+      RANKS.forEach(r => {
+        deck.push({ suit: s.id, rank: r.id, val: r.val, symbol: s.symbol, label: r.label });
+      });
+    });
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+
+    const dealtHands = {};
+    this.players.forEach((p, idx) => {
+      const hand = deck.slice(idx * cardsCount, (idx + 1) * cardsCount);
+      hand.sort((a, b) => (a.suit === b.suit ? b.val - a.val : a.suit.localeCompare(b.suit)));
+      dealtHands[p.id] = hand;
+    });
+
+    const trumpSuit = SUITS[0].id;
+    const currentTurnIndex = (this.dealerIndex + 1) % this.players.length;
+
+    const gamePayload = {
+      players: this.players,
+      roundsSequence: this.roundsSequence,
+      roundIndex: 0,
+      dealerIndex: 0,
+      currentTurnIndex: currentTurnIndex,
+      currentTurnPlayerId: this.players[currentTurnIndex].id,
+      trumpSuit: trumpSuit,
+      leadSuit: null,
+      dealtHands: dealtHands,
+      bids: {},
+      tricksWon: {},
+      scores: this.scores,
+      currentTrickCards: [],
+      isBiddingPhase: true,
+      isTrickFinished: false,
+      trickWinnerMessage: '',
+      updatedAt: Date.now()
+    };
+
+    // Update RTDB to start game for all connected clients
+    this.rtdb.ref(`rooms/${this.roomCode}`).update({
+      gameState: 'PLAYING',
+      game: gamePayload
+    });
+  },
+
   listenMultiplayerRoom(code) {
     if (!this.rtdb) return;
-    const roomRef = this.rtdb.ref(`rooms/${code}`);
 
-    roomRef.on('value', (snapshot) => {
+    // Listen to Room Status
+    this.multiplayerRoomRef = this.rtdb.ref(`rooms/${code}`);
+    this.multiplayerRoomRef.on('value', (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
 
       if (data.gameState === 'PLAYING') {
         document.getElementById('webLobbySection')?.classList.add('hidden');
-        // Start match in Fullscreen table view
-        this.startSinglePlayerGame();
+        document.getElementById('webGameTableSection')?.classList.remove('hidden');
+
+        // Automatically trigger Fullscreen and focus table
+        this.autoEnterFullscreen();
+        document.body.classList.add('overflow-hidden');
+        document.documentElement.classList.add('overflow-hidden');
+        window.scrollTo(0, 0);
+
+        if (data.game) {
+          this.syncMultiplayerGameState(data.game);
+        }
       } else if (data.players) {
         this.showLobbyUI(code, data.hostName, data.players);
       }
+    });
+
+    // Listen to Emotes in Real-Time
+    this.rtdb.ref(`rooms/${code}/emotes`).on('value', (snap) => {
+      const emoteData = snap.val();
+      if (emoteData && emoteData.timestamp > (Date.now() - 3000)) {
+        this.triggerFloatingEmoji(emoteData.emoji, emoteData.senderName);
+      }
+    });
+  },
+
+  syncMultiplayerGameState(game) {
+    this.players = game.players || [];
+    this.roundsSequence = game.roundsSequence || GAME_MODES.QUICK.rounds;
+    this.roundIndex = game.roundIndex || 0;
+    this.dealerIndex = game.dealerIndex || 0;
+    this.currentTurnIndex = game.currentTurnIndex || 0;
+    this.trumpSuit = game.trumpSuit || 'SPADES';
+    this.leadSuit = game.leadSuit || null;
+    this.dealtHands = game.dealtHands || {};
+    this.bids = game.bids || {};
+    this.tricksWon = game.tricksWon || {};
+    this.scores = game.scores || {};
+    this.currentTrickCards = game.currentTrickCards || [];
+    this.isBiddingPhase = game.isBiddingPhase !== false;
+    this.isTrickFinished = game.isTrickFinished || false;
+    this.trickWinnerMessage = game.trickWinnerMessage || '';
+
+    this.renderTableUI();
+
+    const myUid = this.currentUser ? this.currentUser.uid : 'user_local';
+    const curPlayer = this.players[this.currentTurnIndex];
+    const isMyTurn = curPlayer && curPlayer.id === myUid;
+
+    // Start 30s visual turn timer for the current active player
+    this.startTurnTimer();
+
+    if (this.isBiddingPhase) {
+      if (isMyTurn && this.bids[myUid] === undefined) {
+        const cardsCount = this.roundsSequence[this.roundIndex] || 1;
+        this.showUserBiddingControls(cardsCount);
+      } else {
+        document.getElementById('webBiddingControls')?.classList.add('hidden');
+      }
+    } else {
+      document.getElementById('webBiddingControls')?.classList.add('hidden');
+    }
+  },
+
+  submitMultiplayerBid(playerId, bid) {
+    if (!this.rtdb || !this.roomCode) return;
+
+    this.bids[playerId] = bid;
+    const bidsRef = this.rtdb.ref(`rooms/${this.roomCode}/game/bids/${playerId}`);
+    bidsRef.set(bid);
+
+    // If all players have bid, transition to card-playing phase
+    if (Object.keys(this.bids).length === this.players.length) {
+      const firstTurn = (this.dealerIndex + 1) % this.players.length;
+      this.rtdb.ref(`rooms/${this.roomCode}/game`).update({
+        isBiddingPhase: false,
+        currentTurnIndex: firstTurn,
+        currentTurnPlayerId: this.players[firstTurn].id
+      });
+    } else {
+      const nextTurn = (this.currentTurnIndex + 1) % this.players.length;
+      this.rtdb.ref(`rooms/${this.roomCode}/game`).update({
+        currentTurnIndex: nextTurn,
+        currentTurnPlayerId: this.players[nextTurn].id
+      });
+    }
+  },
+
+  submitMultiplayerPlayCard(playerId, card) {
+    if (!this.rtdb || !this.roomCode) return;
+
+    soundManager.playCard();
+
+    // Update hand
+    const hand = this.dealtHands[playerId] || [];
+    const idx = hand.findIndex(c => c.suit === card.suit && c.rank === card.rank);
+    if (idx !== -1) hand.splice(idx, 1);
+
+    const trickCards = [...this.currentTrickCards, { playerId, card }];
+    const leadSuit = trickCards.length === 1 ? card.suit : this.leadSuit;
+
+    // Check if trick completed
+    if (trickCards.length === this.players.length) {
+      // Evaluate trick winner
+      let winningEntry = trickCards[0];
+      for (let i = 1; i < trickCards.length; i++) {
+        const candidate = trickCards[i];
+        const winCard = winningEntry.card;
+        const candCard = candidate.card;
+
+        if (candCard.suit === this.trumpSuit && winCard.suit !== this.trumpSuit) {
+          winningEntry = candidate;
+        } else if (candCard.suit === winCard.suit && candCard.val > winCard.val) {
+          winningEntry = candidate;
+        }
+      }
+
+      const winner = this.players.find(p => p.id === winningEntry.playerId);
+      const newTricksWon = { ...this.tricksWon, [winner.id]: (this.tricksWon[winner.id] || 0) + 1 };
+      const winnerName = winner ? winner.name : 'Player';
+
+      this.rtdb.ref(`rooms/${this.roomCode}/game`).update({
+        currentTrickCards: trickCards,
+        leadSuit: leadSuit,
+        tricksWon: newTricksWon,
+        isTrickFinished: true,
+        trickWinnerMessage: `👑 ${winnerName} won trick!`,
+        [`dealtHands/${playerId}`]: hand
+      });
+
+      setTimeout(() => {
+        // Check if round completed (no cards remaining)
+        if (hand.length === 0) {
+          // Advance Round
+          this.advanceMultiplayerRound(newTricksWon);
+        } else {
+          const nextTurnIdx = this.players.findIndex(p => p.id === winner.id);
+          this.rtdb.ref(`rooms/${this.roomCode}/game`).update({
+            currentTrickCards: [],
+            leadSuit: null,
+            isTrickFinished: false,
+            trickWinnerMessage: '',
+            currentTurnIndex: nextTurnIdx,
+            currentTurnPlayerId: winner.id
+          });
+        }
+      }, 1500);
+
+    } else {
+      const nextTurn = (this.currentTurnIndex + 1) % this.players.length;
+      this.rtdb.ref(`rooms/${this.roomCode}/game`).update({
+        currentTrickCards: trickCards,
+        leadSuit: leadSuit,
+        currentTurnIndex: nextTurn,
+        currentTurnPlayerId: this.players[nextTurn].id,
+        [`dealtHands/${playerId}`]: hand
+      });
+    }
+  },
+
+  advanceMultiplayerRound(finalTricksWon) {
+    if (!this.rtdb || !this.roomCode) return;
+
+    // Calculate score
+    const newScores = { ...this.scores };
+    this.players.forEach(p => {
+      const bid = this.bids[p.id] || 0;
+      const won = finalTricksWon[p.id] || 0;
+      const pts = (bid === won) ? (10 + bid) : 0;
+      newScores[p.id] = (newScores[p.id] || 0) + pts;
+    });
+
+    const nextRoundIndex = this.roundIndex + 1;
+    if (nextRoundIndex >= this.roundsSequence.length) {
+      // Game Over
+      this.rtdb.ref(`rooms/${this.roomCode}/game`).update({
+        scores: newScores,
+        gameState: 'FINISHED'
+      });
+      soundManager.playVictory();
+      this.showGameOverOverlay();
+      return;
+    }
+
+    const nextDealer = (this.dealerIndex + 1) % this.players.length;
+    const nextCardsCount = this.roundsSequence[nextRoundIndex];
+    const nextTrumpSuit = SUITS[nextRoundIndex % 4].id;
+
+    // Deal fresh cards for next round
+    const deck = [];
+    SUITS.forEach(s => {
+      RANKS.forEach(r => {
+        deck.push({ suit: s.id, rank: r.id, val: r.val, symbol: s.symbol, label: r.label });
+      });
+    });
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+
+    const nextHands = {};
+    this.players.forEach((p, idx) => {
+      const h = deck.slice(idx * nextCardsCount, (idx + 1) * nextCardsCount);
+      h.sort((a, b) => (a.suit === b.suit ? b.val - a.val : a.suit.localeCompare(b.suit)));
+      nextHands[p.id] = h;
+    });
+
+    const nextTurn = (nextDealer + 1) % this.players.length;
+
+    this.rtdb.ref(`rooms/${this.roomCode}/game`).update({
+      roundIndex: nextRoundIndex,
+      dealerIndex: nextDealer,
+      currentTurnIndex: nextTurn,
+      currentTurnPlayerId: this.players[nextTurn].id,
+      trumpSuit: nextTrumpSuit,
+      leadSuit: null,
+      dealtHands: nextHands,
+      bids: {},
+      tricksWon: {},
+      scores: newScores,
+      currentTrickCards: [],
+      isBiddingPhase: true,
+      isTrickFinished: false,
+      trickWinnerMessage: ''
     });
   }
 };

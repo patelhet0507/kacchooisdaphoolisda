@@ -11,7 +11,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Player
 import com.example.ui.theme.*
+import kotlinx.coroutines.delay
 import kotlin.math.min
 
 @Composable
@@ -67,18 +73,51 @@ fun PlayerSeatView(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(contentAlignment = Alignment.Center) {
-            // Animated Turn Indicator
+            // Turn Countdown Circular Progress Indicator (30s max turn timer)
             if (isCurrentTurn) {
-                Box(
-                    modifier = Modifier
-                        .size(avatarSize + 12.dp)
-                        .border(
-                            2.dp,
-                            Brush.sweepGradient(listOf(GoldPrimary, GoldLight, GoldPrimary)),
-                            CircleShape
-                        )
-                        .graphicsLayer { alpha = glowAlpha }
-                )
+                var secondsLeft by remember(player.id, isCurrentTurn) { mutableIntStateOf(30) }
+                val animatedProgress = remember(player.id, isCurrentTurn) { Animatable(1f) }
+
+                LaunchedEffect(player.id, isCurrentTurn) {
+                    animatedProgress.snapTo(1f)
+                    // Animate 30s countdown
+                    animatedProgress.animateTo(
+                        targetValue = 0f,
+                        animationSpec = tween(durationMillis = 30000, easing = LinearEasing)
+                    )
+                }
+
+                LaunchedEffect(player.id, isCurrentTurn) {
+                    secondsLeft = 30
+                    while (secondsLeft > 0) {
+                        delay(1000L)
+                        secondsLeft--
+                    }
+                }
+
+                val timerColor = when {
+                    secondsLeft > 15 -> GoldPrimary
+                    secondsLeft > 5 -> Color(0xFFF97316) // Warning Orange
+                    else -> Color(0xFFEF4444) // Urgent Red
+                }
+
+                Canvas(
+                    modifier = Modifier.size(avatarSize + 12.dp)
+                ) {
+                    // Background track
+                    drawCircle(
+                        color = Color.White.copy(alpha = 0.15f),
+                        style = Stroke(width = 3.dp.toPx())
+                    )
+                    // Animated countdown sweep
+                    drawArc(
+                        color = timerColor,
+                        startAngle = -90f,
+                        sweepAngle = 360f * animatedProgress.value,
+                        useCenter = false,
+                        style = Stroke(width = 3.5.dp.toPx())
+                    )
+                }
             }
 
             // Avatar Circle
@@ -98,6 +137,40 @@ fun PlayerSeatView(
                     text = player.avatarEmoji,
                     fontSize = if (isBottomUser) 28.sp else 24.sp
                 )
+            }
+
+            // Turn Timer Seconds Badge
+            if (isCurrentTurn) {
+                var badgeSecs by remember(player.id, isCurrentTurn) { mutableIntStateOf(30) }
+                LaunchedEffect(player.id, isCurrentTurn) {
+                    badgeSecs = 30
+                    while (badgeSecs > 0) {
+                        delay(1000L)
+                        badgeSecs--
+                    }
+                }
+                val badgeColor = when {
+                    badgeSecs > 15 -> GoldLight
+                    badgeSecs > 5 -> Color(0xFFFED7AA)
+                    else -> Color(0xFFFCA5A5)
+                }
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 4.dp, y = 4.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.Black.copy(alpha = 0.9f))
+                        .border(1.dp, badgeColor.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Text(
+                        text = "${badgeSecs}s",
+                        color = badgeColor,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                    )
+                }
             }
 
             // Dealer Chip

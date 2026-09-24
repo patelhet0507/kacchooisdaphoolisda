@@ -389,6 +389,19 @@
             </div>
           </div>
 
+          <!-- Quick Join Single Public Room Button -->
+          <div class="p-4 rounded-2xl bg-gradient-to-r from-emerald-900/60 to-emerald-950/80 border border-goldPrimary/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg">
+            <div class="text-left">
+              <div class="font-display font-bold text-sm text-goldPrimary flex items-center gap-1.5">
+                <span>🔥</span> Join Main Single Shared Room (Room 777777)
+              </div>
+              <div class="text-xs text-emerald-100/70">All players join this single room to play together in real-time with zero bots.</div>
+            </div>
+            <button id="webQuickJoinSingleRoomBtn" class="shrink-0 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-black font-display font-bold text-xs shadow-lg transition-all transform hover:scale-105 cursor-pointer flex items-center gap-1.5">
+              <span>⚡</span> Quick Join Single Room
+            </button>
+          </div>
+
           <!-- Multiplayer Room Creation / Join Section -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <!-- Create Room Card -->
@@ -540,7 +553,14 @@
           <!-- Top Player Pod (North) -->
           <div class="w-full flex justify-center shrink-0 z-10">
             <div id="webPod_top_box" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-black/75 backdrop-blur-md border border-goldPrimary/30 text-center shadow-xl transition-all flex items-center gap-2 sm:gap-3 min-w-[140px] max-w-[240px]">
-              <div id="webPod_top_avatar" class="w-8 h-8 rounded-full bg-emerald-900/80 border border-goldPrimary/40 flex items-center justify-center text-base shrink-0">🌸</div>
+              <div class="relative flex items-center justify-center shrink-0 w-9 h-9 sm:w-10 sm:h-10">
+                <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 44 44">
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3" />
+                  <circle id="webPod_top_timerRing" cx="22" cy="22" r="18" fill="none" stroke="#d4a843" stroke-width="3.5" stroke-dasharray="113.1" stroke-dashoffset="0" stroke-linecap="round" class="transition-all duration-100 hidden" />
+                </svg>
+                <div id="webPod_top_avatar" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-900/80 border border-goldPrimary/40 flex items-center justify-center text-sm sm:text-base z-10">🌸</div>
+                <div id="webPod_top_timerBadge" class="absolute -bottom-1 -right-1 bg-black/95 text-[8px] sm:text-[9px] font-mono font-bold text-goldPrimary px-1 rounded-full border border-goldPrimary/50 hidden z-20">30s</div>
+              </div>
               <div class="text-left overflow-hidden">
                 <div id="webPod_top_name" class="font-bold text-xs text-white truncate">Priya (Master)</div>
                 <div class="flex items-center gap-1.5 text-[10px] font-mono">
@@ -558,7 +578,14 @@
             <!-- Left Player Pod (West) -->
             <div class="shrink-0 z-10">
               <div id="webPod_left_box" class="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-black/75 backdrop-blur-md border border-goldPrimary/30 text-left shadow-xl transition-all flex items-center gap-2 min-w-[110px] sm:min-w-[130px] max-w-[170px]">
-                <div id="webPod_left_avatar" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-900/80 border border-goldPrimary/40 flex items-center justify-center text-sm sm:text-base shrink-0">🦁</div>
+                <div class="relative flex items-center justify-center shrink-0 w-8 h-8 sm:w-9 sm:h-9">
+                  <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 44 44">
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3" />
+                    <circle id="webPod_left_timerRing" cx="22" cy="22" r="18" fill="none" stroke="#d4a843" stroke-width="3.5" stroke-dasharray="113.1" stroke-dashoffset="0" stroke-linecap="round" class="transition-all duration-100 hidden" />
+                  </svg>
+                  <div id="webPod_left_avatar" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-emerald-900/80 border border-goldPrimary/40 flex items-center justify-center text-xs sm:text-sm z-10">🦁</div>
+                  <div id="webPod_left_timerBadge" class="absolute -bottom-1 -right-1 bg-black/95 text-[8px] font-mono font-bold text-goldPrimary px-1 rounded-full border border-goldPrimary/50 hidden z-20">30s</div>
+                </div>
                 <div class="overflow-hidden">
                   <div id="webPod_left_name" class="font-bold text-[11px] sm:text-xs text-white truncate">Aarav</div>
                   <div id="webPod_left_bid" class="text-[9px] sm:text-[10px] font-mono text-goldPrimary">Bid: 0 • W: 0</div>
@@ -600,7 +627,14 @@
                   <div id="webPod_right_bid" class="text-[9px] sm:text-[10px] font-mono text-goldPrimary">Bid: 0 • W: 0</div>
                   <div id="webPod_right_score" class="text-[9px] sm:text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
                 </div>
-                <div id="webPod_right_avatar" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-900/80 border border-goldPrimary/40 flex items-center justify-center text-sm sm:text-base shrink-0">⚡</div>
+                <div class="relative flex items-center justify-center shrink-0 w-8 h-8 sm:w-9 sm:h-9">
+                  <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 44 44">
+                    <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3" />
+                    <circle id="webPod_right_timerRing" cx="22" cy="22" r="18" fill="none" stroke="#d4a843" stroke-width="3.5" stroke-dasharray="113.1" stroke-dashoffset="0" stroke-linecap="round" class="transition-all duration-100 hidden" />
+                  </svg>
+                  <div id="webPod_right_avatar" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-emerald-900/80 border border-goldPrimary/40 flex items-center justify-center text-xs sm:text-sm z-10">⚡</div>
+                  <div id="webPod_right_timerBadge" class="absolute -bottom-1 -left-1 bg-black/95 text-[8px] font-mono font-bold text-goldPrimary px-1 rounded-full border border-goldPrimary/50 hidden z-20">30s</div>
+                </div>
               </div>
             </div>
 
@@ -609,7 +643,14 @@
           <!-- Bottom Player Pod (South / Local Player) -->
           <div class="w-full flex justify-center shrink-0 z-10">
             <div id="webPod_bottom_box" class="px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-2xl bg-black/80 backdrop-blur-md border border-goldPrimary/50 text-center shadow-xl transition-all flex items-center gap-3 min-w-[160px] max-w-[280px]">
-              <div id="webPod_bottom_avatar" class="w-8 h-8 rounded-full bg-amber-900/80 border-2 border-goldPrimary flex items-center justify-center text-base shrink-0">👑</div>
+              <div class="relative flex items-center justify-center shrink-0 w-9 h-9 sm:w-10 sm:h-10">
+                <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 44 44">
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="3" />
+                  <circle id="webPod_bottom_timerRing" cx="22" cy="22" r="18" fill="none" stroke="#d4a843" stroke-width="3.5" stroke-dasharray="113.1" stroke-dashoffset="0" stroke-linecap="round" class="transition-all duration-100 hidden" />
+                </svg>
+                <div id="webPod_bottom_avatar" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-900/80 border-2 border-goldPrimary flex items-center justify-center text-sm sm:text-base z-10">👑</div>
+                <div id="webPod_bottom_timerBadge" class="absolute -bottom-1 -right-1 bg-black/95 text-[8px] sm:text-[9px] font-mono font-bold text-goldPrimary px-1 rounded-full border border-goldPrimary/50 hidden z-20">30s</div>
+              </div>
               <div class="text-left overflow-hidden">
                 <div id="webPod_bottom_name" class="font-bold text-xs text-goldPrimary truncate">👑 You</div>
                 <div class="flex items-center gap-1.5 text-[10px] font-mono">
