@@ -31,6 +31,7 @@ data class UserProfileState(
 class UserProfileManager(private val context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("kaachu_phool_user_profile", Context.MODE_PRIVATE)
     private val authManager = AuthManager.getInstance()
+    private val firestoreManager = FirestoreManager.getInstance()
     private val scope = CoroutineScope(Dispatchers.Main)
 
     private val savedFriends = prefs.getStringSet("friends_list", setOf("Alex (Pro)", "Sam (Master)", "Jordan"))?.toList() ?: listOf("Alex (Pro)", "Sam (Master)", "Jordan")
@@ -100,21 +101,80 @@ class UserProfileManager(private val context: Context) {
         scope.launch {
             authManager.authState.collect { authUser ->
                 if (authUser.isLoggedIn) {
+                    val uid = authUser.uid ?: ""
                     val name = authUser.displayName?.ifBlank { "Player" } ?: "Player"
                     val email = authUser.email ?: ""
                     val photo = authUser.photoUrl ?: ""
+
+                    // Check Firestore cloud data
+                    var mergedGames = _state.value.gamesPlayed
+                    var mergedWins = _state.value.winsCount
+                    var mergedHighest = _state.value.highestScore
+                    var mergedAvatar = _state.value.selectedAvatar
+                    var mergedTheme = _state.value.selectedTableTheme
+                    val mergedUnlocked = _state.value.unlockedAchievementIds.toMutableSet()
+                    val mergedFriends = _state.value.friends.toMutableList()
+
+                    if (uid.isNotBlank()) {
+                        val cloudData = firestoreManager.fetchUserProfile(uid)
+                        if (cloudData != null) {
+                            mergedGames = maxOf(mergedGames, cloudData.gamesPlayed)
+                            mergedWins = maxOf(mergedWins, cloudData.winsCount)
+                            mergedHighest = maxOf(mergedHighest, cloudData.highestScore)
+                            if (cloudData.selectedAvatar.isNotBlank()) mergedAvatar = cloudData.selectedAvatar
+                            if (cloudData.selectedTableTheme.isNotBlank()) mergedTheme = cloudData.selectedTableTheme
+                            mergedUnlocked.addAll(cloudData.unlockedAchievements)
+                            cloudData.friends.forEach { f -> if (!mergedFriends.contains(f)) mergedFriends.add(f) }
+                        }
+                    }
+
                     prefs.edit()
                         .putBoolean("is_logged_in", true)
                         .putString("google_email", email)
                         .putString("google_name", name)
                         .putString("google_photo", photo)
+                        .putInt("games_played", mergedGames)
+                        .putInt("wins_count", mergedWins)
+                        .putInt("highest_score", mergedHighest)
+                        .putString("selected_avatar", mergedAvatar)
+                        .putString("selected_theme", mergedTheme)
+                        .putStringSet("unlocked_achievements", mergedUnlocked)
+                        .putStringSet("friends_list", mergedFriends.toSet())
                         .apply()
+
+                    val updatedAchievements = computeAchievements(mergedUnlocked, mergedGames, mergedWins, mergedHighest, mergedFriends.size)
+
                     _state.value = _state.value.copy(
                         isLoggedIn = true,
                         googleEmail = email,
                         googleName = name,
-                        googlePhotoUrl = photo
+                        googlePhotoUrl = photo,
+                        gamesPlayed = mergedGames,
+                        winsCount = mergedWins,
+                        highestScore = mergedHighest,
+                        selectedAvatar = mergedAvatar,
+                        selectedTableTheme = mergedTheme,
+                        friends = mergedFriends,
+                        unlockedAchievementIds = mergedUnlocked,
+                        achievements = updatedAchievements
                     )
+
+                    // Sync back merged state to Firestore
+                    if (uid.isNotBlank()) {
+                        firestoreManager.saveUserProfile(
+                            uid = uid,
+                            name = name,
+                            email = email,
+                            photoUrl = photo,
+                            gamesPlayed = mergedGames,
+                            winsCount = mergedWins,
+                            highestScore = mergedHighest,
+                            selectedAvatar = mergedAvatar,
+                            selectedTableTheme = mergedTheme,
+                            unlockedAchievements = mergedUnlocked,
+                            friends = mergedFriends
+                        )
+                    }
                 } else if (!prefs.getBoolean("local_offline_auth", false)) {
                     // Logged out
                     _state.value = _state.value.copy(
@@ -124,6 +184,26 @@ class UserProfileManager(private val context: Context) {
                     )
                 }
             }
+        }
+    }
+
+    private fun syncToFirestore() {
+        val uid = authManager.getCurrentUserState().uid ?: authManager.getCurrentUser()?.uid ?: return
+        if (uid.isBlank()) return
+        scope.launch(Dispatchers.IO) {
+            firestoreManager.saveUserProfile(
+                uid = uid,
+                name = _state.value.googleName,
+                email = _state.value.googleEmail,
+                photoUrl = _state.value.googlePhotoUrl,
+                gamesPlayed = _state.value.gamesPlayed,
+                winsCount = _state.value.winsCount,
+                highestScore = _state.value.highestScore,
+                selectedAvatar = _state.value.selectedAvatar,
+                selectedTableTheme = _state.value.selectedTableTheme,
+                unlockedAchievements = _state.value.unlockedAchievementIds,
+                friends = _state.value.friends
+            )
         }
     }
 
@@ -142,6 +222,7 @@ class UserProfileManager(private val context: Context) {
             googleName = name,
             googlePhotoUrl = photoUrl
         )
+        syncToFirestore()
     }
 
     fun updateName(name: String) {
@@ -151,6 +232,7 @@ class UserProfileManager(private val context: Context) {
             .putString("google_name", name)
             .apply()
         _state.value = _state.value.copy(googleName = name)
+        syncToFirestore()
     }
 
     fun logout() {
@@ -204,6 +286,7 @@ class UserProfileManager(private val context: Context) {
             unlockedAchievementIds = currentUnlockedIds,
             achievements = updatedAchievements
         )
+        syncToFirestore()
     }
 
     fun recordGameFinished(
@@ -253,6 +336,7 @@ class UserProfileManager(private val context: Context) {
             unlockedAchievementIds = currentUnlockedIds,
             achievements = updatedAchievements
         )
+        syncToFirestore()
 
         return newlyUnlocked
     }
@@ -260,11 +344,13 @@ class UserProfileManager(private val context: Context) {
     fun setSelectedAvatar(avatarId: String) {
         prefs.edit().putString("selected_avatar", avatarId).apply()
         _state.value = _state.value.copy(selectedAvatar = avatarId)
+        syncToFirestore()
     }
 
     fun setSelectedTableTheme(themeId: String) {
         prefs.edit().putString("selected_theme", themeId).apply()
         _state.value = _state.value.copy(selectedTableTheme = themeId)
+        syncToFirestore()
     }
 
     fun addFriend(friendName: String) {
@@ -287,6 +373,7 @@ class UserProfileManager(private val context: Context) {
                 unlockedAchievementIds = currentUnlockedIds,
                 achievements = updatedAchievements
             )
+            syncToFirestore()
         }
     }
 
@@ -295,6 +382,7 @@ class UserProfileManager(private val context: Context) {
         if (current.remove(friendName)) {
             prefs.edit().putStringSet("friends_list", current.toSet()).apply()
             _state.value = _state.value.copy(friends = current)
+            syncToFirestore()
         }
     }
 }

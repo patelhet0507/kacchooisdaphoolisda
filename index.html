@@ -16,6 +16,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
   
+  <!-- Firebase Compat JS SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -102,12 +107,16 @@
 
     <!-- Desktop Nav Links -->
     <div class="hidden md:flex items-center gap-7 text-sm font-medium text-emerald-100/80">
+      <a href="#webgame" class="text-goldPrimary font-bold hover:text-goldLight transition-colors flex items-center gap-1"><span>🎮</span> Play Web Game</a>
       <a href="#features" class="hover:text-goldPrimary transition-colors">Features</a>
       <a href="#rules" class="hover:text-goldPrimary transition-colors">Rules</a>
       <a href="#download" class="hover:text-goldPrimary transition-colors">Download</a>
     </div>
 
     <div class="flex items-center gap-3">
+      <a href="#webgame" class="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border border-goldPrimary/50 text-white font-display font-bold px-4 py-2.5 rounded-full text-xs sm:text-sm shadow-lg transition-all transform hover:scale-105 flex items-center gap-1.5">
+        <span>🎮</span> Play Web
+      </a>
       <a href="#download" class="hidden sm:inline-flex bg-goldPrimary text-black font-display font-bold px-5 py-2.5 rounded-full text-xs sm:text-sm shadow-lg hover:bg-goldLight transition-all transform hover:scale-105">
         Get APK
       </a>
@@ -120,6 +129,7 @@
 
   <!-- Mobile Drawer Menu -->
   <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center space-y-8 text-xl font-display font-bold opacity-0 pointer-events-none transition-all duration-300 md:hidden">
+    <a href="#webgame" class="mobile-link text-goldPrimary hover:text-goldLight transition-colors flex items-center gap-2"><span>🎮</span> Play Web Game</a>
     <a href="#features" class="mobile-link hover:text-goldPrimary transition-colors">Features</a>
     <a href="#rules" class="mobile-link hover:text-goldPrimary transition-colors">Rules</a>
     <a href="#download" class="mobile-link hover:text-goldPrimary transition-colors">Download APK</a>
@@ -148,23 +158,23 @@
         </p>
         
         <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
-          <a href="#download" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-gradient-to-r from-goldPrimary to-amber-500 text-black font-display font-bold px-8 py-4 rounded-2xl shadow-xl shadow-amber-900/30 hover:opacity-95 transition-all transform hover:-translate-y-1">
+          <a href="#webgame" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 border-2 border-goldPrimary text-white font-display font-bold px-8 py-4 rounded-2xl shadow-2xl shadow-emerald-950/60 transition-all transform hover:-translate-y-1 hover:scale-[1.02]">
+            <span class="text-xl">🎮</span> Play Instantly (No Download Needed)
+          </a>
+          <a href="#download" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-black/40 border border-goldPrimary/40 text-goldPrimary font-display font-bold px-6 py-4 rounded-2xl hover:bg-goldPrimary/10 transition-all transform hover:-translate-y-1">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
             Download Android APK
           </a>
           <button id="shareAppBtn" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 glass-card text-goldPrimary border-goldPrimary/40 font-semibold px-6 py-4 rounded-2xl hover:border-goldPrimary transition-all transform hover:-translate-y-1">
             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3.316 3.316 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3.316 3.316 0 00-5.368-2.684z"/></svg>
-            Share App
+            Share
           </button>
-          <a href="#features" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 glass-card text-white font-semibold px-6 py-4 rounded-2xl hover:border-goldPrimary/50 transition-all">
-            Explore Features
-          </a>
         </div>
         
-        <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 pt-2 text-xs font-mono text-emerald-200/60">
-          <span class="flex items-center gap-1.5">✓ Android 7.0+</span>
-          <span class="flex items-center gap-1.5">✓ ~20 MB Fast Download</span>
-          <span class="flex items-center gap-1.5">✓ Zero Ads / Offline First</span>
+        <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 pt-2 text-xs font-mono text-emerald-200/80">
+          <span class="flex items-center gap-1.5 text-goldPrimary font-bold">⚡ Zero Download Required</span>
+          <span class="flex items-center gap-1.5">✓ Instant Web Browser Play</span>
+          <span class="flex items-center gap-1.5">✓ Free AI & Multiplayer</span>
         </div>
       </div>
 
@@ -200,6 +210,320 @@
 
     </div>
   </section>
+
+  <!-- Interactive Web Game Section -->
+  <section id="webgame" class="py-16 sm:py-20 px-4 sm:px-6 relative z-10 border-t border-goldPrimary/30 bg-emeraldDark/90 backdrop-blur-2xl">
+    <div class="max-w-6xl mx-auto space-y-8">
+      
+      <!-- Section Header -->
+      <div class="text-center max-w-3xl mx-auto space-y-3">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-goldPrimary/15 border border-goldPrimary/40 text-goldPrimary text-xs font-mono uppercase tracking-widest shadow-md">
+          <span class="w-2 h-2 rounded-full bg-goldPrimary animate-pulse"></span>
+          Browser Edition • Play Now
+        </div>
+        <h2 class="font-display text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+          Play <span class="gold-gradient-text">Kaachu Phool</span> Online
+        </h2>
+        <p class="text-emerald-100/75 text-sm sm:text-base leading-relaxed">
+          Play instantly in your browser on desktop or mobile! Challenge smart AI bots or host real-time multiplayer card tables with friends.
+        </p>
+
+        <!-- Direct Web App Link Share Box -->
+        <div class="max-w-xl mx-auto mt-4 p-3 rounded-2xl bg-black/70 border border-goldPrimary/40 shadow-xl flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5 overflow-hidden pl-2 text-left">
+            <span class="text-xl">🔗</span>
+            <div class="truncate">
+              <div class="text-[10px] font-mono text-goldPrimary font-bold uppercase tracking-wider">Direct Web Game URL</div>
+              <div id="directWebLinkText" class="text-xs font-mono text-white truncate">https://ais-pre-cglzwqsjjn2ogu3pks3isd-209682524876.asia-southeast1.run.app</div>
+            </div>
+          </div>
+          <button id="copyWebLinkBtn" class="shrink-0 px-3.5 py-2 rounded-xl bg-goldPrimary text-black font-mono font-bold text-xs hover:bg-goldLight transition-all cursor-pointer shadow-md">
+            Copy Link
+          </button>
+        </div>
+
+        <!-- Mode Selector Tabs -->
+        <div class="inline-flex p-1.5 rounded-2xl bg-black/60 border border-goldPrimary/30 gap-2 mt-4 shadow-xl">
+          <button id="webTabSingleBtn" class="px-5 py-2.5 rounded-xl font-display font-bold text-xs sm:text-sm transition-all bg-goldPrimary text-black shadow-lg cursor-pointer">
+            🤖 Single Player (vs AI)
+          </button>
+          <button id="webTabMultiBtn" class="px-5 py-2.5 rounded-xl font-display font-bold text-xs sm:text-sm transition-all bg-emeraldCard text-white hover:text-goldPrimary cursor-pointer">
+            🌐 Real-Time Multiplayer
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick 3-Step "How To Play From Web" Guide -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl mx-auto">
+        <div class="p-4 rounded-2xl bg-black/40 border border-goldPrimary/20 flex flex-col gap-1.5 text-left">
+          <div class="flex items-center gap-2 text-goldPrimary font-mono font-bold text-xs">
+            <span class="w-6 h-6 rounded-full bg-goldPrimary/20 flex items-center justify-center text-xs border border-goldPrimary/40">1</span>
+            Select Game Mode
+          </div>
+          <p class="text-xs text-emerald-100/70">Choose <b>Single Player</b> (against AI bots) or <b>Real-Time Multiplayer</b> to create/join rooms with friends.</p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/40 border border-goldPrimary/20 flex flex-col gap-1.5 text-left">
+          <div class="flex items-center gap-2 text-goldPrimary font-mono font-bold text-xs">
+            <span class="w-6 h-6 rounded-full bg-goldPrimary/20 flex items-center justify-center text-xs border border-goldPrimary/40">2</span>
+            Bid Your Tricks
+          </div>
+          <p class="text-xs text-emerald-100/70">Inspect your dealt hand and the active Trump (♠ ♦ ♣ ♥ rotation). Predict exactly how many tricks you can win.</p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/40 border border-goldPrimary/20 flex flex-col gap-1.5 text-left">
+          <div class="flex items-center gap-2 text-goldPrimary font-mono font-bold text-xs">
+            <span class="w-6 h-6 rounded-full bg-goldPrimary/20 flex items-center justify-center text-xs border border-goldPrimary/40">3</span>
+            Play Cards & Score
+          </div>
+          <p class="text-xs text-emerald-100/70">Follow suit! Highest card or highest Trump wins the trick. Match your bid exactly to earn <code>10 + Bid</code> points!</p>
+        </div>
+      </div>
+
+      <!-- Single Player Config Panel -->
+      <div id="webSetupSection" class="glass-card rounded-3xl p-6 sm:p-10 border border-goldPrimary/40 shadow-2xl max-w-3xl mx-auto space-y-6">
+        
+        <!-- Single Player Form -->
+        <div id="webSinglePanel" class="space-y-6">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-mono text-goldPrimary font-bold mb-2">Player Name</label>
+              <input type="text" id="webPlayerNameInput" value="Player 1" class="w-full px-4 py-3 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white font-medium focus:outline-none focus:border-goldPrimary" />
+            </div>
+            <div>
+              <label class="block text-xs font-mono text-goldPrimary font-bold mb-2">Avatar Emoji</label>
+              <select id="webAvatarSelect" class="w-full px-4 py-3 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white font-medium focus:outline-none focus:border-goldPrimary">
+                <option value="🦁">🦁 Lion</option>
+                <option value="👑">👑 Crown</option>
+                <option value="⚡">⚡ Lightning</option>
+                <option value="💎">💎 Diamond</option>
+                <option value="🦅">🦅 Eagle</option>
+                <option value="🌸">🌸 Flower</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-mono text-goldPrimary font-bold mb-2">Game Mode</label>
+              <select id="webModeSelect" class="w-full px-4 py-3 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs font-medium focus:outline-none focus:border-goldPrimary">
+                <option value="QUICK">Quick Match (1→5→1)</option>
+                <option value="CLASSIC" selected>Classic Standard (1→8→1)</option>
+                <option value="ASCENDING">Ascending Ladder (1→8)</option>
+                <option value="FULL">Full 10-Card Ladder (1→10→1)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-mono text-goldPrimary font-bold mb-2">Scoring Rule</label>
+              <select id="webScoringSelect" class="w-full px-4 py-3 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs font-medium focus:outline-none focus:border-goldPrimary">
+                <option value="STANDARD">Standard (10 + Bid / 0 Miss)</option>
+                <option value="PENALTY">Penalty (-10 - Bid Miss)</option>
+                <option value="BONUS">Bonus (1 pt/trick + 10 Bonus)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-mono text-goldPrimary font-bold mb-2">AI Difficulty</label>
+              <select id="webDiffSelect" class="w-full px-4 py-3 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs font-medium focus:outline-none focus:border-goldPrimary">
+                <option value="EASY">Casual AI</option>
+                <option value="MEDIUM" selected>Standard AI</option>
+                <option value="HARD">Expert AI</option>
+              </select>
+            </div>
+          </div>
+
+          <button id="webStartSinglePlayerBtn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-goldPrimary via-amber-500 to-amber-600 text-black font-display font-bold text-base shadow-2xl hover:opacity-95 transition-all transform hover:scale-[1.01] cursor-pointer">
+            ▶ START SINGLE-PLAYER GAME
+          </button>
+        </div>
+
+        <!-- Multiplayer Form -->
+        <div id="webMultiPanel" class="space-y-6 hidden">
+          <div class="p-4 rounded-2xl bg-goldPrimary/10 border border-goldPrimary/30 text-xs font-mono text-goldPrimary flex items-center gap-3">
+            <span class="text-xl">🌐</span>
+            <span>Real-time Multiplayer connects web browsers worldwide via Firebase Realtime Database.</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3">
+              <h4 class="font-display font-bold text-sm text-goldPrimary">Create a New Room</h4>
+              <input type="text" id="webMultiHostNameInput" value="Host Player" placeholder="Your Name" class="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none" />
+              <button id="webCreateRoomBtn" class="w-full py-3 rounded-xl bg-goldPrimary text-black font-bold text-xs shadow-lg hover:bg-goldLight transition-all cursor-pointer">
+                ➕ Create 6-Digit Room
+              </button>
+            </div>
+
+            <div class="p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3">
+              <h4 class="font-display font-bold text-sm text-goldPrimary">Join Room with Code</h4>
+              <input type="text" id="webMultiJoinNameInput" value="Guest Player" placeholder="Your Name" class="w-full px-4 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none" />
+              <input type="text" id="webJoinRoomCodeInput" placeholder="6-Digit Code (e.g. 482910)" class="w-full px-4 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs font-mono uppercase focus:outline-none" />
+              <button id="webJoinRoomBtn" class="w-full py-3 rounded-xl bg-emerald-600 border border-goldPrimary/40 text-white font-bold text-xs shadow-lg hover:bg-emerald-500 transition-all cursor-pointer">
+                🔑 Join Room
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Multiplayer Lobby Screen -->
+      <div id="webLobbySection" class="glass-card rounded-3xl p-8 border border-goldPrimary/40 shadow-2xl max-w-2xl mx-auto space-y-6 hidden">
+        <div class="text-center space-y-2">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-goldPrimary/10 text-goldPrimary text-xs font-mono">
+            Room Code: <b id="webLobbyCodeText" class="text-white text-sm font-bold ml-1">######</b>
+          </div>
+          <h3 class="font-display font-bold text-2xl">Multiplayer Waiting Lobby</h3>
+        </div>
+
+        <div id="webLobbyPlayersList" class="space-y-2">
+          <!-- Populated dynamically -->
+        </div>
+
+        <button id="webLobbyStartBtn" class="w-full py-4 rounded-2xl bg-goldPrimary text-black font-display font-bold text-base shadow-xl hover:bg-goldLight transition-all cursor-pointer">
+          🚀 START MULTIPLAYER MATCH
+        </button>
+      </div>
+
+      <!-- Interactive Felt Game Table -->
+      <div id="webGameTableSection" class="relative w-full rounded-3xl p-4 sm:p-8 bg-gradient-to-br from-[#064e3b] via-[#022c22] to-[#011710] border-2 border-goldPrimary/50 shadow-2xl min-h-[580px] sm:min-h-[640px] flex flex-col justify-between overflow-hidden hidden">
+        
+        <!-- Inner Table Felt Ring & Atmospheric Glow -->
+        <div class="absolute inset-4 rounded-2xl border border-goldPrimary/20 pointer-events-none"></div>
+
+        <!-- Table Top Header Bar -->
+        <div class="relative z-10 w-full flex flex-wrap items-center justify-between gap-3 bg-black/60 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-goldPrimary/30">
+          <div class="flex items-center gap-3">
+            <span id="webTableRoundLabel" class="text-xs sm:text-sm font-bold font-mono text-goldPrimary">Round 1</span>
+            <span class="text-white/30">•</span>
+            <div id="webTableTrumpLabel" class="flex items-center text-xs sm:text-sm font-mono text-white">
+              <!-- Trump Badge -->
+            </div>
+          </div>
+
+          <div id="webTableStatusMsg" class="text-xs font-mono text-emerald-200 animate-pulse font-bold hidden sm:block">
+            Game Ready
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="webToggleScorecardBtn" class="px-3 py-1.5 rounded-xl bg-goldPrimary/20 border border-goldPrimary/40 text-goldPrimary text-xs font-mono font-bold hover:bg-goldPrimary/30 transition-all cursor-pointer">
+              📊 Scorecard
+            </button>
+            <button id="webResetGameBtn" class="px-3 py-1.5 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs font-mono font-bold hover:bg-rose-900 transition-all cursor-pointer">
+              🚪 Exit
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Player Pods Around Felt Table -->
+        <div class="relative z-10 w-full my-auto py-6 grid grid-cols-3 grid-rows-3 gap-2 sm:gap-4 items-center">
+          
+          <!-- Top Player Pod (Index 2) -->
+          <div class="col-start-2 row-start-1 flex justify-center">
+            <div id="webPod_top_box" class="p-3 rounded-2xl bg-black/70 backdrop-blur-md border border-goldPrimary/30 text-center space-y-1 min-w-[130px] shadow-xl">
+              <div id="webPod_top_name" class="font-bold text-xs sm:text-sm text-white">🌸 Priya</div>
+              <div id="webPod_top_bid" class="text-[10px] font-mono text-goldPrimary">Bid: 0 • Won: 0</div>
+              <div id="webPod_top_score" class="text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
+            </div>
+          </div>
+
+          <!-- Left Player Pod (Index 1) -->
+          <div class="col-start-1 row-start-2 flex justify-start">
+            <div id="webPod_left_box" class="p-3 rounded-2xl bg-black/70 backdrop-blur-md border border-goldPrimary/30 text-center space-y-1 min-w-[120px] shadow-xl">
+              <div id="webPod_left_name" class="font-bold text-xs sm:text-sm text-white">🦁 Aarav</div>
+              <div id="webPod_left_bid" class="text-[10px] font-mono text-goldPrimary">Bid: 0 • Won: 0</div>
+              <div id="webPod_left_score" class="text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
+            </div>
+          </div>
+
+          <!-- Center Trick Cards Display -->
+          <div class="col-start-2 row-start-2 flex flex-col items-center justify-center min-h-[120px]">
+            <div id="webCenterTrickCards" class="flex items-center justify-center -space-x-3 sm:-space-x-4 my-auto">
+              <!-- Trick Cards rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Right Player Pod (Index 3) -->
+          <div class="col-start-3 row-start-2 flex justify-end">
+            <div id="webPod_right_box" class="p-3 rounded-2xl bg-black/70 backdrop-blur-md border border-goldPrimary/30 text-center space-y-1 min-w-[120px] shadow-xl">
+              <div id="webPod_right_name" class="font-bold text-xs sm:text-sm text-white">⚡ Rohan</div>
+              <div id="webPod_right_bid" class="text-[10px] font-mono text-goldPrimary">Bid: 0 • Won: 0</div>
+              <div id="webPod_right_score" class="text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
+            </div>
+          </div>
+
+          <!-- Bottom Local Player Pod (Index 0) -->
+          <div class="col-start-2 row-start-3 flex justify-center">
+            <div id="webPod_bottom_box" class="p-3 rounded-2xl bg-black/70 backdrop-blur-md border border-goldPrimary/30 text-center space-y-1 min-w-[140px] shadow-xl">
+              <div id="webPod_bottom_name" class="font-bold text-xs sm:text-sm text-goldPrimary">👑 You</div>
+              <div id="webPod_bottom_bid" class="text-[10px] font-mono text-goldPrimary font-bold">Bid: 0 • Won: 0</div>
+              <div id="webPod_bottom_score" class="text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- User Bidding Controls Container -->
+        <div id="webBiddingControls" class="relative z-20 w-full max-w-md mx-auto p-4 rounded-2xl bg-black/80 backdrop-blur-xl border border-goldPrimary/50 shadow-2xl space-y-2 text-center hidden">
+          <!-- Dynamic Bidding Buttons -->
+        </div>
+
+        <!-- User Hand Container -->
+        <div class="relative z-10 w-full pt-4 border-t border-goldPrimary/30">
+          <div class="text-center text-[11px] font-mono text-goldPrimary mb-2">YOUR HAND (Select card to play)</div>
+          <div id="webUserHandContainer" class="flex items-center justify-center -space-x-3 sm:-space-x-4 overflow-x-auto py-2">
+            <!-- User Hand Cards -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Scorecard Modal -->
+  <div id="webScorecardModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 hidden">
+    <div class="glass-card w-full max-w-2xl rounded-3xl p-6 border border-goldPrimary/40 shadow-2xl space-y-6">
+      <div class="flex items-center justify-between border-b border-emeraldBorder/30 pb-4">
+        <h3 class="font-display font-bold text-xl text-goldPrimary">📊 Match Scorecard</h3>
+        <button id="webCloseScorecardBtn" class="p-2 rounded-xl bg-emeraldCard text-goldPrimary border border-goldPrimary/30 hover:bg-goldPrimary/10">✕</button>
+      </div>
+
+      <div class="overflow-x-auto max-h-80">
+        <table class="w-full text-left">
+          <thead>
+            <tr class="border-b border-goldPrimary/30 font-mono text-xs text-goldPrimary">
+              <th class="p-2 text-center">Round</th>
+              <th class="p-2 text-center">You</th>
+              <th class="p-2 text-center">Aarav</th>
+              <th class="p-2 text-center">Priya</th>
+              <th class="p-2 text-center">Rohan</th>
+            </tr>
+          </thead>
+          <tbody id="webScorecardTableBody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Victory Modal -->
+  <div id="webGameOverOverlay" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-2xl flex items-center justify-center p-4 hidden">
+    <div class="glass-card w-full max-w-md rounded-3xl p-8 border-2 border-goldPrimary shadow-2xl text-center space-y-6">
+      <div class="text-5xl animate-bounce">🏆</div>
+      <h3 class="font-display font-extrabold text-3xl text-goldPrimary">Game Complete!</h3>
+      <div id="webGameOverWinnerText" class="text-lg font-bold text-white font-mono">
+        <!-- Winner text -->
+      </div>
+
+      <div id="webGameOverStatsList" class="space-y-2 text-left">
+        <!-- Stats list -->
+      </div>
+
+      <button onclick="window.KaachuPhoolWeb.showSetupScreen()" class="w-full py-4 rounded-2xl bg-goldPrimary text-black font-display font-bold text-base shadow-xl hover:bg-goldLight transition-all cursor-pointer">
+        🔄 PLAY AGAIN
+      </button>
+    </div>
+  </div>
 
   <!-- Trump Cycle Suits Section (K-A-C-H-U-F-U-L) -->
   <section class="py-20 sm:py-24 px-5 sm:px-6 relative z-10 border-t border-emeraldBorder/30">
@@ -294,6 +618,133 @@
           <p class="text-emerald-100/70 text-sm leading-relaxed">Zero intrusive advertisements, minimal battery usage, and lightning-fast performance on all Android devices.</p>
         </div>
       </div>
+
+      <!-- Interactive 5 Table Felt Themes Previewer -->
+      <div class="mt-16 glass-card rounded-3xl p-6 sm:p-10 border border-goldPrimary/30 shadow-2xl relative overflow-hidden scroll-card">
+        <div class="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-emeraldBorder/30 pb-6">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-goldPrimary/10 border border-goldPrimary/20 text-goldPrimary text-xs font-mono uppercase tracking-widest mb-3">
+              <span>🎨</span> In-Game Customization
+            </div>
+            <h3 class="font-display text-2xl sm:text-3xl font-bold">5 Customizable Table Felt Themes</h3>
+            <p class="text-emerald-100/70 text-xs sm:text-sm mt-1">Hover or tap any theme below to preview the active table atmosphere in real-time.</p>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-mono text-goldPrimary bg-black/40 px-3.5 py-1.5 rounded-full border border-goldPrimary/30 self-start md:self-auto">
+            <span class="w-2 h-2 rounded-full bg-goldPrimary animate-pulse"></span>
+            Active Felt: <span id="activeThemeLabel" class="font-bold text-white ml-1">Classic Emerald</span>
+          </div>
+        </div>
+
+        <!-- Interactive Preview Stage -->
+        <div id="feltPreviewStage" class="relative w-full h-60 sm:h-72 rounded-2xl p-5 sm:p-6 flex flex-col justify-between items-center transition-all duration-500 shadow-2xl border border-goldPrimary/40 overflow-hidden bg-gradient-to-br from-[#064e3b] via-[#022c22] to-[#011710]">
+          <!-- Inner table ring & atmospheric glow -->
+          <div id="feltInnerRing" class="absolute inset-4 rounded-xl border border-goldPrimary/25 pointer-events-none transition-all duration-500"></div>
+          <div id="feltGlowOrb" class="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-goldPrimary/10 blur-2xl pointer-events-none transition-all duration-500"></div>
+
+          <!-- Top Table Bar: Round info & Trump Suit -->
+          <div class="relative z-10 w-full flex items-center justify-between">
+            <div class="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-goldPrimary/30 text-xs font-mono">
+              <span class="text-goldPrimary font-bold">Round 1</span>
+              <span class="text-white/40">•</span>
+              <span class="text-emerald-200">1 Card</span>
+            </div>
+            <div id="feltTrumpBadge" class="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-goldPrimary/40 text-xs font-mono transition-colors">
+              <span class="text-goldPrimary font-bold">Trump:</span>
+              <span id="feltTrumpIcon" class="text-sm">♠</span>
+              <span id="feltTrumpText" class="text-goldPrimary font-bold">Ka (Kali)</span>
+            </div>
+          </div>
+
+          <!-- Center Trick Cards on Table -->
+          <div class="relative z-10 flex items-center justify-center -space-x-3 sm:-space-x-4 my-auto">
+            <!-- Center Card 1: Ace of Spades -->
+            <div class="w-14 sm:w-16 h-20 sm:h-24 rounded-lg bg-gradient-to-br from-neutral-100 to-neutral-200 p-2 text-black shadow-2xl border border-neutral-300 transform -rotate-12 transition-transform hover:scale-110 select-none">
+              <div class="text-xs font-bold font-display leading-none">A ♠</div>
+              <div class="text-center text-xl sm:text-2xl mt-2 sm:mt-3">♠</div>
+            </div>
+            <!-- Center Card 2: King of Hearts -->
+            <div class="w-14 sm:w-16 h-20 sm:h-24 rounded-lg bg-gradient-to-br from-neutral-100 to-neutral-200 p-2 text-red-600 shadow-2xl border border-neutral-300 transform rotate-3 -translate-y-2 z-10 transition-transform hover:scale-110 select-none">
+              <div class="text-xs font-bold font-display leading-none text-red-600">K ♥</div>
+              <div class="text-center text-xl sm:text-2xl mt-2 sm:mt-3 text-red-600">♥</div>
+            </div>
+            <!-- Center Card 3: Ten of Clubs -->
+            <div class="w-14 sm:w-16 h-20 sm:h-24 rounded-lg bg-gradient-to-br from-neutral-100 to-neutral-200 p-2 text-black shadow-2xl border border-neutral-300 transform rotate-14 transition-transform hover:scale-110 select-none">
+              <div class="text-xs font-bold font-display leading-none">10 ♣</div>
+              <div class="text-center text-xl sm:text-2xl mt-2 sm:mt-3">♣</div>
+            </div>
+          </div>
+
+          <!-- Bottom Player Hand Preview -->
+          <div class="relative z-10 w-full flex items-center justify-between">
+            <div class="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-goldPrimary/30 text-[11px] font-mono text-emerald-100">
+              <span>Bid: <b class="text-goldPrimary">1</b></span>
+              <span>•</span>
+              <span>Won: <b class="text-emerald-400">1</b></span>
+            </div>
+            <div id="feltThemeDesc" class="text-[11px] sm:text-xs font-mono text-white/90 bg-black/50 backdrop-blur-md px-3.5 py-1 rounded-full border border-white/10 hidden sm:block transition-all">
+              Traditional deep green felt table
+            </div>
+          </div>
+        </div>
+
+        <!-- 5 Interactive Theme Selector Cards/Thumbnails -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mt-6">
+          <!-- Theme 1: Classic Emerald -->
+          <button data-theme="emerald" class="theme-thumb-btn active group text-left p-3.5 sm:p-4 rounded-2xl bg-black/40 border-2 border-goldPrimary shadow-xl shadow-goldPrimary/10 scale-[1.02] transition-all duration-300 transform hover:-translate-y-1 focus:outline-none cursor-pointer">
+            <div class="w-full h-12 rounded-xl bg-gradient-to-r from-[#064e3b] via-[#043327] to-[#022c22] border border-goldPrimary/40 mb-3 shadow-inner relative overflow-hidden flex items-center justify-center">
+              <span class="text-xs font-bold text-emerald-200/90 font-mono">♠ 🎴 ♦</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <h4 class="font-display font-bold text-xs sm:text-sm text-white group-hover:text-goldPrimary transition-colors">Classic Emerald</h4>
+            </div>
+            <p class="text-[10px] font-mono text-emerald-300/60 mt-0.5">Default Unlocked</p>
+          </button>
+
+          <!-- Theme 2: Royal Crimson -->
+          <button data-theme="crimson" class="theme-thumb-btn group text-left p-3.5 sm:p-4 rounded-2xl bg-black/40 border-2 border-emeraldBorder/40 transition-all duration-300 transform hover:-translate-y-1 hover:border-rose-500/60 focus:outline-none cursor-pointer">
+            <div class="w-full h-12 rounded-xl bg-gradient-to-r from-[#7f1d1d] via-[#5c1010] to-[#450a0a] border border-rose-400/30 mb-3 shadow-inner relative overflow-hidden flex items-center justify-center">
+              <span class="text-xs font-bold text-rose-200/90 font-mono">♥ 👑 ♦</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <h4 class="font-display font-bold text-xs sm:text-sm text-white group-hover:text-rose-400 transition-colors">Royal Crimson</h4>
+            </div>
+            <p class="text-[10px] font-mono text-rose-300/60 mt-0.5">Unlock at 3 Games</p>
+          </button>
+
+          <!-- Theme 3: Midnight Blue -->
+          <button data-theme="midnight" class="theme-thumb-btn group text-left p-3.5 sm:p-4 rounded-2xl bg-black/40 border-2 border-emeraldBorder/40 transition-all duration-300 transform hover:-translate-y-1 hover:border-sky-500/60 focus:outline-none cursor-pointer">
+            <div class="w-full h-12 rounded-xl bg-gradient-to-r from-[#1e3a8a] via-[#14265e] to-[#0f172a] border border-sky-400/30 mb-3 shadow-inner relative overflow-hidden flex items-center justify-center">
+              <span class="text-xs font-bold text-sky-200/90 font-mono">♠ 🌌 ♣</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <h4 class="font-display font-bold text-xs sm:text-sm text-white group-hover:text-sky-400 transition-colors">Midnight Blue</h4>
+            </div>
+            <p class="text-[10px] font-mono text-sky-300/60 mt-0.5">Unlock at 7 Games</p>
+          </button>
+
+          <!-- Theme 4: Golden Sunburst -->
+          <button data-theme="gold" class="theme-thumb-btn group text-left p-3.5 sm:p-4 rounded-2xl bg-black/40 border-2 border-emeraldBorder/40 transition-all duration-300 transform hover:-translate-y-1 hover:border-amber-500/60 focus:outline-none cursor-pointer">
+            <div class="w-full h-12 rounded-xl bg-gradient-to-r from-[#78350f] via-[#592306] to-[#451a03] border border-amber-400/30 mb-3 shadow-inner relative overflow-hidden flex items-center justify-center">
+              <span class="text-xs font-bold text-amber-200/90 font-mono">♦ ☀️ ♠</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <h4 class="font-display font-bold text-xs sm:text-sm text-white group-hover:text-amber-400 transition-colors">Golden Sunburst</h4>
+            </div>
+            <p class="text-[10px] font-mono text-amber-300/60 mt-0.5">Unlock at 12 Games</p>
+          </button>
+
+          <!-- Theme 5: Neon Amethyst -->
+          <button data-theme="neon" class="theme-thumb-btn group text-left p-3.5 sm:p-4 rounded-2xl bg-black/40 border-2 border-emeraldBorder/40 transition-all duration-300 transform hover:-translate-y-1 hover:border-purple-500/60 focus:outline-none cursor-pointer col-span-2 sm:col-span-1">
+            <div class="w-full h-12 rounded-xl bg-gradient-to-r from-[#581c87] via-[#3f1163] to-[#2e1065] border border-purple-400/30 mb-3 shadow-inner relative overflow-hidden flex items-center justify-center">
+              <span class="text-xs font-bold text-purple-200/90 font-mono">♣ ⚡ ♥</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <h4 class="font-display font-bold text-xs sm:text-sm text-white group-hover:text-purple-400 transition-colors">Neon Amethyst</h4>
+            </div>
+            <p class="text-[10px] font-mono text-purple-300/60 mt-0.5">Unlock at 18 Games</p>
+          </button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -363,8 +814,8 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- OS & Hardware -->
-          <div class="p-4 sm:p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3">
-            <div class="flex items-center gap-2 text-white font-semibold text-sm">
+          <div class="p-4 sm:p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.015] hover:border-goldPrimary/60 hover:shadow-xl hover:shadow-goldPrimary/10 group cursor-default">
+            <div class="flex items-center gap-2 text-white font-semibold text-sm group-hover:text-goldPrimary transition-colors">
               <span class="text-goldPrimary">📱</span> Operating System & Hardware
             </div>
             <ul class="text-xs sm:text-sm text-emerald-100/75 space-y-2 font-sans">
@@ -384,8 +835,8 @@
           </div>
 
           <!-- Storage Space -->
-          <div class="p-4 sm:p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3">
-            <div class="flex items-center gap-2 text-white font-semibold text-sm">
+          <div class="p-4 sm:p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.015] hover:border-goldPrimary/60 hover:shadow-xl hover:shadow-goldPrimary/10 group cursor-default">
+            <div class="flex items-center gap-2 text-white font-semibold text-sm group-hover:text-goldPrimary transition-colors">
               <span class="text-goldPrimary">💾</span> Storage Space
             </div>
             <ul class="text-xs sm:text-sm text-emerald-100/75 space-y-2 font-sans">
@@ -405,21 +856,21 @@
           </div>
 
           <!-- Network & Multiplayer Recommendations -->
-          <div class="p-4 sm:p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3 md:col-span-2">
-            <div class="flex items-center gap-2 text-white font-semibold text-sm">
+          <div class="p-4 sm:p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3 md:col-span-2 transition-all duration-300 transform hover:-translate-y-1 hover:scale-[1.01] hover:border-goldPrimary/60 hover:shadow-xl hover:shadow-goldPrimary/10 group cursor-default">
+            <div class="flex items-center gap-2 text-white font-semibold text-sm group-hover:text-goldPrimary transition-colors">
               <span class="text-goldPrimary">🌐</span> Network Recommendations for Multiplayer
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm text-emerald-100/75">
-              <div class="p-3 rounded-xl bg-emerald-950/40 border border-emeraldBorder/20">
-                <p class="font-bold text-white mb-1">Single Player (Solo)</p>
+              <div class="p-3.5 rounded-xl bg-emerald-950/40 border border-emeraldBorder/20 transition-all duration-300 transform hover:-translate-y-1 hover:border-goldPrimary/50 hover:bg-emerald-900/60 hover:shadow-lg hover:shadow-amber-950/40">
+                <p class="font-bold text-white mb-1 flex items-center gap-1.5"><span class="text-goldPrimary">⚡</span> Single Player (Solo)</p>
                 <p class="text-emerald-200/70 text-xs leading-relaxed">100% Offline capability. No active internet or cellular connection required.</p>
               </div>
-              <div class="p-3 rounded-xl bg-emerald-950/40 border border-emeraldBorder/20">
-                <p class="font-bold text-white mb-1">Online Multiplayer</p>
+              <div class="p-3.5 rounded-xl bg-emerald-950/40 border border-emeraldBorder/20 transition-all duration-300 transform hover:-translate-y-1 hover:border-goldPrimary/50 hover:bg-emerald-900/60 hover:shadow-lg hover:shadow-amber-950/40">
+                <p class="font-bold text-white mb-1 flex items-center gap-1.5"><span class="text-goldPrimary">📶</span> Online Multiplayer</p>
                 <p class="text-emerald-200/70 text-xs leading-relaxed">Stable 3G/4G/5G or Wi-Fi recommended with latency under 200ms for live card sync.</p>
               </div>
-              <div class="p-3 rounded-xl bg-emerald-950/40 border border-emeraldBorder/20">
-                <p class="font-bold text-white mb-1">Data Consumption</p>
+              <div class="p-3.5 rounded-xl bg-emerald-950/40 border border-emeraldBorder/20 transition-all duration-300 transform hover:-translate-y-1 hover:border-goldPrimary/50 hover:bg-emerald-900/60 hover:shadow-lg hover:shadow-amber-950/40">
+                <p class="font-bold text-white mb-1 flex items-center gap-1.5"><span class="text-goldPrimary">📊</span> Data Consumption</p>
                 <p class="text-emerald-200/70 text-xs leading-relaxed">Ultra-low footprint (~15 KB per match round; ~25 KB per 5s voice note).</p>
               </div>
             </div>
@@ -598,6 +1049,19 @@
       });
     });
 
+    const copyWebBtn = document.getElementById('copyWebLinkBtn');
+    copyWebBtn?.addEventListener('click', () => {
+      const urlText = document.getElementById('directWebLinkText')?.textContent || window.location.href;
+      navigator.clipboard.writeText(urlText).then(() => {
+        copyWebBtn.textContent = '✓ Copied!';
+        copyWebBtn.classList.add('bg-emerald-400', 'text-black');
+        setTimeout(() => {
+          copyWebBtn.textContent = 'Copy Link';
+          copyWebBtn.classList.remove('bg-emerald-400');
+        }, 2500);
+      });
+    });
+
     // Lightweight Canvas Particle Constellation
     const canvas = document.getElementById('webgl-canvas');
     const ctx = canvas.getContext('2d');
@@ -713,7 +1177,114 @@
       }
     }
     fetchReleases();
+
+    // Table Felt Themes Interactive Switcher
+    const tableThemes = {
+      emerald: {
+        name: 'Classic Emerald',
+        desc: 'Traditional deep green felt table',
+        bg: 'linear-gradient(135deg, #064e3b 0%, #022c22 60%, #011710 100%)',
+        borderColor: 'rgba(212, 168, 67, 0.4)',
+        ringColor: 'rgba(212, 168, 67, 0.25)',
+        glowColor: 'rgba(212, 168, 67, 0.15)',
+        accentColor: '#d4a843',
+        trumpIcon: '♠',
+        trumpText: 'Ka (Kali)'
+      },
+      crimson: {
+        name: 'Royal Crimson',
+        desc: 'Luxurious red velvet casino felt',
+        bg: 'linear-gradient(135deg, #7f1d1d 0%, #450a0a 60%, #200505 100%)',
+        borderColor: 'rgba(244, 63, 94, 0.5)',
+        ringColor: 'rgba(244, 63, 94, 0.25)',
+        glowColor: 'rgba(244, 63, 94, 0.2)',
+        accentColor: '#fb7185',
+        trumpIcon: '♥',
+        trumpText: 'Laal (Hearts)'
+      },
+      midnight: {
+        name: 'Midnight Blue',
+        desc: 'Deep cosmic evening felt',
+        bg: 'linear-gradient(135deg, #1e3a8a 0%, #0f172a 60%, #030712 100%)',
+        borderColor: 'rgba(56, 189, 248, 0.5)',
+        ringColor: 'rgba(56, 189, 248, 0.25)',
+        glowColor: 'rgba(56, 189, 248, 0.2)',
+        accentColor: '#38bdf8',
+        trumpIcon: '♦',
+        trumpText: 'Chu (Chokat)'
+      },
+      gold: {
+        name: 'Golden Sunburst',
+        desc: 'Rich amber and golden felt',
+        bg: 'linear-gradient(135deg, #78350f 0%, #451a03 60%, #1c0a00 100%)',
+        borderColor: 'rgba(245, 158, 11, 0.5)',
+        ringColor: 'rgba(245, 158, 11, 0.25)',
+        glowColor: 'rgba(245, 158, 11, 0.2)',
+        accentColor: '#fbbf24',
+        trumpIcon: '♣',
+        trumpText: 'Fu (Fuli)'
+      },
+      neon: {
+        name: 'Neon Amethyst',
+        desc: 'Vibrant purple cyber felt',
+        bg: 'linear-gradient(135deg, #581c87 0%, #2e1065 60%, #15052e 100%)',
+        borderColor: 'rgba(192, 132, 252, 0.5)',
+        ringColor: 'rgba(192, 132, 252, 0.25)',
+        glowColor: 'rgba(192, 132, 252, 0.2)',
+        accentColor: '#c084fc',
+        trumpIcon: '♠',
+        trumpText: 'Ka (Kali)'
+      }
+    };
+
+    const feltStage = document.getElementById('feltPreviewStage');
+    const feltInnerRing = document.getElementById('feltInnerRing');
+    const feltGlowOrb = document.getElementById('feltGlowOrb');
+    const activeThemeLabel = document.getElementById('activeThemeLabel');
+    const feltThemeDesc = document.getElementById('feltThemeDesc');
+    const feltTrumpIcon = document.getElementById('feltTrumpIcon');
+    const feltTrumpText = document.getElementById('feltTrumpText');
+    const themeButtons = document.querySelectorAll('.theme-thumb-btn');
+
+    function applyTableTheme(themeKey) {
+      const data = tableThemes[themeKey];
+      if (!data || !feltStage) return;
+
+      feltStage.style.background = data.bg;
+      feltStage.style.borderColor = data.borderColor;
+      if (feltInnerRing) feltInnerRing.style.borderColor = data.ringColor;
+      if (feltGlowOrb) feltGlowOrb.style.backgroundColor = data.glowColor;
+      if (activeThemeLabel) {
+        activeThemeLabel.textContent = data.name;
+        activeThemeLabel.style.color = data.accentColor;
+      }
+      if (feltThemeDesc) feltThemeDesc.textContent = data.desc;
+      if (feltTrumpIcon) feltTrumpIcon.textContent = data.trumpIcon;
+      if (feltTrumpText) {
+        feltTrumpText.textContent = data.trumpText;
+        feltTrumpText.style.color = data.accentColor;
+      }
+
+      themeButtons.forEach(btn => {
+        if (btn.dataset.theme === themeKey) {
+          btn.classList.add('border-goldPrimary', 'scale-[1.02]', 'shadow-xl', 'shadow-goldPrimary/10');
+          btn.classList.remove('border-emeraldBorder/40');
+        } else {
+          btn.classList.remove('border-goldPrimary', 'scale-[1.02]', 'shadow-xl', 'shadow-goldPrimary/10');
+          btn.classList.add('border-emeraldBorder/40');
+        }
+      });
+    }
+
+    themeButtons.forEach(btn => {
+      const themeKey = btn.dataset.theme;
+      btn.addEventListener('mouseenter', () => applyTableTheme(themeKey));
+      btn.addEventListener('click', () => applyTableTheme(themeKey));
+    });
   </script>
+
+  <!-- Web Browser Game Engine -->
+  <script src="/webgame.js"></script>
 
 </body>
 </html>

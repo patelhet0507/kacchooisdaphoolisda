@@ -100,6 +100,53 @@ fun ProfileCustomizationDialog(
                     }
                 }
 
+                // Cloud & Auth Status Banner
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (isLoggedIn) EmeraldFelt.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.05f))
+                        .border(1.dp, if (isLoggedIn) GoldPrimary.copy(alpha = 0.6f) else Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(if (isLoggedIn) "☁️" else "👤", fontSize = 18.sp)
+                            Column {
+                                Text(
+                                    text = if (isLoggedIn) (googleName.ifBlank { "Google User" }) else "Local Profile",
+                                    color = TextLight,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (isLoggedIn) (if (googleEmail.isNotBlank()) "$googleEmail • Firestore Synced" else "Firebase Auth & Firestore Synced") else "Play offline or link Google account",
+                                    color = if (isLoggedIn) SuccessGreen else TextMuted,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        TextButton(
+                            onClick = onOpenGoogleLogin,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = if (isLoggedIn) "MANAGE" else "SIGN IN",
+                                color = GoldLight,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 // Stats Grid
                 Row(
                     modifier = Modifier
