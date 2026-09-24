@@ -284,7 +284,14 @@ fun HomeScreen(
                 ) {
                     PremiumButton(
                         text = "Play Online",
-                        onClick = { showMultiplayerDialog = true },
+                        onClick = {
+                            if (!userState.isLoggedIn) {
+                                Toast.makeText(context, "Login is compulsory for Multiplayer!", Toast.LENGTH_SHORT).show()
+                                showGoogleLoginDialog = true
+                            } else {
+                                showMultiplayerDialog = true
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -300,7 +307,14 @@ fun HomeScreen(
                         )
                         PremiumButton(
                             text = "Join Room",
-                            onClick = { showMultiplayerDialog = true },
+                            onClick = {
+                                if (!userState.isLoggedIn) {
+                                    Toast.makeText(context, "Login is compulsory for Multiplayer!", Toast.LENGTH_SHORT).show()
+                                    showGoogleLoginDialog = true
+                                } else {
+                                    showMultiplayerDialog = true
+                                }
+                            },
                             modifier = Modifier.weight(1f),
                             isPrimary = false
                         )

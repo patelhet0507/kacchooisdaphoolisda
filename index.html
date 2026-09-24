@@ -90,6 +90,29 @@
       z-index: 0;
       pointer-events: none;
     }
+    @keyframes floatUp {
+      0% { opacity: 0; transform: translate(-50%, 20px) scale(0.6); }
+      20% { opacity: 1; transform: translate(-50%, -20px) scale(1.2); }
+      80% { opacity: 1; transform: translate(-50%, -100px) scale(1.1); }
+      100% { opacity: 0; transform: translate(-50%, -150px) scale(0.9); }
+    }
+    .animate-floatUp {
+      animation: floatUp 1.8s ease-out forwards;
+    }
+    @keyframes scaleUp {
+      0% { opacity: 0; transform: scale(0.88); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .animate-scaleUp {
+      animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes bounceShort {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    .animate-bounce-short {
+      animation: bounceShort 0.5s ease-in-out;
+    }
   </style>
 </head>
 <body class="bg-emeraldDark text-white antialiased selection:bg-goldPrimary selection:text-black">
@@ -299,6 +322,8 @@
                 <option value="💎">💎 Diamond</option>
                 <option value="🦅">🦅 Eagle</option>
                 <option value="🌸">🌸 Flower</option>
+                <option value="🐯">🐯 Tiger</option>
+                <option value="🎴">🎴 Master</option>
               </select>
             </div>
           </div>
@@ -332,32 +357,77 @@
           </div>
 
           <button id="webStartSinglePlayerBtn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-goldPrimary via-amber-500 to-amber-600 text-black font-display font-bold text-base shadow-2xl hover:opacity-95 transition-all transform hover:scale-[1.01] cursor-pointer">
-            ▶ START SINGLE-PLAYER GAME
+            ▶ START GAME (FULLSCREEN TABLE)
           </button>
         </div>
 
-        <!-- Multiplayer Form -->
+        <!-- Multiplayer Form (Compulsory Login Enforced) -->
         <div id="webMultiPanel" class="space-y-6 hidden">
-          <div class="p-4 rounded-2xl bg-goldPrimary/10 border border-goldPrimary/30 text-xs font-mono text-goldPrimary flex items-center gap-3">
-            <span class="text-xl">🌐</span>
-            <span>Real-time Multiplayer connects web browsers worldwide via Firebase Realtime Database.</span>
+          
+          <!-- Compulsory Login Notice / Status Card -->
+          <div id="webMultiAuthStatusCard" class="p-4 rounded-2xl bg-black/60 border border-goldPrimary/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div id="webMultiAuthAvatarBadge" class="w-12 h-12 rounded-full bg-goldPrimary/20 border-2 border-goldPrimary flex items-center justify-center text-2xl shadow-lg">
+                🔒
+              </div>
+              <div class="text-left">
+                <div class="flex items-center gap-2">
+                  <span id="webMultiAuthNameLabel" class="font-display font-bold text-sm text-white">Guest Player</span>
+                  <span id="webMultiAuthStatusPill" class="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-rose-950 text-rose-300 border border-rose-500/40">Login Required</span>
+                </div>
+                <div id="webMultiAuthDetailLabel" class="text-xs font-mono text-emerald-200/70">Login is compulsory to create or join multiplayer matches.</div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <button id="webOpenAuthModalBtn" class="px-4 py-2.5 rounded-xl bg-goldPrimary text-black font-mono font-bold text-xs hover:bg-goldLight transition-all shadow-lg cursor-pointer flex items-center gap-1.5">
+                <span>🔑</span> <span id="webOpenAuthModalBtnText">Sign In / Register</span>
+              </button>
+              <button id="webMultiLogoutBtn" class="px-3 py-2.5 rounded-xl bg-black/80 border border-rose-500/40 text-rose-300 font-mono text-xs hover:bg-rose-900/40 transition-all cursor-pointer hidden">
+                Logout
+              </button>
+            </div>
           </div>
 
+          <!-- Multiplayer Room Creation / Join Section -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Create Room Card -->
             <div class="p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3">
-              <h4 class="font-display font-bold text-sm text-goldPrimary">Create a New Room</h4>
-              <input type="text" id="webMultiHostNameInput" value="Host Player" placeholder="Your Name" class="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none" />
-              <button id="webCreateRoomBtn" class="w-full py-3 rounded-xl bg-goldPrimary text-black font-bold text-xs shadow-lg hover:bg-goldLight transition-all cursor-pointer">
-                ➕ Create 6-Digit Room
+              <div class="flex items-center justify-between">
+                <h4 class="font-display font-bold text-sm text-goldPrimary flex items-center gap-1.5">
+                  <span>➕</span> Create New Room
+                </h4>
+                <span class="text-[10px] font-mono text-emerald-300/60">Host Game</span>
+              </div>
+              <p class="text-xs text-emerald-100/70">Generate a unique 6-digit room code to host up to 4 players online.</p>
+              <div>
+                <label class="block text-[11px] font-mono text-goldPrimary/80 mb-1">Host Player Display Name</label>
+                <input type="text" id="webMultiHostNameInput" value="Host Player" placeholder="Your Display Name" class="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs font-medium focus:outline-none focus:border-goldPrimary" />
+              </div>
+              <button id="webCreateRoomBtn" class="w-full py-3 rounded-xl bg-gradient-to-r from-goldPrimary to-amber-500 text-black font-bold text-xs shadow-lg hover:bg-goldLight transition-all cursor-pointer flex items-center justify-center gap-2">
+                <span>⚡</span> Create 6-Digit Room
               </button>
             </div>
 
+            <!-- Join Room Card -->
             <div class="p-5 rounded-2xl bg-black/40 border border-emeraldBorder/40 space-y-3">
-              <h4 class="font-display font-bold text-sm text-goldPrimary">Join Room with Code</h4>
-              <input type="text" id="webMultiJoinNameInput" value="Guest Player" placeholder="Your Name" class="w-full px-4 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none" />
-              <input type="text" id="webJoinRoomCodeInput" placeholder="6-Digit Code (e.g. 482910)" class="w-full px-4 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs font-mono uppercase focus:outline-none" />
-              <button id="webJoinRoomBtn" class="w-full py-3 rounded-xl bg-emerald-600 border border-goldPrimary/40 text-white font-bold text-xs shadow-lg hover:bg-emerald-500 transition-all cursor-pointer">
-                🔑 Join Room
+              <div class="flex items-center justify-between">
+                <h4 class="font-display font-bold text-sm text-goldPrimary flex items-center gap-1.5">
+                  <span>🔑</span> Join Existing Room
+                </h4>
+                <span class="text-[10px] font-mono text-emerald-300/60">Join Code</span>
+              </div>
+              <p class="text-xs text-emerald-100/70">Enter a 6-digit room code provided by your host to join their table.</p>
+              <div>
+                <label class="block text-[11px] font-mono text-goldPrimary/80 mb-1">Your Display Name</label>
+                <input type="text" id="webMultiJoinNameInput" value="Guest Player" placeholder="Your Display Name" class="w-full px-4 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs font-medium focus:outline-none focus:border-goldPrimary" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-mono text-goldPrimary/80 mb-1">6-Digit Room Code</label>
+                <input type="text" id="webJoinRoomCodeInput" placeholder="e.g. 482910" maxlength="6" class="w-full px-4 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs font-mono tracking-widest uppercase focus:outline-none focus:border-goldPrimary" />
+              </div>
+              <button id="webJoinRoomBtn" class="w-full py-3 rounded-xl bg-emerald-600 border border-goldPrimary/40 text-white font-bold text-xs shadow-lg hover:bg-emerald-500 transition-all cursor-pointer flex items-center justify-center gap-2">
+                <span>🚀</span> Join Room Table
               </button>
             </div>
           </div>
@@ -366,115 +436,306 @@
       </div>
 
       <!-- Multiplayer Lobby Screen -->
-      <div id="webLobbySection" class="glass-card rounded-3xl p-8 border border-goldPrimary/40 shadow-2xl max-w-2xl mx-auto space-y-6 hidden">
+      <div id="webLobbySection" class="glass-card rounded-3xl p-6 sm:p-10 border border-goldPrimary/40 shadow-2xl max-w-2xl mx-auto space-y-6 hidden">
         <div class="text-center space-y-2">
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-goldPrimary/10 text-goldPrimary text-xs font-mono">
-            Room Code: <b id="webLobbyCodeText" class="text-white text-sm font-bold ml-1">######</b>
+          <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-goldPrimary/15 border border-goldPrimary/40 text-goldPrimary text-xs font-mono">
+            Room Code: <b id="webLobbyCodeText" class="text-white text-base font-bold ml-1 tracking-widest">######</b>
+            <button id="webCopyLobbyCodeBtn" class="ml-2 text-xs text-goldPrimary hover:underline">📋 Copy</button>
           </div>
-          <h3 class="font-display font-bold text-2xl">Multiplayer Waiting Lobby</h3>
+          <h3 class="font-display font-bold text-2xl text-white">Multiplayer Waiting Lobby</h3>
+          <p class="text-xs text-emerald-100/70">Waiting for players to join. Match starts when the host clicks Launch!</p>
         </div>
 
-        <div id="webLobbyPlayersList" class="space-y-2">
-          <!-- Populated dynamically -->
+        <div class="p-4 rounded-2xl bg-black/40 border border-goldPrimary/20">
+          <div class="text-xs font-mono text-goldPrimary mb-3 flex items-center justify-between">
+            <span>PLAYERS IN ROOM</span>
+            <span id="webLobbyPlayerCount" class="text-emerald-300 font-bold">1 / 4 Players</span>
+          </div>
+          <div id="webLobbyPlayersList" class="space-y-2">
+            <!-- Populated dynamically -->
+          </div>
         </div>
 
-        <button id="webLobbyStartBtn" class="w-full py-4 rounded-2xl bg-goldPrimary text-black font-display font-bold text-base shadow-xl hover:bg-goldLight transition-all cursor-pointer">
-          🚀 START MULTIPLAYER MATCH
-        </button>
+        <div class="flex items-center gap-3">
+          <button id="webLobbyLeaveBtn" class="w-1/3 py-3.5 rounded-xl bg-rose-950/70 border border-rose-500/40 text-rose-300 font-mono font-bold text-xs hover:bg-rose-900 transition-all cursor-pointer">
+            Leave Room
+          </button>
+          <button id="webLobbyStartBtn" class="w-2/3 py-3.5 rounded-xl bg-gradient-to-r from-goldPrimary via-amber-500 to-amber-600 text-black font-display font-bold text-sm shadow-xl hover:bg-goldLight transition-all cursor-pointer">
+            🚀 LAUNCH MULTIPLAYER MATCH
+          </button>
+        </div>
       </div>
 
-      <!-- Interactive Felt Game Table -->
-      <div id="webGameTableSection" class="relative w-full rounded-3xl p-4 sm:p-8 bg-gradient-to-br from-[#064e3b] via-[#022c22] to-[#011710] border-2 border-goldPrimary/50 shadow-2xl min-h-[580px] sm:min-h-[640px] flex flex-col justify-between overflow-hidden hidden">
+      <!-- FULLSCREEN IMMERSIVE FELT GAME TABLE -->
+      <!-- When active, this becomes a fixed full-screen overlay (100dvh) with zero vertical/horizontal scrolling -->
+      <div id="webGameTableSection" class="hidden fixed inset-0 z-[999] w-screen h-screen h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col justify-between bg-[#01140a] select-none p-2 sm:p-4">
         
-        <!-- Inner Table Felt Ring & Atmospheric Glow -->
-        <div class="absolute inset-4 rounded-2xl border border-goldPrimary/20 pointer-events-none"></div>
+        <!-- Table Ambient Background Glow -->
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#084323] via-[#032413] to-[#011108] pointer-events-none"></div>
+        <div class="absolute inset-2 sm:inset-4 rounded-3xl border-2 border-goldPrimary/20 pointer-events-none shadow-[inset_0_0_80px_rgba(0,0,0,0.8)]"></div>
 
-        <!-- Table Top Header Bar -->
-        <div class="relative z-10 w-full flex flex-wrap items-center justify-between gap-3 bg-black/60 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-goldPrimary/30">
-          <div class="flex items-center gap-3">
-            <span id="webTableRoundLabel" class="text-xs sm:text-sm font-bold font-mono text-goldPrimary">Round 1</span>
-            <span class="text-white/30">•</span>
-            <div id="webTableTrumpLabel" class="flex items-center text-xs sm:text-sm font-mono text-white">
-              <!-- Trump Badge -->
-            </div>
-          </div>
-
-          <div id="webTableStatusMsg" class="text-xs font-mono text-emerald-200 animate-pulse font-bold hidden sm:block">
-            Game Ready
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button id="webToggleScorecardBtn" class="px-3 py-1.5 rounded-xl bg-goldPrimary/20 border border-goldPrimary/40 text-goldPrimary text-xs font-mono font-bold hover:bg-goldPrimary/30 transition-all cursor-pointer">
-              📊 Scorecard
-            </button>
-            <button id="webResetGameBtn" class="px-3 py-1.5 rounded-xl bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs font-mono font-bold hover:bg-rose-900 transition-all cursor-pointer">
-              🚪 Exit
-            </button>
-          </div>
-        </div>
-
-        <!-- 4 Player Pods Around Felt Table -->
-        <div class="relative z-10 w-full my-auto py-6 grid grid-cols-3 grid-rows-3 gap-2 sm:gap-4 items-center">
+        <!-- 1. TOP HEADER BAR (Compact height ~44px, strictly no overflow) -->
+        <div class="relative z-20 w-full flex items-center justify-between gap-2 bg-black/75 backdrop-blur-md px-3 sm:px-5 py-2 rounded-2xl border border-goldPrimary/30 shrink-0 shadow-xl">
           
-          <!-- Top Player Pod (Index 2) -->
-          <div class="col-start-2 row-start-1 flex justify-center">
-            <div id="webPod_top_box" class="p-3 rounded-2xl bg-black/70 backdrop-blur-md border border-goldPrimary/30 text-center space-y-1 min-w-[130px] shadow-xl">
-              <div id="webPod_top_name" class="font-bold text-xs sm:text-sm text-white">🌸 Priya</div>
-              <div id="webPod_top_bid" class="text-[10px] font-mono text-goldPrimary">Bid: 0 • Won: 0</div>
-              <div id="webPod_top_score" class="text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
+          <!-- Left: Round & Trump Info -->
+          <div class="flex items-center gap-2 sm:gap-4 overflow-hidden">
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm sm:text-base">🎴</span>
+              <span id="webTableRoundLabel" class="text-xs sm:text-sm font-bold font-mono text-goldPrimary whitespace-nowrap">Round 1/9 (1 Card)</span>
+            </div>
+            <span class="text-white/30 hidden sm:inline">•</span>
+            <div id="webTableTrumpLabel" class="flex items-center text-xs sm:text-sm font-mono text-white bg-black/50 px-2.5 py-1 rounded-xl border border-goldPrimary/30">
+              <!-- Dynamic Trump Badge -->
             </div>
           </div>
 
-          <!-- Left Player Pod (Index 1) -->
-          <div class="col-start-1 row-start-2 flex justify-start">
-            <div id="webPod_left_box" class="p-3 rounded-2xl bg-black/70 backdrop-blur-md border border-goldPrimary/30 text-center space-y-1 min-w-[120px] shadow-xl">
-              <div id="webPod_left_name" class="font-bold text-xs sm:text-sm text-white">🦁 Aarav</div>
-              <div id="webPod_left_bid" class="text-[10px] font-mono text-goldPrimary">Bid: 0 • Won: 0</div>
-              <div id="webPod_left_score" class="text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
+          <!-- Center: Dynamic Status Announcer -->
+          <div id="webTableStatusMsg" class="hidden md:flex items-center gap-2 px-4 py-1 rounded-full bg-goldPrimary/10 border border-goldPrimary/30 text-xs font-mono text-emerald-200 font-bold max-w-sm truncate">
+            <span class="w-2 h-2 rounded-full bg-goldPrimary animate-ping shrink-0"></span>
+            <span id="webTableStatusText" class="truncate">Game Ready</span>
+          </div>
+
+          <!-- Right: Control Action Buttons -->
+          <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <!-- Audio Mute Toggle -->
+            <button id="webSoundToggleBtn" title="Toggle Sound" class="p-2 rounded-xl bg-black/60 border border-goldPrimary/30 text-goldPrimary hover:bg-goldPrimary/20 text-xs transition-all cursor-pointer">
+              🔊
+            </button>
+            <!-- Emojis Reactions Toggle -->
+            <button id="webEmojiTrayToggleBtn" title="Quick Emojis" class="p-2 rounded-xl bg-black/60 border border-goldPrimary/30 text-goldPrimary hover:bg-goldPrimary/20 text-xs transition-all cursor-pointer">
+              😊
+            </button>
+            <!-- Scorecard Button -->
+            <button id="webToggleScorecardBtn" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-goldPrimary/20 border border-goldPrimary/40 text-goldPrimary text-xs font-mono font-bold hover:bg-goldPrimary/30 transition-all cursor-pointer flex items-center gap-1">
+              <span>📊</span> <span class="hidden sm:inline">Scores</span>
+            </button>
+            <!-- Native Fullscreen Toggle Button -->
+            <button id="webFullscreenToggleBtn" title="Toggle Fullscreen Table" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-black/70 border border-goldPrimary/50 text-goldPrimary text-xs font-mono font-bold hover:bg-goldPrimary/20 transition-all cursor-pointer flex items-center gap-1">
+              <span id="webFullscreenIcon">⛶</span> <span class="hidden sm:inline">Full</span>
+            </button>
+            <!-- Exit Button -->
+            <button id="webResetGameBtn" title="Exit Game" class="p-2 sm:px-3 py-1.5 rounded-xl bg-rose-950/70 border border-rose-500/40 text-rose-300 text-xs font-mono font-bold hover:bg-rose-900 transition-all cursor-pointer">
+              ✕
+            </button>
+          </div>
+        </div>
+
+        <!-- Floating Reactions Bar (Expandable) -->
+        <div id="webEmojiTray" class="relative z-30 w-full max-w-sm mx-auto flex items-center justify-center gap-2 p-1.5 bg-black/80 backdrop-blur-md rounded-2xl border border-goldPrimary/40 shadow-2xl hidden shrink-0 my-1 animate-fadeIn">
+          <button class="emoji-btn p-1.5 hover:scale-125 transition-transform text-lg cursor-pointer" data-emoji="👏">👏</button>
+          <button class="emoji-btn p-1.5 hover:scale-125 transition-transform text-lg cursor-pointer" data-emoji="🔥">🔥</button>
+          <button class="emoji-btn p-1.5 hover:scale-125 transition-transform text-lg cursor-pointer" data-emoji="😎">😎</button>
+          <button class="emoji-btn p-1.5 hover:scale-125 transition-transform text-lg cursor-pointer" data-emoji="😭">😭</button>
+          <button class="emoji-btn p-1.5 hover:scale-125 transition-transform text-lg cursor-pointer" data-emoji="🎴">🎴</button>
+          <button class="emoji-btn p-1.5 hover:scale-125 transition-transform text-lg cursor-pointer" data-emoji="👑">👑</button>
+          <button class="emoji-btn p-1.5 hover:scale-125 transition-transform text-lg cursor-pointer" data-emoji="🍀">🍀</button>
+        </div>
+
+        <!-- Floating Emoji Toast Overlay Container -->
+        <div id="webFloatingEmojiContainer" class="absolute inset-0 pointer-events-none z-40 overflow-hidden"></div>
+
+        <!-- 2. STADIUM CARD TABLE ARENA (Flex-1, perfectly centered, NO scroll) -->
+        <div class="relative z-10 w-full flex-1 flex flex-col justify-between items-center my-1 sm:my-2 overflow-hidden min-h-0">
+          
+          <!-- Top Player Pod (North) -->
+          <div class="w-full flex justify-center shrink-0 z-10">
+            <div id="webPod_top_box" class="px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-black/75 backdrop-blur-md border border-goldPrimary/30 text-center shadow-xl transition-all flex items-center gap-2 sm:gap-3 min-w-[140px] max-w-[240px]">
+              <div id="webPod_top_avatar" class="w-8 h-8 rounded-full bg-emerald-900/80 border border-goldPrimary/40 flex items-center justify-center text-base shrink-0">🌸</div>
+              <div class="text-left overflow-hidden">
+                <div id="webPod_top_name" class="font-bold text-xs text-white truncate">Priya (Master)</div>
+                <div class="flex items-center gap-1.5 text-[10px] font-mono">
+                  <span id="webPod_top_bid" class="text-goldPrimary font-semibold">Bid: 0 • W: 0</span>
+                  <span class="text-white/40">|</span>
+                  <span id="webPod_top_score" class="text-emerald-300 font-bold">0 pts</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Center Trick Cards Display -->
-          <div class="col-start-2 row-start-2 flex flex-col items-center justify-center min-h-[120px]">
-            <div id="webCenterTrickCards" class="flex items-center justify-center -space-x-3 sm:-space-x-4 my-auto">
-              <!-- Trick Cards rendered dynamically -->
+          <!-- Middle Arena Row (West Player Pod, Center Trick Felt Arena, East Player Pod) -->
+          <div class="w-full flex-1 flex items-center justify-between px-1 sm:px-4 min-h-0 my-auto">
+            
+            <!-- Left Player Pod (West) -->
+            <div class="shrink-0 z-10">
+              <div id="webPod_left_box" class="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-black/75 backdrop-blur-md border border-goldPrimary/30 text-left shadow-xl transition-all flex items-center gap-2 min-w-[110px] sm:min-w-[130px] max-w-[170px]">
+                <div id="webPod_left_avatar" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-900/80 border border-goldPrimary/40 flex items-center justify-center text-sm sm:text-base shrink-0">🦁</div>
+                <div class="overflow-hidden">
+                  <div id="webPod_left_name" class="font-bold text-[11px] sm:text-xs text-white truncate">Aarav</div>
+                  <div id="webPod_left_bid" class="text-[9px] sm:text-[10px] font-mono text-goldPrimary">Bid: 0 • W: 0</div>
+                  <div id="webPod_left_score" class="text-[9px] sm:text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
+                </div>
+              </div>
             </div>
+
+            <!-- Center Felt Trick Circle & Bidding Overlay -->
+            <div class="relative flex-1 flex flex-col items-center justify-center h-full max-w-md mx-auto min-h-[140px]">
+              
+              <!-- Center Felt Ring -->
+              <div class="w-36 h-36 sm:w-48 sm:h-48 rounded-full border border-goldPrimary/20 bg-emerald-950/30 flex items-center justify-center absolute shadow-[inset_0_0_30px_rgba(0,0,0,0.6)] pointer-events-none">
+                <span class="text-2xl sm:text-3xl opacity-10 font-serif">♠♦♣♥</span>
+              </div>
+
+              <!-- Center Played Trick Cards Display -->
+              <div id="webCenterTrickCards" class="relative z-10 flex items-center justify-center -space-x-4 sm:-space-x-6 min-h-[100px]">
+                <!-- Played Trick Cards rendered dynamically -->
+              </div>
+
+              <!-- In-Game Status Pill on Mobile -->
+              <div id="webMobileStatusPill" class="md:hidden mt-2 px-3 py-0.5 rounded-full bg-black/70 border border-goldPrimary/30 text-[10px] font-mono text-emerald-200 font-bold truncate max-w-[220px]">
+                Game Ready
+              </div>
+
+              <!-- USER BIDDING CONTROLS (Modal Floating on Felt) -->
+              <div id="webBiddingControls" class="absolute z-30 w-full max-w-sm p-4 rounded-2xl bg-black/90 backdrop-blur-xl border-2 border-goldPrimary shadow-2xl space-y-3 text-center hidden animate-scaleUp">
+                <!-- Injected via JavaScript -->
+              </div>
+
+            </div>
+
+            <!-- Right Player Pod (East) -->
+            <div class="shrink-0 z-10">
+              <div id="webPod_right_box" class="px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl bg-black/75 backdrop-blur-md border border-goldPrimary/30 text-right shadow-xl transition-all flex items-center gap-2 min-w-[110px] sm:min-w-[130px] max-w-[170px]">
+                <div class="overflow-hidden text-right">
+                  <div id="webPod_right_name" class="font-bold text-[11px] sm:text-xs text-white truncate">Rohan</div>
+                  <div id="webPod_right_bid" class="text-[9px] sm:text-[10px] font-mono text-goldPrimary">Bid: 0 • W: 0</div>
+                  <div id="webPod_right_score" class="text-[9px] sm:text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
+                </div>
+                <div id="webPod_right_avatar" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-900/80 border border-goldPrimary/40 flex items-center justify-center text-sm sm:text-base shrink-0">⚡</div>
+              </div>
+            </div>
+
           </div>
 
-          <!-- Right Player Pod (Index 3) -->
-          <div class="col-start-3 row-start-2 flex justify-end">
-            <div id="webPod_right_box" class="p-3 rounded-2xl bg-black/70 backdrop-blur-md border border-goldPrimary/30 text-center space-y-1 min-w-[120px] shadow-xl">
-              <div id="webPod_right_name" class="font-bold text-xs sm:text-sm text-white">⚡ Rohan</div>
-              <div id="webPod_right_bid" class="text-[10px] font-mono text-goldPrimary">Bid: 0 • Won: 0</div>
-              <div id="webPod_right_score" class="text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
-            </div>
-          </div>
-
-          <!-- Bottom Local Player Pod (Index 0) -->
-          <div class="col-start-2 row-start-3 flex justify-center">
-            <div id="webPod_bottom_box" class="p-3 rounded-2xl bg-black/70 backdrop-blur-md border border-goldPrimary/30 text-center space-y-1 min-w-[140px] shadow-xl">
-              <div id="webPod_bottom_name" class="font-bold text-xs sm:text-sm text-goldPrimary">👑 You</div>
-              <div id="webPod_bottom_bid" class="text-[10px] font-mono text-goldPrimary font-bold">Bid: 0 • Won: 0</div>
-              <div id="webPod_bottom_score" class="text-[10px] font-mono text-emerald-300 font-bold">0 pts</div>
+          <!-- Bottom Player Pod (South / Local Player) -->
+          <div class="w-full flex justify-center shrink-0 z-10">
+            <div id="webPod_bottom_box" class="px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-2xl bg-black/80 backdrop-blur-md border border-goldPrimary/50 text-center shadow-xl transition-all flex items-center gap-3 min-w-[160px] max-w-[280px]">
+              <div id="webPod_bottom_avatar" class="w-8 h-8 rounded-full bg-amber-900/80 border-2 border-goldPrimary flex items-center justify-center text-base shrink-0">👑</div>
+              <div class="text-left overflow-hidden">
+                <div id="webPod_bottom_name" class="font-bold text-xs text-goldPrimary truncate">👑 You</div>
+                <div class="flex items-center gap-1.5 text-[10px] font-mono">
+                  <span id="webPod_bottom_bid" class="text-white font-bold">Bid: 0 • W: 0</span>
+                  <span class="text-white/40">|</span>
+                  <span id="webPod_bottom_score" class="text-emerald-300 font-bold">0 pts</span>
+                </div>
+              </div>
             </div>
           </div>
 
         </div>
 
-        <!-- User Bidding Controls Container -->
-        <div id="webBiddingControls" class="relative z-20 w-full max-w-md mx-auto p-4 rounded-2xl bg-black/80 backdrop-blur-xl border border-goldPrimary/50 shadow-2xl space-y-2 text-center hidden">
-          <!-- Dynamic Bidding Buttons -->
-        </div>
-
-        <!-- User Hand Container -->
-        <div class="relative z-10 w-full pt-4 border-t border-goldPrimary/30">
-          <div class="text-center text-[11px] font-mono text-goldPrimary mb-2">YOUR HAND (Select card to play)</div>
-          <div id="webUserHandContainer" class="flex items-center justify-center -space-x-3 sm:-space-x-4 overflow-x-auto py-2">
+        <!-- 3. BOTTOM USER HAND TRAY (Compact, No Scroll, Adaptive Card Sizes) -->
+        <div class="relative z-20 w-full pt-1.5 sm:pt-2 border-t border-goldPrimary/30 bg-black/60 backdrop-blur-md rounded-2xl px-2 pb-1 shrink-0">
+          <div class="flex items-center justify-between px-2 mb-1">
+            <span class="text-[10px] font-mono text-goldPrimary uppercase tracking-wider font-bold">Your Hand (Tap to Play)</span>
+            <span id="webLeadSuitNotice" class="text-[10px] font-mono text-emerald-200">Follow Suit</span>
+          </div>
+          <div id="webUserHandContainer" class="flex items-center justify-center -space-x-3 sm:-space-x-4 md:-space-x-5 py-1 overflow-x-hidden min-h-[90px] sm:min-h-[110px]">
             <!-- User Hand Cards -->
           </div>
         </div>
 
       </div>
+
+    </div>
+  </section>
+
+  <!-- COMPULSORY MULTIPLAYER AUTH / LOGIN MODAL -->
+  <div id="webMultiAuthModal" class="fixed inset-0 z-[1001] bg-black/85 backdrop-blur-xl flex items-center justify-center p-4 hidden">
+    <div class="glass-card w-full max-w-md rounded-3xl p-6 sm:p-8 border-2 border-goldPrimary shadow-2xl space-y-5 animate-scaleUp">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-goldPrimary/30 pb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-10 h-10 rounded-full bg-goldPrimary/20 border border-goldPrimary flex items-center justify-center text-xl">🔒</div>
+          <div>
+            <h3 class="font-display font-bold text-lg text-white">Multiplayer Login</h3>
+            <div class="text-[11px] font-mono text-goldPrimary">Compulsory for Online Matchmaking</div>
+          </div>
+        </div>
+        <button id="webCloseAuthModalBtn" class="p-2 rounded-xl bg-emeraldCard text-goldPrimary border border-goldPrimary/30 hover:bg-goldPrimary/10 cursor-pointer">✕</button>
+      </div>
+
+      <!-- Compulsory Notice Banner -->
+      <div class="p-3 rounded-xl bg-goldPrimary/10 border border-goldPrimary/30 text-xs text-goldPrimary flex items-start gap-2">
+        <span class="text-base">⚠️</span>
+        <p class="leading-relaxed">Login is <b>compulsory</b> for Multiplayer to reserve your player handle, prevent bot spam, and track your global scorecard & wins.</p>
+      </div>
+
+      <!-- Auth Tabs: Sign In / Register / Quick Guest -->
+      <div class="flex p-1 rounded-xl bg-black/60 border border-emeraldBorder/50 gap-1 text-xs font-mono font-bold">
+        <button id="webAuthTabLoginBtn" class="flex-1 py-2 rounded-lg bg-goldPrimary text-black transition-all cursor-pointer">Sign In</button>
+        <button id="webAuthTabRegisterBtn" class="flex-1 py-2 rounded-lg text-white hover:text-goldPrimary transition-all cursor-pointer">Create Account</button>
+        <button id="webAuthTabQuickBtn" class="flex-1 py-2 rounded-lg text-white hover:text-goldPrimary transition-all cursor-pointer">1-Click Fast</button>
+      </div>
+
+      <!-- Tab 1: Sign In Form -->
+      <form id="webLoginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-mono text-goldPrimary mb-1">Email or Player Username</label>
+          <input type="text" id="webLoginEmailInput" placeholder="e.g. patelhet.0507@gmail.com" required class="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none focus:border-goldPrimary" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-goldPrimary mb-1">Password</label>
+          <input type="password" id="webLoginPasswordInput" placeholder="••••••••" required class="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none focus:border-goldPrimary" />
+        </div>
+        <div class="flex items-center justify-between text-xs font-mono text-emerald-200/70">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" id="webLoginRememberCheck" checked class="accent-goldPrimary rounded" />
+            <span>Remember Me</span>
+          </label>
+          <span class="text-goldPrimary/70">Auto-saved session</span>
+        </div>
+        <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-goldPrimary to-amber-500 text-black font-display font-bold text-xs shadow-lg hover:bg-goldLight transition-all cursor-pointer">
+          🔑 SIGN IN & UNLOCK MULTIPLAYER
+        </button>
+      </form>
+
+      <!-- Tab 2: Create Account Form -->
+      <form id="webRegisterForm" class="space-y-3 hidden">
+        <div>
+          <label class="block text-xs font-mono text-goldPrimary mb-1">Player Display Name</label>
+          <input type="text" id="webRegNameInput" placeholder="e.g. Het Patel" required class="w-full px-4 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none focus:border-goldPrimary" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-goldPrimary mb-1">Avatar Emoji</label>
+          <div class="flex items-center gap-2" id="webRegAvatarPicker">
+            <select id="webRegAvatarSelect" class="w-full px-3 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none focus:border-goldPrimary">
+              <option value="🦁">🦁 Lion</option>
+              <option value="👑">👑 Crown</option>
+              <option value="⚡">⚡ Lightning</option>
+              <option value="💎">💎 Diamond</option>
+              <option value="🦅">🦅 Eagle</option>
+              <option value="🌸">🌸 Flower</option>
+              <option value="🐯">🐯 Tiger</option>
+              <option value="🎴">🎴 Master</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-goldPrimary mb-1">Email</label>
+          <input type="email" id="webRegEmailInput" placeholder="name@domain.com" required class="w-full px-4 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none focus:border-goldPrimary" />
+        </div>
+        <div>
+          <label class="block text-xs font-mono text-goldPrimary mb-1">Password</label>
+          <input type="password" id="webRegPasswordInput" placeholder="Min 6 characters" minlength="6" required class="w-full px-4 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none focus:border-goldPrimary" />
+        </div>
+        <button type="submit" class="w-full py-3 rounded-xl bg-emerald-600 border border-goldPrimary text-white font-display font-bold text-xs shadow-lg hover:bg-emerald-500 transition-all cursor-pointer">
+          ✨ CREATE MULTIPLAYER ACCOUNT
+        </button>
+      </form>
+
+      <!-- Tab 3: Fast 1-Click Account -->
+      <div id="webQuickAuthForm" class="space-y-4 hidden">
+        <p class="text-xs text-emerald-100/75 leading-relaxed">
+          Generate an instant authenticated verified player token tied to this browser without entering passwords.
+        </p>
+        <button id="webInstantGuestBtn" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-display font-bold text-xs shadow-lg hover:bg-amber-400 transition-all cursor-pointer flex items-center justify-center gap-2">
+          <span>⚡</span> CREATE 1-CLICK INSTANT PROFILE
+        </button>
+      </div>
+
+    </div>
+  </div>
 
     </div>
   </section>
