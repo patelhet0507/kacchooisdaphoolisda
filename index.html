@@ -113,6 +113,70 @@
     .animate-bounce-short {
       animation: bounceShort 0.5s ease-in-out;
     }
+
+    /* Active Player Pod Subtle Glowing Border & Pulsing Animation */
+    @keyframes activePodPulseGlow {
+      0%, 100% {
+        box-shadow: 0 0 16px rgba(212, 168, 67, 0.45), 0 0 35px rgba(16, 185, 129, 0.25), inset 0 0 12px rgba(212, 168, 67, 0.22);
+        border-color: rgba(253, 224, 71, 0.95);
+        transform: scale(1.03);
+      }
+      50% {
+        box-shadow: 0 0 32px rgba(212, 168, 67, 0.85), 0 0 55px rgba(16, 185, 129, 0.5), inset 0 0 20px rgba(212, 168, 67, 0.45);
+        border-color: #fde047;
+        transform: scale(1.06);
+      }
+    }
+    @keyframes podBorderShimmer {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+    .active-player-pod {
+      position: relative;
+      animation: activePodPulseGlow 1.8s ease-in-out infinite !important;
+      background: linear-gradient(135deg, rgba(212, 168, 67, 0.3) 0%, rgba(6, 78, 40, 0.92) 100%) !important;
+      border: 2px solid rgba(253, 224, 71, 0.95) !important;
+      z-index: 30 !important;
+    }
+    .active-player-pod::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 20px;
+      background: linear-gradient(90deg, #d4a843, #10b981, #fde047, #34d399, #d4a843);
+      background-size: 300% 300%;
+      z-index: -1;
+      filter: blur(6px);
+      opacity: 0.8;
+      animation: podBorderShimmer 3s ease infinite;
+      pointer-events: none;
+    }
+    .inactive-player-pod {
+      position: relative;
+      opacity: 0.85;
+      transform: scale(1);
+      transition: all 0.3s ease;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(212, 168, 67, 0.25);
+    }
+    .inactive-player-pod:hover {
+      opacity: 1;
+    }
+    @keyframes turnPillPulse {
+      0%, 100% { opacity: 0.85; transform: scale(0.96); }
+      50% { opacity: 1; transform: scale(1.06); }
+    }
+    .turn-pill-badge {
+      animation: turnPillPulse 1.2s ease-in-out infinite;
+    }
   </style>
 </head>
 <body class="bg-emeraldDark text-white antialiased selection:bg-goldPrimary selection:text-black">
@@ -130,14 +194,14 @@
 
     <!-- Desktop Nav Links -->
     <div class="hidden md:flex items-center gap-7 text-sm font-medium text-emerald-100/80">
-      <a href="#webgame" class="text-goldPrimary font-bold hover:text-goldLight transition-colors flex items-center gap-1"><span>🎮</span> Play Web Game</a>
+      <a href="#webgame" id="navPlayBtn" data-play-trigger="true" class="text-goldPrimary font-bold hover:text-goldLight transition-colors flex items-center gap-1"><span>🎮</span> Play Web Game</a>
       <a href="#features" class="hover:text-goldPrimary transition-colors">Features</a>
       <a href="#rules" class="hover:text-goldPrimary transition-colors">Rules</a>
       <a href="#download" class="hover:text-goldPrimary transition-colors">Download</a>
     </div>
 
     <div class="flex items-center gap-3">
-      <a href="#webgame" class="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border border-goldPrimary/50 text-white font-display font-bold px-4 py-2.5 rounded-full text-xs sm:text-sm shadow-lg transition-all transform hover:scale-105 flex items-center gap-1.5">
+      <a href="#webgame" id="navPlayWebBtn" data-play-trigger="true" class="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border border-goldPrimary/50 text-white font-display font-bold px-4 py-2.5 rounded-full text-xs sm:text-sm shadow-lg transition-all transform hover:scale-105 flex items-center gap-1.5">
         <span>🎮</span> Play Web
       </a>
       <a href="#download" class="hidden sm:inline-flex bg-goldPrimary text-black font-display font-bold px-5 py-2.5 rounded-full text-xs sm:text-sm shadow-lg hover:bg-goldLight transition-all transform hover:scale-105">
@@ -152,7 +216,7 @@
 
   <!-- Mobile Drawer Menu -->
   <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center space-y-8 text-xl font-display font-bold opacity-0 pointer-events-none transition-all duration-300 md:hidden">
-    <a href="#webgame" class="mobile-link text-goldPrimary hover:text-goldLight transition-colors flex items-center gap-2"><span>🎮</span> Play Web Game</a>
+    <a href="#webgame" id="mobileNavPlayBtn" data-play-trigger="true" class="mobile-link text-goldPrimary hover:text-goldLight transition-colors flex items-center gap-2"><span>🎮</span> Play Web Game</a>
     <a href="#features" class="mobile-link hover:text-goldPrimary transition-colors">Features</a>
     <a href="#rules" class="mobile-link hover:text-goldPrimary transition-colors">Rules</a>
     <a href="#download" class="mobile-link hover:text-goldPrimary transition-colors">Download APK</a>
@@ -181,7 +245,7 @@
         </p>
         
         <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
-          <a href="#webgame" class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 border-2 border-goldPrimary text-white font-display font-bold px-8 py-4 rounded-2xl shadow-2xl shadow-emerald-950/60 transition-all transform hover:-translate-y-1 hover:scale-[1.02]">
+          <a href="#webgame" id="heroPlayBtn" data-play-trigger="true" class="play-cta-btn w-full sm:w-auto inline-flex items-center justify-center gap-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:to-teal-500 border-2 border-goldPrimary text-white font-display font-bold px-8 py-4 rounded-2xl shadow-2xl shadow-emerald-950/60 transition-all transform hover:-translate-y-1 hover:scale-[1.02] cursor-pointer">
             <span class="text-xl">🎮</span> Play Instantly (No Download Needed)
           </a>
           <a href="#download" class="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-black/40 border border-goldPrimary/40 text-goldPrimary font-display font-bold px-6 py-4 rounded-2xl hover:bg-goldPrimary/10 transition-all transform hover:-translate-y-1">
@@ -481,7 +545,7 @@
 
       <!-- FULLSCREEN IMMERSIVE FELT GAME TABLE -->
       <!-- When active, this becomes a fixed full-screen overlay (100dvh) with zero vertical/horizontal scrolling -->
-      <div id="webGameTableSection" class="hidden fixed inset-0 z-[999] w-screen h-screen h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col justify-between bg-[#01140a] select-none p-2 sm:p-4">
+      <div id="webGameTableSection" tabindex="-1" role="region" aria-label="Kaachu Phool Felt Card Table" class="hidden fixed inset-0 z-[999] w-screen h-screen h-[100dvh] max-h-[100dvh] overflow-hidden flex flex-col justify-between bg-[#01140a] select-none p-2 sm:p-4 outline-none focus:outline-none focus:ring-0">
         
         <!-- Table Ambient Background Glow -->
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#084323] via-[#032413] to-[#011108] pointer-events-none"></div>
@@ -510,6 +574,11 @@
 
           <!-- Right: Control Action Buttons -->
           <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <!-- In-Game Chat Toggle Button -->
+            <button id="webChatToggleBtn" title="Table Chat" class="relative px-2.5 sm:px-3 py-1.5 rounded-xl bg-goldPrimary/20 border border-goldPrimary/40 text-goldPrimary text-xs font-mono font-bold hover:bg-goldPrimary/30 transition-all cursor-pointer flex items-center gap-1">
+              <span>💬</span> <span class="hidden sm:inline">Chat</span>
+              <span id="webChatUnreadBadge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white font-bold text-[9px] rounded-full flex items-center justify-center animate-pulse">1</span>
+            </button>
             <!-- Audio Mute Toggle -->
             <button id="webSoundToggleBtn" title="Toggle Sound" class="p-2 rounded-xl bg-black/60 border border-goldPrimary/30 text-goldPrimary hover:bg-goldPrimary/20 text-xs transition-all cursor-pointer">
               🔊
@@ -531,6 +600,49 @@
               ✕
             </button>
           </div>
+        </div>
+
+        <!-- Slide-out In-Game Live Chat Panel -->
+        <div id="webGameChatBackdrop" class="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 hidden transition-opacity duration-300"></div>
+        <div id="webGameChatDrawer" class="fixed top-0 right-0 h-full w-80 sm:w-96 max-w-[88vw] bg-[#02180e]/95 backdrop-blur-2xl border-l-2 border-goldPrimary/40 shadow-2xl z-50 flex flex-col justify-between translate-x-full transition-transform duration-300 ease-out select-text">
+          
+          <!-- Chat Header -->
+          <div class="p-4 border-b border-goldPrimary/30 flex items-center justify-between bg-black/50">
+            <div class="flex items-center gap-2.5">
+              <span class="text-xl">💬</span>
+              <div>
+                <h4 class="font-display font-bold text-sm text-white">Table Live Chat</h4>
+                <div class="text-[10px] font-mono text-goldPrimary">Multiplayer In-Game Channel</div>
+              </div>
+            </div>
+            <button id="webCloseChatBtn" class="p-1.5 rounded-xl bg-black/60 text-goldPrimary border border-goldPrimary/30 hover:bg-goldPrimary/20 cursor-pointer">
+              ✕
+            </button>
+          </div>
+
+          <!-- Chat Quick Chips -->
+          <div class="px-3 py-2 border-b border-emeraldBorder/30 bg-black/30 flex items-center gap-1.5 overflow-x-auto text-[11px] font-mono shrink-0">
+            <button class="chat-quick-chip px-2.5 py-1 rounded-full bg-goldPrimary/15 border border-goldPrimary/30 text-goldPrimary whitespace-nowrap hover:bg-goldPrimary/30 cursor-pointer">Good Luck! 🍀</button>
+            <button class="chat-quick-chip px-2.5 py-1 rounded-full bg-goldPrimary/15 border border-goldPrimary/30 text-goldPrimary whitespace-nowrap hover:bg-goldPrimary/30 cursor-pointer">Nice play! 🔥</button>
+            <button class="chat-quick-chip px-2.5 py-1 rounded-full bg-goldPrimary/15 border border-goldPrimary/30 text-goldPrimary whitespace-nowrap hover:bg-goldPrimary/30 cursor-pointer">Well played! 👏</button>
+            <button class="chat-quick-chip px-2.5 py-1 rounded-full bg-goldPrimary/15 border border-goldPrimary/30 text-goldPrimary whitespace-nowrap hover:bg-goldPrimary/30 cursor-pointer">Ace move! ♠️</button>
+          </div>
+
+          <!-- Messages Scrollable Body -->
+          <div id="webChatMessagesList" class="flex-1 overflow-y-auto p-4 space-y-3 font-sans text-xs">
+            <div class="text-center text-[10px] font-mono text-emerald-300/60 py-2 border-b border-emeraldBorder/20">
+              🎴 Table chat connected. Send messages to all players!
+            </div>
+          </div>
+
+          <!-- Chat Input Form -->
+          <form id="webChatInputForm" class="p-3 border-t border-goldPrimary/30 bg-black/60 flex items-center gap-2 shrink-0">
+            <input type="text" id="webChatTextInput" placeholder="Type a message..." maxlength="120" autocomplete="off" class="flex-1 px-3.5 py-2.5 rounded-xl bg-black/80 border border-emeraldBorder/60 text-white text-xs font-medium focus:outline-none focus:border-goldPrimary" />
+            <button type="submit" class="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-goldPrimary to-amber-500 text-black font-bold text-xs shadow-lg hover:bg-goldLight transition-all cursor-pointer shrink-0">
+              Send
+            </button>
+          </form>
+
         </div>
 
         <!-- Floating Reactions Bar (Expandable) -->

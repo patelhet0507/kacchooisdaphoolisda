@@ -153,6 +153,25 @@ class SoundManager {
       osc.stop(this.ctx.currentTime + 0.05);
     } catch (e) {}
   }
+
+  playChatSound() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, this.ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.08);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start();
+      osc.stop(this.ctx.currentTime + 0.08);
+    } catch (e) {}
+  }
 }
 
 const soundManager = new SoundManager();
@@ -232,6 +251,11 @@ window.KaachuPhoolWeb = {
   turnTimeRemaining: 30,
   turnTimerInterval: null,
   
+  // Slide-out In-Game Live Chat State
+  isChatOpen: false,
+  unreadChatCount: 0,
+  chatRef: null,
+
   // Firebase Realtime Multiplayer
   rtdb: null,
   roomCode: null,
@@ -333,7 +357,6 @@ window.KaachuPhoolWeb = {
     const startSingleBtn = document.getElementById('webStartSinglePlayerBtn');
     startSingleBtn?.addEventListener('click', () => {
       soundManager.playClick();
-      this.autoEnterFullscreen();
       this.startSinglePlayerGame();
     });
 
@@ -354,6 +377,35 @@ window.KaachuPhoolWeb = {
     joinRoomBtn?.addEventListener('click', () => {
       soundManager.playClick();
       this.joinMultiplayerRoom();
+    });
+
+    // All Play & Start triggers (Hero CTA, Navigation Links, etc.)
+    document.querySelectorAll('[data-play-trigger], #heroPlayBtn, #navPlayBtn, #navPlayWebBtn, #mobileNavPlayBtn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        if (btn.id === 'heroPlayBtn' || btn.classList.contains('play-cta-btn')) {
+          e.preventDefault();
+          soundManager.playClick();
+          this.startSinglePlayerGame();
+        } else {
+          // If match is active, focus right back on the table
+          const table = document.getElementById('webGameTableSection');
+          if (table && !table.classList.contains('hidden')) {
+            e.preventDefault();
+            this.takeToTableAndFullscreen();
+          }
+        }
+      });
+    });
+
+    // Fullscreen Change Listeners to keep icon synchronized
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+      document.addEventListener(evt, () => {
+        const icon = document.getElementById('webFullscreenIcon');
+        const isFull = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+        if (icon) {
+          icon.textContent = isFull ? '🗕' : '⛶';
+        }
+      });
     });
 
     // Scorecard Modal
@@ -556,6 +608,47 @@ window.KaachuPhoolWeb = {
       this.leaveMultiplayerRoom();
       this.showSetupScreen();
     });
+
+    // In-Game Live Chat Drawer Controls
+    const chatToggleBtn = document.getElementById('webChatToggleBtn');
+    const chatCloseBtn = document.getElementById('webCloseChatBtn');
+    const chatBackdrop = document.getElementById('webGameChatBackdrop');
+    const chatForm = document.getElementById('webChatInputForm');
+    const chatInput = document.getElementById('webChatTextInput');
+
+    chatToggleBtn?.addEventListener('click', () => {
+      soundManager.playClick();
+      this.toggleChatDrawer();
+    });
+
+    chatCloseBtn?.addEventListener('click', () => {
+      soundManager.playClick();
+      this.closeChatDrawer();
+    });
+
+    chatBackdrop?.addEventListener('click', () => {
+      this.closeChatDrawer();
+    });
+
+    chatForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const text = chatInput?.value?.trim();
+      if (text) {
+        soundManager.playClick();
+        this.sendChatMessage(text);
+        if (chatInput) chatInput.value = '';
+      }
+    });
+
+    document.querySelectorAll('.chat-quick-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const text = btn.textContent.trim();
+        if (text) {
+          soundManager.playClick();
+          this.sendChatMessage(text);
+        }
+      });
+    });
   },
 
   switchTab(type) {
@@ -587,29 +680,85 @@ window.KaachuPhoolWeb = {
     }
   },
 
-  autoEnterFullscreen() {
+  takeToTableAndFullscreen() {
+    const table = document.getElementById('webGameTableSection');
+    if (!table) return;
+
+    // Reveal felt game table and hide background setup/lobby/overlay
+    document.getElementById('webSetupSection')?.classList.add('hidden');
+    document.getElementById('webLobbySection')?.classList.add('hidden');
+    document.getElementById('webGameOverOverlay')?.classList.add('hidden');
+    table.classList.remove('hidden');
+
+    // Lock page scrolling strictly to full table view
+    document.body.classList.add('overflow-hidden');
+    document.documentElement.classList.add('overflow-hidden');
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
+    // Autofocus directly on the table container
+    table.setAttribute('tabindex', '-1');
+    table.style.outline = 'none';
     try {
-      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {});
+      table.focus({ preventScroll: true });
+    } catch (e) {
+      table.focus();
+    }
+
+    // Trigger Fullscreen
+    this.autoEnterFullscreen(table);
+  },
+
+  autoEnterFullscreen(targetEl = null) {
+    const elem = targetEl || document.getElementById('webGameTableSection') || document.documentElement;
+    try {
+      const isFull = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+      if (!isFull) {
+        const req = elem.requestFullscreen ||
+          elem.webkitRequestFullscreen ||
+          elem.webkitRequestFullScreen ||
+          elem.mozRequestFullScreen ||
+          elem.msRequestFullscreen;
+
+        if (req) {
+          const promise = req.call(elem);
+          if (promise && typeof promise.catch === 'function') {
+            promise.catch((err) => {
+              console.log("Fullscreen auto-enter notice (fallback overlay active):", err);
+            });
+          }
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Fullscreen trigger error:", e);
+    }
   },
 
   toggleFullscreen() {
     const icon = document.getElementById('webFullscreenIcon');
-    if (!document.fullscreenElement) {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().then(() => {
-          if (icon) icon.textContent = '🗕';
-        }).catch(err => {
-          console.log("Fullscreen request fallback:", err);
-        });
+    const isFull = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+    const elem = document.getElementById('webGameTableSection') || document.documentElement;
+
+    if (!isFull) {
+      const req = elem.requestFullscreen || elem.webkitRequestFullscreen || elem.webkitRequestFullScreen || elem.mozRequestFullScreen || elem.msRequestFullscreen;
+      if (req) {
+        const promise = req.call(elem);
+        if (promise && typeof promise.then === 'function') {
+          promise.then(() => {
+            if (icon) icon.textContent = '🗕';
+          }).catch(err => {
+            console.log("Fullscreen request fallback:", err);
+          });
+        }
       }
     } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen().then(() => {
-          if (icon) icon.textContent = '⛶';
-        }).catch(() => {});
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (exit) {
+        const promise = exit.call(document);
+        if (promise && typeof promise.then === 'function') {
+          promise.then(() => {
+            if (icon) icon.textContent = '⛶';
+          }).catch(() => {});
+        }
       }
     }
   },
@@ -634,6 +783,8 @@ window.KaachuPhoolWeb = {
 
   showSetupScreen() {
     this.stopTurnTimer();
+    this.closeChatDrawer();
+    this.resetChat();
     // Restore normal window scrolling
     document.body.classList.remove('overflow-hidden');
     document.documentElement.classList.remove('overflow-hidden');
@@ -645,16 +796,204 @@ window.KaachuPhoolWeb = {
     document.getElementById('webScorecardModal')?.classList.add('hidden');
   },
 
+  // Slide-out Chat Drawer Methods
+  toggleChatDrawer() {
+    if (this.isChatOpen) {
+      this.closeChatDrawer();
+    } else {
+      this.openChatDrawer();
+    }
+  },
+
+  openChatDrawer() {
+    this.isChatOpen = true;
+    const drawer = document.getElementById('webGameChatDrawer');
+    const backdrop = document.getElementById('webGameChatBackdrop');
+    if (drawer) drawer.classList.remove('translate-x-full');
+    if (backdrop) backdrop.classList.remove('hidden');
+
+    // Clear unread badge
+    this.unreadChatCount = 0;
+    const unreadBadge = document.getElementById('webChatUnreadBadge');
+    if (unreadBadge) {
+      unreadBadge.classList.add('hidden');
+      unreadBadge.textContent = '0';
+    }
+
+    const input = document.getElementById('webChatTextInput');
+    setTimeout(() => input?.focus(), 150);
+  },
+
+  closeChatDrawer() {
+    this.isChatOpen = false;
+    const drawer = document.getElementById('webGameChatDrawer');
+    const backdrop = document.getElementById('webGameChatBackdrop');
+    if (drawer) drawer.classList.add('translate-x-full');
+    if (backdrop) backdrop.classList.add('hidden');
+  },
+
+  resetChat() {
+    this.unreadChatCount = 0;
+    const unreadBadge = document.getElementById('webChatUnreadBadge');
+    if (unreadBadge) {
+      unreadBadge.classList.add('hidden');
+      unreadBadge.textContent = '0';
+    }
+    const list = document.getElementById('webChatMessagesList');
+    if (list) {
+      list.innerHTML = `
+        <div class="text-center text-[10px] font-mono text-emerald-300/60 py-2 border-b border-emeraldBorder/20">
+          🎴 Table chat connected. Send messages to all players!
+        </div>
+      `;
+    }
+  },
+
+  sendChatMessage(text) {
+    if (!text || !text.trim()) return;
+    const trimmed = text.trim().slice(0, 120);
+
+    const myUid = this.currentUser ? this.currentUser.uid : 'user_local';
+    const myName = this.currentUser ? this.currentUser.displayName : (this.gameConfig.playerName || 'Player');
+    const myAvatar = this.currentUser ? this.currentUser.avatar : (this.gameConfig.playerAvatar || '🦁');
+
+    const msgPayload = {
+      senderId: myUid,
+      senderName: myName,
+      senderAvatar: myAvatar,
+      message: trimmed,
+      timestamp: Date.now()
+    };
+
+    if (this.mode === 'MULTIPLAYER' && this.rtdb && this.roomCode) {
+      this.rtdb.ref(`rooms/${this.roomCode}/chat`).push(msgPayload);
+    } else {
+      // Single Player Mode - local message + friendly bot response
+      this.appendChatMessage(msgPayload);
+
+      setTimeout(() => {
+        const botReplies = [
+          "Good luck at the table! 🍀",
+          "Let's see who takes this trick! ♠️",
+          "Watch out for my trumps! 🔥",
+          "Well played! 👏",
+          "Kaachu Phool master in the house! 👑",
+          "Ace move! Let's play! 🎴"
+        ];
+        const randomBot = DEFAULT_BOTS[Math.floor(Math.random() * DEFAULT_BOTS.length)];
+        const replyText = botReplies[Math.floor(Math.random() * botReplies.length)];
+        this.appendChatMessage({
+          senderId: randomBot.id,
+          senderName: randomBot.name,
+          senderAvatar: randomBot.avatar,
+          message: replyText,
+          timestamp: Date.now()
+        });
+      }, 1200);
+    }
+  },
+
+  appendChatMessage(msg) {
+    const list = document.getElementById('webChatMessagesList');
+    if (!list) return;
+
+    const myUid = this.currentUser ? this.currentUser.uid : 'user_local';
+    const isMe = msg.senderId === myUid;
+
+    const timeStr = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const safeSender = String(msg.senderName || 'Player').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeText = String(msg.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const safeAvatar = String(msg.senderAvatar || '👤').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const msgEl = document.createElement('div');
+    msgEl.className = `flex gap-2 items-start ${isMe ? 'flex-row-reverse' : 'flex-row'} animate-fadeIn`;
+
+    if (isMe) {
+      msgEl.innerHTML = `
+        <div class="w-7 h-7 rounded-full bg-goldPrimary/20 border border-goldPrimary/40 flex items-center justify-center text-sm shrink-0">
+          ${safeAvatar}
+        </div>
+        <div class="max-w-[78%] flex flex-col items-end">
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <span class="text-[9px] font-mono text-emerald-300/60">${timeStr}</span>
+            <span class="text-[10px] font-bold text-goldPrimary font-mono">You</span>
+          </div>
+          <div class="px-3 py-2 rounded-2xl rounded-tr-sm bg-gradient-to-br from-goldPrimary to-amber-500 text-black text-xs font-semibold shadow-md break-words">
+            ${safeText}
+          </div>
+        </div>
+      `;
+    } else {
+      msgEl.innerHTML = `
+        <div class="w-7 h-7 rounded-full bg-emerald-950 border border-emeraldBorder flex items-center justify-center text-sm shrink-0">
+          ${safeAvatar}
+        </div>
+        <div class="max-w-[78%] flex flex-col items-start">
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <span class="text-[10px] font-bold text-emerald-300 font-mono">${safeSender}</span>
+            <span class="text-[9px] font-mono text-white/40">${timeStr}</span>
+          </div>
+          <div class="px-3 py-2 rounded-2xl rounded-tl-sm bg-black/80 border border-emeraldBorder/60 text-white text-xs font-medium shadow-md break-words">
+            ${safeText}
+          </div>
+        </div>
+      `;
+    }
+
+    list.appendChild(msgEl);
+    list.scrollTop = list.scrollHeight;
+
+    // If chat is closed and it's from another player, increment unread badge & sound
+    if (!this.isChatOpen && !isMe) {
+      this.unreadChatCount = (this.unreadChatCount || 0) + 1;
+      const unreadBadge = document.getElementById('webChatUnreadBadge');
+      if (unreadBadge) {
+        unreadBadge.textContent = this.unreadChatCount > 9 ? '9+' : this.unreadChatCount;
+        unreadBadge.classList.remove('hidden');
+      }
+      soundManager.playChatSound();
+    }
+  },
+
   // 30-Second Turn Countdown Timer with Circular SVG Progress Ring
   startTurnTimer() {
     this.stopTurnTimer();
     this.turnTimeRemaining = this.TURN_TIMEOUT_SEC;
 
-    const positions = ['bottom', 'left', 'top', 'right'];
-    const activePos = positions[this.currentTurnIndex];
+    const curPlayer = this.players[this.currentTurnIndex];
+    if (!curPlayer) return;
+
+    const myId = (this.currentUser && this.mode === 'MULTIPLAYER') ? this.currentUser.uid : 'user_local';
+    let localPlayerIndex = this.players.findIndex(p => p.id === myId);
+    if (localPlayerIndex === -1) localPlayerIndex = 0;
+
+    const numPlayers = this.players.length;
+    let seatMapping = {};
+    if (numPlayers === 2) {
+      seatMapping.bottom = this.players[localPlayerIndex];
+      seatMapping.top = this.players[(localPlayerIndex + 1) % 2];
+    } else if (numPlayers === 3) {
+      seatMapping.bottom = this.players[localPlayerIndex];
+      seatMapping.left = this.players[(localPlayerIndex + 1) % 3];
+      seatMapping.right = this.players[(localPlayerIndex + 2) % 3];
+    } else {
+      seatMapping.bottom = this.players[localPlayerIndex];
+      seatMapping.left = this.players[(localPlayerIndex + 1) % 4];
+      seatMapping.top = this.players[(localPlayerIndex + 2) % 4];
+      seatMapping.right = this.players[(localPlayerIndex + 3) % 4];
+    }
+
+    let activePos = 'bottom';
+    for (const [pos, p] of Object.entries(seatMapping)) {
+      if (p && p.id === curPlayer.id) {
+        activePos = pos;
+        break;
+      }
+    }
 
     // Reset all timer rings and badges
-    positions.forEach(pos => {
+    ['bottom', 'left', 'top', 'right'].forEach(pos => {
       const ring = document.getElementById(`webPod_${pos}_timerRing`);
       const badge = document.getElementById(`webPod_${pos}_timerBadge`);
       if (ring) {
@@ -813,14 +1152,8 @@ window.KaachuPhoolWeb = {
     this.players.forEach(p => this.scores[p.id] = 0);
     this.scoresHistory = [];
 
-    // Enter Fullscreen Zero-Scroll Table View
-    document.body.classList.add('overflow-hidden');
-    document.documentElement.classList.add('overflow-hidden');
-    window.scrollTo(0, 0);
-
-    document.getElementById('webSetupSection')?.classList.add('hidden');
-    document.getElementById('webLobbySection')?.classList.add('hidden');
-    document.getElementById('webGameTableSection')?.classList.remove('hidden');
+    // Focus table and enter fullscreen mode
+    this.takeToTableAndFullscreen();
 
     this.startRound();
   },
@@ -1227,6 +1560,13 @@ window.KaachuPhoolWeb = {
       seatMapping.right = this.players[(localPlayerIndex + 3) % 4];
     }
 
+    const basePodLayouts = {
+      bottom: 'px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-2xl transition-all flex items-center gap-3 min-w-[150px] sm:min-w-[170px] max-w-[280px]',
+      top: 'px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl transition-all flex items-center gap-2 sm:gap-3 min-w-[130px] sm:min-w-[150px] max-w-[240px]',
+      left: 'px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl transition-all flex items-center gap-2 min-w-[110px] sm:min-w-[130px] max-w-[180px]',
+      right: 'px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl transition-all flex items-center gap-2 min-w-[110px] sm:min-w-[130px] max-w-[180px]'
+    };
+
     Object.entries(seatMapping).forEach(([pos, p]) => {
       if (!p) return;
       const nameEl = document.getElementById(`webPod_${pos}_name`);
@@ -1237,7 +1577,14 @@ window.KaachuPhoolWeb = {
 
       const isCurrentActive = curPlayer && curPlayer.id === p.id;
 
-      if (nameEl) nameEl.textContent = p.id === myId ? `👑 You` : p.name;
+      if (nameEl) {
+        const baseName = p.id === myId ? `👑 You` : p.name;
+        if (isCurrentActive) {
+          nameEl.innerHTML = `<span class="flex items-center gap-1.5 truncate"><span class="truncate">${baseName}</span><span class="turn-pill-badge text-[8px] sm:text-[9px] font-mono font-extrabold uppercase bg-gradient-to-r from-amber-400 to-amber-500 text-black px-1.5 py-0.5 rounded-full shadow-md shrink-0">TURN</span></span>`;
+        } else {
+          nameEl.textContent = baseName;
+        }
+      }
       if (avatarEl) avatarEl.textContent = p.avatar || '👤';
       if (bidEl) {
         const bid = this.bids[p.id] !== undefined ? this.bids[p.id] : '?';
@@ -1247,10 +1594,11 @@ window.KaachuPhoolWeb = {
       if (scoreEl) scoreEl.textContent = `${this.scores[p.id] || 0} pts`;
 
       if (podBox) {
+        const baseLayout = basePodLayouts[pos] || 'px-3 py-2 rounded-2xl flex items-center gap-2';
         if (isCurrentActive) {
-          podBox.className = `px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-goldPrimary/20 border-2 border-goldPrimary text-center shadow-[0_0_20px_rgba(212,168,67,0.5)] transition-all flex items-center gap-2 min-w-[120px] max-w-[240px] ring-2 ring-goldPrimary/40 animate-pulse`;
+          podBox.className = `${baseLayout} active-player-pod`;
         } else {
-          podBox.className = `px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-black/75 backdrop-blur-md border border-goldPrimary/30 text-center shadow-xl transition-all flex items-center gap-2 min-w-[120px] max-w-[240px]`;
+          podBox.className = `${baseLayout} inactive-player-pod`;
         }
       }
     });
@@ -1441,6 +1789,10 @@ window.KaachuPhoolWeb = {
   },
 
   leaveMultiplayerRoom() {
+    if (this.chatRef) {
+      this.chatRef.off();
+      this.chatRef = null;
+    }
     if (this.rtdb && this.roomCode && this.currentUser) {
       const roomRef = this.rtdb.ref(`rooms/${this.roomCode}`);
       roomRef.once('value').then(snap => {
@@ -1491,7 +1843,7 @@ window.KaachuPhoolWeb = {
         startBtn.textContent = `🚀 START MATCH (${players.length} PLAYERS • NO BOTS)`;
         startBtn.onclick = () => {
           soundManager.playClick();
-          this.autoEnterFullscreen();
+          this.takeToTableAndFullscreen();
           this.launchMultiplayerMatch(players);
         };
       } else {
@@ -1579,14 +1931,8 @@ window.KaachuPhoolWeb = {
       if (!data) return;
 
       if (data.gameState === 'PLAYING') {
-        document.getElementById('webLobbySection')?.classList.add('hidden');
-        document.getElementById('webGameTableSection')?.classList.remove('hidden');
-
-        // Automatically trigger Fullscreen and focus table
-        this.autoEnterFullscreen();
-        document.body.classList.add('overflow-hidden');
-        document.documentElement.classList.add('overflow-hidden');
-        window.scrollTo(0, 0);
+        // Automatically focus table and enter fullscreen
+        this.takeToTableAndFullscreen();
 
         if (data.game) {
           this.syncMultiplayerGameState(data.game);
@@ -1601,6 +1947,18 @@ window.KaachuPhoolWeb = {
       const emoteData = snap.val();
       if (emoteData && emoteData.timestamp > (Date.now() - 3000)) {
         this.triggerFloatingEmoji(emoteData.emoji, emoteData.senderName);
+      }
+    });
+
+    // Listen to In-Game Table Live Chat in Real-Time
+    if (this.chatRef) {
+      this.chatRef.off();
+    }
+    this.chatRef = this.rtdb.ref(`rooms/${code}/chat`);
+    this.chatRef.limitToLast(50).on('child_added', (snap) => {
+      const msg = snap.val();
+      if (msg && msg.timestamp) {
+        this.appendChatMessage(msg);
       }
     });
   },
