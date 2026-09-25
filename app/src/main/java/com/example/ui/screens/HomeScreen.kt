@@ -957,6 +957,22 @@ fun MultiplayerDialog(
                         }
                     }
 
+                    // Quick Join Single Public Shared Room (Room 777777)
+                    Button(
+                        onClick = {
+                            onJoinRoom("777777", playerName.ifBlank { "Player" })
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp)
+                            .testTag("quick_join_single_room_button"),
+                        enabled = !isLoading,
+                        colors = ButtonDefaults.buttonColors(containerColor = GoldPrimary),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("⚡ Quick Join Single Room (777777)", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 13.sp)
+                    }
+
                     // Create Room Button
                     Button(
                         onClick = {
@@ -977,9 +993,9 @@ fun MultiplayerDialog(
                                 strokeWidth = 2.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Creating Room...", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text("Connecting...", color = Color.White, fontWeight = FontWeight.Bold)
                         } else {
-                            Text("Create New Room (Host)", color = Color.Black, fontWeight = FontWeight.Black)
+                            Text("➕ Create Custom 6-Digit Room", color = Color.Black, fontWeight = FontWeight.Black)
                         }
                     }
 

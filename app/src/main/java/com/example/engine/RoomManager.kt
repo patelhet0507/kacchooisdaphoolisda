@@ -48,52 +48,124 @@ class RoomManager {
         private val roomFlows = ConcurrentHashMap<String, Flow<GameRoom?>>()
         private val activeRoomListeners = ConcurrentHashMap<String, ValueEventListener>()
 
-        fun gameRoomToMap(room: GameRoom): Map<String, Any?> = mapOf(
-            "roomId" to room.roomId,
-            "hostName" to room.hostName,
-            "players" to room.players,
-            "gameState" to room.gameState,
-            "gameMode" to room.gameMode,
-            "scoringRule" to room.scoringRule,
-            "rounds" to room.rounds,
-            "currentRoundIndex" to room.currentRoundIndex,
-            "currentTurnIndex" to room.currentTurnIndex,
-            "dealerIndex" to room.dealerIndex,
-            "trumpSuit" to room.trumpSuit,
-            "leadSuit" to room.leadSuit,
-            "dealtHands" to room.dealtHands,
-            "bids" to room.bids,
-            "tricksWon" to room.tricksWon,
-            "scores" to room.scores,
-            "trickCards" to room.trickCards,
-            "trickOrder" to room.trickOrder,
-            "playedCardsInRound" to room.playedCardsInRound,
-            "lastTrickWinner" to room.lastTrickWinner,
-            "lastWinningCard" to room.lastWinningCard,
-            "statusMessage" to room.statusMessage,
-            "messages" to room.messages.mapValues { (_, msg) ->
+        fun gameRoomToMap(room: GameRoom): Map<String, Any?> {
+            val trumpVal = room.trumpSuit ?: "SPADES"
+            val isBidding = room.gameState == "BIDDING"
+            val isTrickDone = room.gameState == "TRICK_FINISHED"
+
+            // Construct web-compatible game payload
+            val webPlayers = room.players.map { name ->
                 mapOf(
-                    "id" to msg.id,
-                    "senderName" to msg.senderName,
-                    "text" to msg.text,
-                    "timestamp" to msg.timestamp,
-                    "isSystem" to msg.isSystem
+                    "id" to name,
+                    "uid" to name,
+                    "name" to name,
+                    "avatar" to "👑",
+                    "isBot" to (name.startsWith("Bot ") || name.contains("(Bot)"))
                 )
-            },
-            "voiceNotes" to room.voiceNotes.mapValues { (_, note) ->
-                mapOf(
-                    "id" to note.id,
-                    "senderName" to note.senderName,
-                    "audioBase64" to note.audioBase64,
-                    "durationMs" to note.durationMs,
-                    "timestamp" to note.timestamp
-                )
-            },
-            "activeSpeakers" to room.activeSpeakers,
-            "activeEmotes" to room.activeEmotes,
-            "kickedPlayers" to room.kickedPlayers,
-            "completedAt" to room.completedAt
-        )
+            }
+
+            val webDealtHands = room.dealtHands.mapValues { (_, handStr) ->
+                handStr.split(",").filter { it.isNotBlank() }.map { cardId ->
+                    val card = Card.fromId(cardId)
+                    mapOf(
+                        "suit" to (card?.suit?.name ?: "SPADES"),
+                        "rank" to (card?.rank?.name ?: "A"),
+                        "val" to (card?.rank?.value ?: 14),
+                        "symbol" to (card?.suit?.symbol ?: "♠"),
+                        "label" to (card?.rank?.symbol ?: "A")
+                    )
+                }
+            }
+
+            val webTrickCards = room.trickOrder.mapNotNull { entry ->
+                val parts = entry.split(":")
+                if (parts.size == 2) {
+                    val pName = parts[0]
+                    val card = Card.fromId(parts[1])
+                    if (card != null) {
+                        mapOf(
+                            "playerId" to pName,
+                            "card" to mapOf(
+                                "suit" to card.suit.name,
+                                "rank" to card.rank.name,
+                                "val" to card.rank.value,
+                                "symbol" to card.suit.symbol,
+                                "label" to card.rank.symbol
+                            )
+                        )
+                    } else null
+                } else null
+            }
+
+            val gamePayload = mapOf(
+                "players" to webPlayers,
+                "roundsSequence" to room.rounds,
+                "roundIndex" to room.currentRoundIndex,
+                "dealerIndex" to room.dealerIndex,
+                "currentTurnIndex" to room.currentTurnIndex,
+                "currentTurnPlayerId" to room.players.getOrElse(room.currentTurnIndex) { "" },
+                "trumpSuit" to trumpVal,
+                "leadSuit" to room.leadSuit,
+                "dealtHands" to webDealtHands,
+                "bids" to room.bids,
+                "tricksWon" to room.tricksWon,
+                "scores" to room.scores,
+                "currentTrickCards" to webTrickCards,
+                "isBiddingPhase" to isBidding,
+                "isTrickFinished" to isTrickDone,
+                "trickWinnerMessage" to room.statusMessage,
+                "updatedAt" to System.currentTimeMillis()
+            )
+
+            return mapOf(
+                "roomId" to room.roomId,
+                "code" to room.roomId,
+                "hostName" to room.hostName,
+                "players" to room.players,
+                "gameState" to if (room.gameState == "BIDDING" || room.gameState == "TRICK_FINISHED") "PLAYING" else room.gameState,
+                "gameMode" to room.gameMode,
+                "scoringRule" to room.scoringRule,
+                "rounds" to room.rounds,
+                "currentRoundIndex" to room.currentRoundIndex,
+                "currentTurnIndex" to room.currentTurnIndex,
+                "dealerIndex" to room.dealerIndex,
+                "trumpSuit" to room.trumpSuit,
+                "leadSuit" to room.leadSuit,
+                "dealtHands" to room.dealtHands,
+                "bids" to room.bids,
+                "tricksWon" to room.tricksWon,
+                "scores" to room.scores,
+                "trickCards" to room.trickCards,
+                "trickOrder" to room.trickOrder,
+                "playedCardsInRound" to room.playedCardsInRound,
+                "lastTrickWinner" to room.lastTrickWinner,
+                "lastWinningCard" to room.lastWinningCard,
+                "statusMessage" to room.statusMessage,
+                "game" to gamePayload,
+                "messages" to room.messages.mapValues { (_, msg) ->
+                    mapOf(
+                        "id" to msg.id,
+                        "senderName" to msg.senderName,
+                        "text" to msg.text,
+                        "timestamp" to msg.timestamp,
+                        "isSystem" to msg.isSystem
+                    )
+                },
+                "voiceNotes" to room.voiceNotes.mapValues { (_, note) ->
+                    mapOf(
+                        "id" to note.id,
+                        "senderName" to note.senderName,
+                        "audioBase64" to note.audioBase64,
+                        "durationMs" to note.durationMs,
+                        "timestamp" to note.timestamp
+                    )
+                },
+                "activeSpeakers" to room.activeSpeakers,
+                "activeEmotes" to room.activeEmotes,
+                "kickedPlayers" to room.kickedPlayers,
+                "completedAt" to room.completedAt
+            )
+        }
     }
 
     private val database: FirebaseDatabase? by lazy {
@@ -992,51 +1064,105 @@ class RoomManager {
 
     private fun parseRoomFromSnapshot(snapshot: DataSnapshot): GameRoom? {
         return try {
-            val roomId = snapshot.child("roomId").value?.toString() ?: snapshot.key ?: return null
+            val roomId = snapshot.child("roomId").value?.toString() ?: snapshot.child("code").value?.toString() ?: snapshot.key ?: return null
             val hostName = snapshot.child("hostName").value?.toString() ?: "Host"
-            val gameState = snapshot.child("gameState").value?.toString() ?: "WAITING"
+            var gameState = snapshot.child("gameState").value?.toString() ?: "WAITING"
             val gameMode = snapshot.child("gameMode").value?.toString() ?: "QUICK"
             val scoringRule = snapshot.child("scoringRule").value?.toString() ?: "STANDARD"
             
+            val gameSnap = snapshot.child("game")
+            val hasGameNode = gameSnap.exists()
+
             val currentRoundIndex = runCatching { 
-                (snapshot.child("currentRoundIndex").value as? Number)?.toInt() ?: snapshot.child("currentRoundIndex").value?.toString()?.toIntOrNull() ?: 0
+                if (hasGameNode && gameSnap.child("roundIndex").exists()) {
+                    (gameSnap.child("roundIndex").value as? Number)?.toInt() ?: gameSnap.child("roundIndex").value?.toString()?.toIntOrNull() ?: 0
+                } else {
+                    (snapshot.child("currentRoundIndex").value as? Number)?.toInt() ?: snapshot.child("currentRoundIndex").value?.toString()?.toIntOrNull() ?: 0
+                }
             }.getOrDefault(0)
             
             val currentTurnIndex = runCatching { 
-                (snapshot.child("currentTurnIndex").value as? Number)?.toInt() ?: snapshot.child("currentTurnIndex").value?.toString()?.toIntOrNull() ?: 0
+                if (hasGameNode && gameSnap.child("currentTurnIndex").exists()) {
+                    (gameSnap.child("currentTurnIndex").value as? Number)?.toInt() ?: gameSnap.child("currentTurnIndex").value?.toString()?.toIntOrNull() ?: 0
+                } else {
+                    (snapshot.child("currentTurnIndex").value as? Number)?.toInt() ?: snapshot.child("currentTurnIndex").value?.toString()?.toIntOrNull() ?: 0
+                }
             }.getOrDefault(0)
             
             val dealerIndex = runCatching { 
-                (snapshot.child("dealerIndex").value as? Number)?.toInt() ?: snapshot.child("dealerIndex").value?.toString()?.toIntOrNull() ?: 0
+                if (hasGameNode && gameSnap.child("dealerIndex").exists()) {
+                    (gameSnap.child("dealerIndex").value as? Number)?.toInt() ?: gameSnap.child("dealerIndex").value?.toString()?.toIntOrNull() ?: 0
+                } else {
+                    (snapshot.child("dealerIndex").value as? Number)?.toInt() ?: snapshot.child("dealerIndex").value?.toString()?.toIntOrNull() ?: 0
+                }
             }.getOrDefault(0)
 
-            val trumpSuit = snapshot.child("trumpSuit").value?.toString()
-            val leadSuit = snapshot.child("leadSuit").value?.toString()
+            val trumpSuit = if (hasGameNode && gameSnap.child("trumpSuit").exists()) {
+                gameSnap.child("trumpSuit").value?.toString()
+            } else {
+                snapshot.child("trumpSuit").value?.toString()
+            }
+
+            val leadSuit = if (hasGameNode && gameSnap.child("leadSuit").exists()) {
+                gameSnap.child("leadSuit").value?.toString()
+            } else {
+                snapshot.child("leadSuit").value?.toString()
+            }
+
             val lastTrickWinner = snapshot.child("lastTrickWinner").value?.toString()
             val lastWinningCard = snapshot.child("lastWinningCard").value?.toString()
-            val statusMessage = snapshot.child("statusMessage").value?.toString() ?: ""
+            val statusMessage = if (hasGameNode && gameSnap.child("trickWinnerMessage").exists() && !gameSnap.child("trickWinnerMessage").value?.toString().isNullOrBlank()) {
+                gameSnap.child("trickWinnerMessage").value?.toString() ?: ""
+            } else {
+                snapshot.child("statusMessage").value?.toString() ?: ""
+            }
+
+            if (hasGameNode) {
+                val isBidding = gameSnap.child("isBiddingPhase").value as? Boolean ?: (gameSnap.child("isBiddingPhase").value?.toString() == "true")
+                val isTrickDone = gameSnap.child("isTrickFinished").value as? Boolean ?: (gameSnap.child("isTrickFinished").value?.toString() == "true")
+                if (gameState == "PLAYING" || gameState == "WAITING") {
+                    gameState = if (isBidding) "BIDDING" else if (isTrickDone) "TRICK_FINISHED" else "PLAYING"
+                }
+            }
 
             val playersList = mutableListOf<String>()
             val playersVal = snapshot.child("players").value
             when (playersVal) {
                 is List<*> -> playersVal.forEach { item ->
-                    val s = item?.toString()
-                    if (!s.isNullOrBlank()) playersList.add(s)
+                    if (item is Map<*, *>) {
+                        val name = item["name"]?.toString() ?: item["displayName"]?.toString() ?: item["id"]?.toString()
+                        if (!name.isNullOrBlank()) playersList.add(name)
+                    } else {
+                        val s = item?.toString()
+                        if (!s.isNullOrBlank()) playersList.add(s)
+                    }
                 }
                 is Map<*, *> -> playersVal.values.forEach { item ->
-                    val s = item?.toString()
-                    if (!s.isNullOrBlank()) playersList.add(s)
+                    if (item is Map<*, *>) {
+                        val name = item["name"]?.toString() ?: item["displayName"]?.toString() ?: item["id"]?.toString()
+                        if (!name.isNullOrBlank()) playersList.add(name)
+                    } else {
+                        val s = item?.toString()
+                        if (!s.isNullOrBlank()) playersList.add(s)
+                    }
                 }
                 else -> {
                     snapshot.child("players").children.forEach { child ->
-                        val p = child.value?.toString()
-                        if (!p.isNullOrBlank()) playersList.add(p)
+                        val obj = child.value
+                        if (obj is Map<*, *>) {
+                            val name = obj["name"]?.toString() ?: obj["displayName"]?.toString() ?: obj["id"]?.toString()
+                            if (!name.isNullOrBlank()) playersList.add(name)
+                        } else {
+                            val p = child.value?.toString()
+                            if (!p.isNullOrBlank()) playersList.add(p)
+                        }
                     }
                 }
             }
 
             val roundsList = mutableListOf<Int>()
-            val roundsVal = snapshot.child("rounds").value
+            val roundsTarget = if (hasGameNode && gameSnap.child("roundsSequence").exists()) gameSnap.child("roundsSequence") else snapshot.child("rounds")
+            val roundsVal = roundsTarget.value
             when (roundsVal) {
                 is List<*> -> roundsVal.forEach { item ->
                     val num = (item as? Number)?.toInt() ?: item?.toString()?.toIntOrNull()
@@ -1047,7 +1173,7 @@ class RoomManager {
                     if (num != null) roundsList.add(num)
                 }
                 else -> {
-                    snapshot.child("rounds").children.forEach { child ->
+                    roundsTarget.children.forEach { child ->
                         val num = (child.value as? Number)?.toInt() ?: child.value?.toString()?.toIntOrNull()
                         if (num != null) roundsList.add(num)
                     }
@@ -1055,27 +1181,81 @@ class RoomManager {
             }
 
             val dealtHandsMap = mutableMapOf<String, String>()
-            snapshot.child("dealtHands").children.forEach { child ->
+            val dealtHandsTarget = if (hasGameNode && gameSnap.child("dealtHands").exists()) gameSnap.child("dealtHands") else snapshot.child("dealtHands")
+            dealtHandsTarget.children.forEach { child ->
                 val pName = child.key ?: return@forEach
-                val h = child.value?.toString() ?: return@forEach
-                dealtHandsMap[pName] = h
+                val v = child.value
+                if (v is List<*>) {
+                    // List of card objects
+                    val cardIds = v.mapNotNull { cItem ->
+                        if (cItem is Map<*, *>) {
+                            val suitStr = cItem["suit"]?.toString() ?: "SPADES"
+                            val rankStr = cItem["rank"]?.toString() ?: "A"
+                            val sChar = when (suitStr.uppercase()) {
+                                "SPADES" -> "S"
+                                "DIAMONDS" -> "D"
+                                "CLUBS" -> "C"
+                                "HEARTS" -> "H"
+                                else -> suitStr.take(1).uppercase()
+                            }
+                            "${sChar}_$rankStr"
+                        } else cItem?.toString()
+                    }
+                    dealtHandsMap[pName] = cardIds.joinToString(",")
+                } else {
+                    val h = v?.toString() ?: return@forEach
+                    dealtHandsMap[pName] = h
+                }
             }
 
             val trickOrderList = mutableListOf<String>()
-            val trickOrderVal = snapshot.child("trickOrder").value
-            when (trickOrderVal) {
-                is List<*> -> trickOrderVal.forEach { item ->
-                    val s = item?.toString()
-                    if (!s.isNullOrBlank()) trickOrderList.add(s)
+            val trickCardsMap = mutableMapOf<String, String>()
+
+            if (hasGameNode && gameSnap.child("currentTrickCards").exists()) {
+                gameSnap.child("currentTrickCards").children.forEach { child ->
+                    val pId = child.child("playerId").value?.toString() ?: return@forEach
+                    val cardObj = child.child("card").value as? Map<*, *>
+                    val cardId = if (cardObj != null) {
+                        val suitStr = cardObj["suit"]?.toString() ?: "SPADES"
+                        val rankStr = cardObj["rank"]?.toString() ?: "A"
+                        val sChar = when (suitStr.uppercase()) {
+                            "SPADES" -> "S"
+                            "DIAMONDS" -> "D"
+                            "CLUBS" -> "C"
+                            "HEARTS" -> "H"
+                            else -> suitStr.take(1).uppercase()
+                        }
+                        "${sChar}_$rankStr"
+                    } else {
+                        child.child("card").value?.toString() ?: ""
+                    }
+                    if (cardId.isNotBlank()) {
+                        trickCardsMap[pId] = cardId
+                        trickOrderList.add("$pId:$cardId")
+                    }
                 }
-                is Map<*, *> -> trickOrderVal.values.forEach { item ->
-                    val s = item?.toString()
-                    if (!s.isNullOrBlank()) trickOrderList.add(s)
+            } else {
+                snapshot.child("trickCards").children.forEach { child ->
+                    val pId = child.key ?: return@forEach
+                    val c = child.value?.toString() ?: return@forEach
+                    trickCardsMap[pId] = c
                 }
-                else -> {
-                    snapshot.child("trickOrder").children.forEach { child ->
-                        val s = child.value?.toString()
+
+                val trickOrderVal = snapshot.child("trickOrder").value
+                when (trickOrderVal) {
+                    is List<*> -> trickOrderVal.forEach { item ->
+                        val s = item?.toString()
                         if (!s.isNullOrBlank()) trickOrderList.add(s)
+                    }
+                    is Map<*, *> -> trickOrderVal.values.forEach { item ->
+                        val s = item?.toString()
+                        if (!s.isNullOrBlank()) trickOrderList.add(s)
+                    }
+                    else -> {
+                        snapshot.child("trickOrder").children.forEach { child ->
+                            val s = child.value?.toString()
+                            if (!s.isNullOrBlank()) trickOrderList.add(s)
+                        }
                     }
                 }
             }
@@ -1100,6 +1280,7 @@ class RoomManager {
             }
 
             val messagesMap = mutableMapOf<String, ChatMessage>()
+            // Parse native messages
             snapshot.child("messages").children.forEach { child ->
                 val id = child.child("id").value?.toString() ?: child.key ?: ""
                 val sender = child.child("senderName").value?.toString() ?: ""
@@ -1120,6 +1301,25 @@ class RoomManager {
                 }
             }
 
+            // Parse web chat
+            snapshot.child("chat").children.forEach { child ->
+                val id = child.key ?: ""
+                val sender = child.child("senderName").value?.toString() ?: "Player"
+                val text = child.child("message").value?.toString() ?: ""
+                val timestamp = (child.child("timestamp").value as? Number)?.toLong()
+                    ?: child.child("timestamp").value?.toString()?.toLongOrNull() ?: System.currentTimeMillis()
+                if (text.isNotBlank() && !messagesMap.containsKey(id)) {
+                    val safeId = id.ifBlank { "msg_${timestamp}" }
+                    messagesMap[safeId] = ChatMessage(
+                        id = safeId,
+                        senderName = sender,
+                        text = text,
+                        timestamp = timestamp,
+                        isSystem = false
+                    )
+                }
+            }
+
             val voiceMap = mutableMapOf<String, VoiceNote>()
             snapshot.child("voiceNotes").children.forEach { child ->
                 val id = child.child("id").value?.toString() ?: child.key ?: ""
@@ -1134,15 +1334,9 @@ class RoomManager {
                 }
             }
 
-            val trickCardsMap = mutableMapOf<String, String>()
-            snapshot.child("trickCards").children.forEach { child ->
-                val pId = child.key ?: return@forEach
-                val c = child.value?.toString() ?: return@forEach
-                trickCardsMap[pId] = c
-            }
-
             val bidsMap = mutableMapOf<String, Int>()
-            snapshot.child("bids").children.forEach { child ->
+            val bidsTarget = if (hasGameNode && gameSnap.child("bids").exists()) gameSnap.child("bids") else snapshot.child("bids")
+            bidsTarget.children.forEach { child ->
                 val key = child.key ?: return@forEach
                 val value = (child.value as? Number)?.toInt()
                     ?: child.value?.toString()?.toIntOrNull() ?: 0
@@ -1150,7 +1344,8 @@ class RoomManager {
             }
 
             val tricksWonMap = mutableMapOf<String, Int>()
-            snapshot.child("tricksWon").children.forEach { child ->
+            val tricksWonTarget = if (hasGameNode && gameSnap.child("tricksWon").exists()) gameSnap.child("tricksWon") else snapshot.child("tricksWon")
+            tricksWonTarget.children.forEach { child ->
                 val key = child.key ?: return@forEach
                 val value = (child.value as? Number)?.toInt()
                     ?: child.value?.toString()?.toIntOrNull() ?: 0
@@ -1158,7 +1353,8 @@ class RoomManager {
             }
 
             val scoresMap = mutableMapOf<String, Int>()
-            snapshot.child("scores").children.forEach { child ->
+            val scoresTarget = if (hasGameNode && gameSnap.child("scores").exists()) gameSnap.child("scores") else snapshot.child("scores")
+            scoresTarget.children.forEach { child ->
                 val key = child.key ?: return@forEach
                 val value = (child.value as? Number)?.toInt()
                     ?: child.value?.toString()?.toIntOrNull() ?: 0

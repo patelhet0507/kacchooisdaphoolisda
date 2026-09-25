@@ -246,9 +246,32 @@ window.KaachuPhoolWeb = {
   isBiddingPhase: false,
   isTrickFinished: false,
 
-  // 30-Second Turn Timer State
-  TURN_TIMEOUT_SEC: 30,
-  turnTimeRemaining: 30,
+  // Fast & Snappy Real-Time Pacing Engine
+  gameSpeed: 'FAST', // 'FAST' (15s timer, snappy) or 'TURBO' (10s timer, instant)
+  get delays() {
+    if (this.gameSpeed === 'TURBO') {
+      return {
+        botBid: 90,
+        botPlay: 120,
+        trickEval: 220,
+        trickClear: 320,
+        multiplayerTrickClear: 400,
+        turnTimeout: 10
+      };
+    }
+    return {
+      botBid: 160,
+      botPlay: 200,
+      trickEval: 300,
+      trickClear: 500,
+      multiplayerTrickClear: 550,
+      turnTimeout: 15
+    };
+  },
+
+  // Turn Countdown Timer State
+  TURN_TIMEOUT_SEC: 15,
+  turnTimeRemaining: 15,
   turnTimerInterval: null,
   
   // Slide-out In-Game Live Chat State
@@ -418,6 +441,13 @@ window.KaachuPhoolWeb = {
     closeScorecardBtn?.addEventListener('click', () => {
       soundManager.playClick();
       document.getElementById('webScorecardModal')?.classList.add('hidden');
+    });
+
+    // Game Speed Toggle (Fast / Turbo)
+    const speedToggleBtn = document.getElementById('webSpeedToggleBtn');
+    speedToggleBtn?.addEventListener('click', () => {
+      soundManager.playClick();
+      this.toggleGameSpeed();
     });
 
     // Exit Game Button
@@ -763,6 +793,23 @@ window.KaachuPhoolWeb = {
     }
   },
 
+  toggleGameSpeed() {
+    this.gameSpeed = this.gameSpeed === 'FAST' ? 'TURBO' : 'FAST';
+    const label = document.getElementById('webSpeedLabel');
+    const icon = document.getElementById('webSpeedIcon');
+    const btn = document.getElementById('webSpeedToggleBtn');
+    if (label) label.textContent = this.gameSpeed === 'TURBO' ? 'Turbo' : 'Fast';
+    if (icon) icon.textContent = this.gameSpeed === 'TURBO' ? '⚡⚡' : '⚡';
+    if (btn) {
+      if (this.gameSpeed === 'TURBO') {
+        btn.className = 'px-2 sm:px-2.5 py-1.5 rounded-xl bg-amber-400 text-black border border-amber-300 text-xs font-mono font-bold hover:bg-amber-300 transition-all cursor-pointer flex items-center gap-1 shadow-lg';
+      } else {
+        btn.className = 'px-2 sm:px-2.5 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-300 text-xs font-mono font-bold hover:bg-amber-500/30 transition-all cursor-pointer flex items-center gap-1';
+      }
+    }
+    this.triggerFloatingEmoji(this.gameSpeed === 'TURBO' ? '⚡' : '⏩', `Game Pace: ${this.gameSpeed}`);
+  },
+
   triggerFloatingEmoji(emoji, senderName) {
     soundManager.playEmoji();
     const container = document.getElementById('webFloatingEmojiContainer');
@@ -956,9 +1003,10 @@ window.KaachuPhoolWeb = {
     }
   },
 
-  // 30-Second Turn Countdown Timer with Circular SVG Progress Ring
+  // Fast Turn Countdown Timer with Circular SVG Progress Ring
   startTurnTimer() {
     this.stopTurnTimer();
+    this.TURN_TIMEOUT_SEC = this.delays.turnTimeout;
     this.turnTimeRemaining = this.TURN_TIMEOUT_SEC;
 
     const curPlayer = this.players[this.currentTurnIndex];
@@ -1009,11 +1057,11 @@ window.KaachuPhoolWeb = {
     if (activeRing) activeRing.classList.remove('hidden');
     if (activeBadge) {
       activeBadge.classList.remove('hidden');
-      activeBadge.textContent = '30s';
+      activeBadge.textContent = `${this.TURN_TIMEOUT_SEC}s`;
     }
 
     const circumference = 113.1; // 2 * pi * 18
-    let lastSecondInt = 30;
+    let lastSecondInt = this.TURN_TIMEOUT_SEC;
 
     this.turnTimerInterval = setInterval(() => {
       this.turnTimeRemaining = Math.max(0, this.turnTimeRemaining - 0.1);
@@ -1022,9 +1070,9 @@ window.KaachuPhoolWeb = {
 
       if (activeRing) {
         activeRing.style.strokeDashoffset = offset.toFixed(1);
-        if (this.turnTimeRemaining > 15) {
+        if (this.turnTimeRemaining > 8) {
           activeRing.style.stroke = '#d4a843'; // Gold
-        } else if (this.turnTimeRemaining > 5) {
+        } else if (this.turnTimeRemaining > 3) {
           activeRing.style.stroke = '#f97316'; // Warning Orange
         } else {
           activeRing.style.stroke = '#ef4444'; // Urgent Red
@@ -1034,10 +1082,10 @@ window.KaachuPhoolWeb = {
       const curSecInt = Math.ceil(this.turnTimeRemaining);
       if (activeBadge) {
         activeBadge.textContent = `${curSecInt}s`;
-        if (this.turnTimeRemaining > 15) {
+        if (this.turnTimeRemaining > 8) {
           activeBadge.style.color = '#fde047';
           activeBadge.style.borderColor = 'rgba(212,168,67,0.5)';
-        } else if (this.turnTimeRemaining > 5) {
+        } else if (this.turnTimeRemaining > 3) {
           activeBadge.style.color = '#fdba74';
           activeBadge.style.borderColor = 'rgba(249,115,22,0.6)';
         } else {
@@ -1046,17 +1094,17 @@ window.KaachuPhoolWeb = {
         }
       }
 
-      // Play subtle warning tick when <= 5s
+      // Play subtle warning tick when <= 3s
       if (curSecInt !== lastSecondInt) {
         lastSecondInt = curSecInt;
         const activePlayer = this.players[this.currentTurnIndex];
         const isMyTurn = activePlayer && (activePlayer.id === 'user_local' || (this.currentUser && activePlayer.id === this.currentUser.uid));
-        if (curSecInt <= 5 && curSecInt > 0 && isMyTurn) {
+        if (curSecInt <= 3 && curSecInt > 0 && isMyTurn) {
           soundManager.playWarningTick();
         }
       }
 
-      // Check if 30s elapsed -> force play
+      // Check if turn time elapsed -> force play
       if (this.turnTimeRemaining <= 0) {
         this.stopTurnTimer();
         this.onTurnTimeout();
@@ -1210,7 +1258,7 @@ window.KaachuPhoolWeb = {
     const currentPlayer = this.players[this.currentTurnIndex];
     const cardsCount = this.roundsSequence[this.roundIndex];
 
-    // Start 30s turn timer
+    // Start fast turn timer
     this.startTurnTimer();
 
     if (currentPlayer.isBot) {
@@ -1219,7 +1267,7 @@ window.KaachuPhoolWeb = {
         this.bids[currentPlayer.id] = botBid;
         soundManager.playClick();
         this.advanceBidding();
-      }, 700);
+      }, this.delays.botBid);
     } else {
       // User turn to bid -> show bid modal / chip buttons
       this.showUserBiddingControls(cardsCount);
@@ -1251,7 +1299,7 @@ window.KaachuPhoolWeb = {
     const header = document.createElement('div');
     header.className = 'w-full text-center space-y-1';
     header.innerHTML = `
-      <div class="text-[11px] font-mono text-goldPrimary uppercase tracking-widest font-bold">Predict Tricks (30s Timer)</div>
+      <div class="text-[11px] font-mono text-goldPrimary uppercase tracking-widest font-bold">Predict Tricks (${this.TURN_TIMEOUT_SEC}s Pace)</div>
       <div class="text-sm sm:text-base font-display font-extrabold text-white">How many tricks will you win?</div>
       <div class="text-[10px] font-mono text-emerald-200">Round ${this.roundIndex + 1} (${maxCards} ${maxCards === 1 ? 'Card' : 'Cards'})</div>
     `;
@@ -1309,7 +1357,7 @@ window.KaachuPhoolWeb = {
       setTimeout(() => {
         const playedCard = this.selectBotCard(currentPlayer.id);
         this.playCard(currentPlayer.id, playedCard);
-      }, 750);
+      }, this.delays.botPlay);
     } else {
       // User turn
       this.renderTableUI();
@@ -1357,7 +1405,7 @@ window.KaachuPhoolWeb = {
     // Check if trick complete
     if (this.currentTrickCards.length === this.players.length) {
       this.isTrickFinished = true;
-      setTimeout(() => this.evaluateTrickWinner(), 1100);
+      setTimeout(() => this.evaluateTrickWinner(), this.delays.trickEval);
     } else {
       this.currentTurnIndex = (this.currentTurnIndex + 1) % this.players.length;
       this.renderTableUI();
@@ -1408,7 +1456,7 @@ window.KaachuPhoolWeb = {
         this.renderTableUI();
         this.processPlayingTurn();
       }
-    }, 1400);
+    }, this.delays.trickClear);
   },
 
   finishRound() {
@@ -1515,9 +1563,9 @@ window.KaachuPhoolWeb = {
     if (this.trickWinnerMessage) {
       statusMsg = this.trickWinnerMessage;
     } else if (this.isBiddingPhase) {
-      statusMsg = isMyTurn ? '⭐ YOUR TURN TO BID (30s)' : `Bidding: ${curPlayer ? curPlayer.name : ''}'s turn (30s)...`;
+      statusMsg = isMyTurn ? `⭐ YOUR TURN TO BID (${this.TURN_TIMEOUT_SEC}s)` : `Bidding: ${curPlayer ? curPlayer.name : ''}'s turn (${this.TURN_TIMEOUT_SEC}s)...`;
     } else {
-      statusMsg = isMyTurn ? '⭐ YOUR TURN TO PLAY A CARD (30s)' : `${curPlayer ? curPlayer.name : ''} is playing (30s)...`;
+      statusMsg = isMyTurn ? `⭐ YOUR TURN TO PLAY A CARD (${this.TURN_TIMEOUT_SEC}s)` : `${curPlayer ? curPlayer.name : ''} is playing (${this.TURN_TIMEOUT_SEC}s)...`;
     }
 
     if (statusText) statusText.textContent = statusMsg;
@@ -1669,7 +1717,13 @@ window.KaachuPhoolWeb = {
         `;
 
         if (isLegal) {
-          cardBtn.onclick = () => {
+          cardBtn.onclick = (e) => {
+            e.preventDefault();
+            if (cardBtn.dataset.played === 'true') return;
+            cardBtn.dataset.played = 'true';
+            cardBtn.style.transform = 'translateY(-20px) scale(0.92)';
+            cardBtn.style.opacity = '0.5';
+
             if (this.mode === 'MULTIPLAYER') {
               this.submitMultiplayerPlayCard(myId, card);
             } else {
@@ -2083,7 +2137,7 @@ window.KaachuPhoolWeb = {
             currentTurnPlayerId: winner.id
           });
         }
-      }, 1500);
+      }, this.delays.multiplayerTrickClear);
 
     } else {
       const nextTurn = (this.currentTurnIndex + 1) % this.players.length;
