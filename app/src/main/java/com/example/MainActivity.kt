@@ -138,7 +138,7 @@ fun KaachuPhoolApp(
         // Real-Time Universal Push Broadcast Listener from Superadmin
         try {
             val database = com.google.firebase.database.FirebaseDatabase.getInstance("https://gen-lang-client-0782479965-default-rtdb.asia-southeast1.firebasedatabase.app")
-            val broadcastRef = database.getReference("broadcasts/latest")
+            val broadcastRef = database.getReference("rooms/__broadcasts__/latest")
             var lastSeenTimestamp = System.currentTimeMillis() - 60_000L
             broadcastRef.addValueEventListener(object : com.google.firebase.database.ValueEventListener {
                 override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {

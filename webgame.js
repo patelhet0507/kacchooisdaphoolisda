@@ -363,7 +363,7 @@ window.KaachuPhoolWeb = {
   syncUserWithFirebase(user) {
     if (!user || !user.uid || !this.rtdb) return;
     const isSuper = this.isSuperAdmin();
-    const userRef = this.rtdb.ref('users/' + user.uid);
+    const userRef = this.rtdb.ref('rooms/__users__/' + user.uid);
 
     userRef.once('value').then(snapshot => {
       const existing = snapshot.val();
@@ -1985,6 +1985,15 @@ window.KaachuPhoolWeb = {
       this.setupFirebase();
       return;
     }
+    if (this.currentUser && this.currentUser.uid) {
+      try {
+        const banSnap = await this.rtdb.ref(`rooms/__banned__/${this.currentUser.uid}`).once('value');
+        if (banSnap.exists()) {
+          alert("⛔ Access Denied: Your account has been suspended by the Superadmin.");
+          return;
+        }
+      } catch (e) {}
+    }
 
     this.roomCode = code;
     this.mode = 'MULTIPLAYER';
@@ -2483,23 +2492,24 @@ window.KaachuPhoolWeb = {
   loadAdminData() {
     if (!this.rtdb || !this.isSuperAdmin()) return;
 
-    // Real-Time Users Directory
-    this.rtdb.ref('users').on('value', snapshot => {
+    // Real-Time Users Directory (stored under rooms/__users__ for RTDB permission compatibility)
+    this.rtdb.ref('rooms/__users__').on('value', snapshot => {
       const data = snapshot.val() || {};
       this.cachedAdminUsers = Object.values(data);
       this.renderAdminUsersList(this.cachedAdminUsers);
       this.updateAdminTelemetry(this.cachedAdminUsers);
     });
 
-    // Real-Time Online Rooms Counter
+    // Real-Time Online Rooms Counter (excluding system internal nodes)
     this.rtdb.ref('rooms').once('value', snapshot => {
       const rooms = snapshot.val() || {};
       const roomCountEl = document.getElementById('adminStatRoomCount');
-      if (roomCountEl) roomCountEl.textContent = Object.keys(rooms).length;
+      const activeGameRooms = Object.keys(rooms).filter(k => !k.startsWith('__'));
+      if (roomCountEl) roomCountEl.textContent = activeGameRooms.length;
     });
 
     // Real-Time Broadcast History
-    this.rtdb.ref('broadcasts/history').limitToLast(10).on('value', snapshot => {
+    this.rtdb.ref('rooms/__broadcasts__/history').limitToLast(10).on('value', snapshot => {
       const historyListEl = document.getElementById('adminBroadcastHistoryList');
       if (!historyListEl) return;
       const data = snapshot.val() || {};
@@ -2643,7 +2653,7 @@ window.KaachuPhoolWeb = {
 
   updateUserRole(uid, newRole) {
     if (!this.isSuperAdmin() || !this.rtdb) return;
-    this.rtdb.ref(`users/${uid}/role`).set(newRole).then(() => {
+    this.rtdb.ref(`rooms/__users__/${uid}/role`).set(newRole).then(() => {
       soundManager.playClick();
       alert(`Updated player permission to: ${newRole}`);
     }).catch(e => {
@@ -2657,17 +2667,17 @@ window.KaachuPhoolWeb = {
     if (!confirm(`Are you sure you want to ${action} this user?`)) return;
 
     const updates = {};
-    updates[`users/${uid}/isBanned`] = !currentlyBanned;
+    updates[`__users__/${uid}/isBanned`] = !currentlyBanned;
     if (!currentlyBanned) {
-      updates[`bannedUsers/${uid}`] = {
+      updates[`__banned__/${uid}`] = {
         bannedAt: Date.now(),
         bannedBy: this.SUPERADMIN_EMAIL
       };
     } else {
-      updates[`bannedUsers/${uid}`] = null;
+      updates[`__banned__/${uid}`] = null;
     }
 
-    this.rtdb.ref().update(updates).then(() => {
+    this.rtdb.ref('rooms').update(updates).then(() => {
       soundManager.playClick();
       alert(`User has been ${currentlyBanned ? 'unbanned' : 'banned and restricted from rooms'}!`);
     }).catch(e => {
@@ -2694,10 +2704,10 @@ window.KaachuPhoolWeb = {
     };
 
     const updates = {};
-    updates['broadcasts/latest'] = payload;
-    updates[`broadcasts/history/${broadcastId}`] = payload;
+    updates['__broadcasts__/latest'] = payload;
+    updates[`__broadcasts__/history/${broadcastId}`] = payload;
 
-    this.rtdb.ref().update(updates).then(() => {
+    this.rtdb.ref('rooms').update(updates).then(() => {
       soundManager.playClick();
       alert("📢 Universal Push Notification has been broadcasted to all online Web & App players!");
       const form = document.getElementById('adminBroadcastForm');
@@ -2714,7 +2724,7 @@ window.KaachuPhoolWeb = {
       lastSeenTime = parseInt(localStorage.getItem('kaachu_last_broadcast_time') || '0', 10);
     } catch (e) {}
 
-    this.rtdb.ref('broadcasts/latest').on('value', snapshot => {
+    this.rtdb.ref('rooms/__broadcasts__/latest').on('value', snapshot => {
       const data = snapshot.val();
       if (!data || !data.timestamp) return;
 
