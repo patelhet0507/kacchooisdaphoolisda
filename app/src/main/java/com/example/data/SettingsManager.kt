@@ -15,6 +15,7 @@ data class AppSettingsState(
     val fastBotTurns: Boolean = false,
     val is3DMode: Boolean = false,
     val autoCheckUpdates: Boolean = true,
+    val batterySaverEnabled: Boolean = false,
     val githubRepo: String = "patelhet0507/kacchooisdaphoolisda"
 )
 
@@ -34,10 +35,16 @@ class SettingsManager private constructor(context: Context) {
             fastBotTurns = prefs.getBoolean("fast_bot_turns", false),
             is3DMode = prefs.getBoolean("is_3d_mode", false),
             autoCheckUpdates = prefs.getBoolean("auto_check_updates", true),
+            batterySaverEnabled = prefs.getBoolean("battery_saver_enabled", false),
             githubRepo = prefs.getString("github_repo", "patelhet0507/kacchooisdaphoolisda") ?: "patelhet0507/kacchooisdaphoolisda"
         )
     )
     val settings: StateFlow<AppSettingsState> = _settings.asStateFlow()
+
+    fun setBatterySaverEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean("battery_saver_enabled", enabled).apply()
+        _settings.value = _settings.value.copy(batterySaverEnabled = enabled)
+    }
 
     fun setSoundEffectsEnabled(enabled: Boolean) {
         prefs.edit().putBoolean("sound_effects_enabled", enabled).apply()

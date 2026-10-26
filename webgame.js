@@ -172,6 +172,39 @@ class SoundManager {
       osc.stop(this.ctx.currentTime + 0.08);
     } catch (e) {}
   }
+
+  playBroadcastChime() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      [587.33, 783.99, 1046.5].forEach((freq, idx) => {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+        gain.gain.setValueAtTime(0.2, now + idx * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.35);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now + idx * 0.1);
+        osc.stop(now + idx * 0.1 + 0.35);
+      });
+    } catch (e) {}
+  }
+
+  suspend() {
+    if (this.ctx && this.ctx.state === 'running') {
+      try { this.ctx.suspend(); } catch (e) {}
+    }
+  }
+
+  resume() {
+    if (this.ctx && this.ctx.state === 'suspended') {
+      try { this.ctx.resume(); } catch (e) {}
+    }
+  }
 }
 
 const soundManager = new SoundManager();
@@ -286,6 +319,13 @@ window.KaachuPhoolWeb = {
   multiplayerGameRef: null,
   multiplayerRoomRef: null,
 
+  SUPERADMIN_EMAIL: 'patelhet.0507@gmail.com',
+
+  isSuperAdmin() {
+    if (!this.currentUser || !this.currentUser.email) return false;
+    return this.currentUser.email.trim().toLowerCase() === this.SUPERADMIN_EMAIL.toLowerCase();
+  },
+
   init() {
     this.loadPersistedAuth();
     this.setupFirebase();
@@ -298,6 +338,10 @@ window.KaachuPhoolWeb = {
       const stored = localStorage.getItem('kaachu_auth_user');
       if (stored) {
         this.currentUser = JSON.parse(stored);
+        if (this.isSuperAdmin()) {
+          this.currentUser.role = 'SUPERADMIN';
+        }
+        this.syncUserWithFirebase(this.currentUser);
       }
     } catch (e) {
       console.warn('Failed to load local auth session:', e);
@@ -305,11 +349,61 @@ window.KaachuPhoolWeb = {
   },
 
   saveAuthSession(user) {
+    if (user && user.email && user.email.trim().toLowerCase() === this.SUPERADMIN_EMAIL.toLowerCase()) {
+      user.role = 'SUPERADMIN';
+    }
     this.currentUser = user;
     try {
       localStorage.setItem('kaachu_auth_user', JSON.stringify(user));
     } catch (e) {}
     this.updateAuthUI();
+    this.syncUserWithFirebase(user);
+  },
+
+  syncUserWithFirebase(user) {
+    if (!user || !user.uid || !this.rtdb) return;
+    const isSuper = this.isSuperAdmin();
+    const userRef = this.rtdb.ref('users/' + user.uid);
+
+    userRef.once('value').then(snapshot => {
+      const existing = snapshot.val();
+      if (existing && existing.isBanned) {
+        // User was banned by Superadmin
+        alert("⛔ Access Denied: Your account has been suspended by the Superadmin.");
+        this.currentUser = null;
+        try { localStorage.removeItem('kaachu_auth_user'); } catch (e) {}
+        this.updateAuthUI();
+        return;
+      }
+
+      const role = isSuper ? 'SUPERADMIN' : ((existing && existing.role) || user.role || 'STANDARD');
+      user.role = role;
+
+      const payload = {
+        uid: user.uid,
+        displayName: user.displayName || 'Player',
+        email: user.email || '',
+        avatar: user.avatar || '🦁',
+        rating: user.rating || 1200,
+        wins: user.wins || 0,
+        matches: user.matches || 0,
+        role: role,
+        isBanned: false,
+        lastActive: Date.now()
+      };
+      userRef.update(payload);
+      this.updateAuthUI();
+    }).catch(err => {
+      console.warn("User sync notice:", err);
+    });
+  },
+
+  checkIsBanned() {
+    if (this.currentUser && this.currentUser.isBanned) {
+      alert("⛔ Account Suspended: Your access has been restricted by the Superadmin.");
+      return true;
+    }
+    return false;
   },
 
   updateAuthUI() {
@@ -322,22 +416,60 @@ window.KaachuPhoolWeb = {
     const hostInput = document.getElementById('webMultiHostNameInput');
     const joinInput = document.getElementById('webMultiJoinNameInput');
 
+    const superNavBtn = document.getElementById('superadminNavBtn');
+    const mobileSuperNavBtn = document.getElementById('mobileSuperadminNavBtn');
+
     if (this.currentUser) {
+      const isSuper = this.isSuperAdmin();
+
       // User is logged in
-      if (avatarBadge) avatarBadge.textContent = this.currentUser.avatar || '👑';
+      if (avatarBadge) avatarBadge.textContent = this.currentUser.avatar || (isSuper ? '👑' : '🦁');
       if (nameLabel) nameLabel.textContent = this.currentUser.displayName || 'Player';
+      
       if (statusPill) {
-        statusPill.textContent = 'VERIFIED PLAYER';
-        statusPill.className = 'text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40';
+        if (isSuper) {
+          statusPill.textContent = '👑 ROOT SUPERADMIN';
+          statusPill.className = 'text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-amber-500/30 text-amber-300 border border-amber-400/60 font-bold';
+        } else {
+          const roleLabel = (this.currentUser.role || 'VERIFIED PLAYER').replace('_', ' ');
+          statusPill.textContent = roleLabel;
+          statusPill.className = 'text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40';
+        }
       }
+
       if (detailLabel) {
-        detailLabel.textContent = `${this.currentUser.email || 'Online Account'} • 🏆 ELO: ${this.currentUser.rating || 1200} • ${this.currentUser.wins || 0} Wins`;
+        if (isSuper) {
+          detailLabel.textContent = `${this.currentUser.email} • 🛡️ Master Root Access • Unlimited Superadmin Controls`;
+        } else {
+          detailLabel.textContent = `${this.currentUser.email || 'Online Account'} • 🏆 ELO: ${this.currentUser.rating || 1200} • ${this.currentUser.wins || 0} Wins`;
+        }
       }
       if (openAuthBtnText) openAuthBtnText.textContent = 'Account Info';
       if (logoutBtn) logoutBtn.classList.remove('hidden');
 
       if (hostInput) hostInput.value = this.currentUser.displayName;
       if (joinInput) joinInput.value = this.currentUser.displayName;
+
+      // Superadmin Buttons in Navigation: STRICT ACCESS ONLY
+      if (isSuper) {
+        if (superNavBtn) {
+          superNavBtn.classList.remove('hidden');
+          superNavBtn.classList.add('inline-flex');
+        }
+        if (mobileSuperNavBtn) {
+          mobileSuperNavBtn.classList.remove('hidden');
+          mobileSuperNavBtn.classList.add('flex');
+        }
+      } else {
+        if (superNavBtn) {
+          superNavBtn.classList.add('hidden');
+          superNavBtn.classList.remove('inline-flex');
+        }
+        if (mobileSuperNavBtn) {
+          mobileSuperNavBtn.classList.add('hidden');
+          mobileSuperNavBtn.classList.remove('flex');
+        }
+      }
     } else {
       // User is NOT logged in (Login Compulsory for Multiplayer)
       if (avatarBadge) avatarBadge.textContent = '🔒';
@@ -351,6 +483,15 @@ window.KaachuPhoolWeb = {
       }
       if (openAuthBtnText) openAuthBtnText.textContent = 'Sign In / Register';
       if (logoutBtn) logoutBtn.classList.add('hidden');
+
+      if (superNavBtn) {
+        superNavBtn.classList.add('hidden');
+        superNavBtn.classList.remove('inline-flex');
+      }
+      if (mobileSuperNavBtn) {
+        mobileSuperNavBtn.classList.add('hidden');
+        mobileSuperNavBtn.classList.remove('flex');
+      }
     }
   },
 
@@ -363,6 +504,7 @@ window.KaachuPhoolWeb = {
       }
       if (window.firebase) {
         this.rtdb = window.firebase.database();
+        this.setupBroadcastListener();
       }
     } catch (e) {
       console.warn("Firebase RTDB init notice:", e);
@@ -553,18 +695,24 @@ window.KaachuPhoolWeb = {
       soundManager.playClick();
       const email = document.getElementById('webLoginEmailInput')?.value.trim();
       const name = email.split('@')[0] || 'Player';
+      const isSuper = (email.toLowerCase() === this.SUPERADMIN_EMAIL.toLowerCase());
       const user = {
-        uid: 'user_' + Math.random().toString(36).substr(2, 9),
-        displayName: name.charAt(0).toUpperCase() + name.slice(1),
+        uid: isSuper ? 'admin_patelhet0507' : ('user_' + Math.random().toString(36).substr(2, 9)),
+        displayName: isSuper ? 'Het Patel (Superadmin)' : (name.charAt(0).toUpperCase() + name.slice(1)),
         email: email,
-        avatar: '🦁',
-        rating: 1200,
-        wins: 3,
-        matches: 8
+        avatar: isSuper ? '👑' : '🦁',
+        role: isSuper ? 'SUPERADMIN' : 'STANDARD',
+        rating: isSuper ? 1500 : 1200,
+        wins: isSuper ? 10 : 3,
+        matches: isSuper ? 12 : 8
       };
       this.saveAuthSession(user);
       authModal?.classList.add('hidden');
-      alert(`Welcome back, ${user.displayName}! Multiplayer is now unlocked.`);
+      if (isSuper) {
+        alert("👑 Root Superadmin Authenticated! Welcome Het Patel. Control center and Universal Push broadcast are active.");
+      } else {
+        alert(`Welcome back, ${user.displayName}! Multiplayer is now unlocked.`);
+      }
     });
 
     // Register Form Submit
@@ -574,18 +722,24 @@ window.KaachuPhoolWeb = {
       const name = document.getElementById('webRegNameInput')?.value.trim();
       const avatar = document.getElementById('webRegAvatarSelect')?.value || '👑';
       const email = document.getElementById('webRegEmailInput')?.value.trim();
+      const isSuper = (email.toLowerCase() === this.SUPERADMIN_EMAIL.toLowerCase());
       const user = {
-        uid: 'user_' + Math.random().toString(36).substr(2, 9),
-        displayName: name,
+        uid: isSuper ? 'admin_patelhet0507' : ('user_' + Math.random().toString(36).substr(2, 9)),
+        displayName: isSuper ? 'Het Patel (Superadmin)' : name,
         email: email,
-        avatar: avatar,
-        rating: 1200,
+        avatar: isSuper ? '👑' : avatar,
+        role: isSuper ? 'SUPERADMIN' : 'STANDARD',
+        rating: isSuper ? 1500 : 1200,
         wins: 0,
         matches: 0
       };
       this.saveAuthSession(user);
       authModal?.classList.add('hidden');
-      alert(`Account created successfully! Welcome to Kaachu Phool Multiplayer, ${name}!`);
+      if (isSuper) {
+        alert("👑 Superadmin Account Activated! Welcome Het Patel.");
+      } else {
+        alert(`Account created successfully! Welcome to Kaachu Phool Multiplayer, ${name}!`);
+      }
     });
 
     // Quick 1-Click Fast Guest Profile
@@ -601,6 +755,7 @@ window.KaachuPhoolWeb = {
         displayName: chosenName,
         email: `${chosenName.toLowerCase()}@kaachuphool.game`,
         avatar: chosenAvatar,
+        role: 'STANDARD',
         rating: 1200,
         wins: 0,
         matches: 0
@@ -618,6 +773,62 @@ window.KaachuPhoolWeb = {
         this.currentUser = null;
         try { localStorage.removeItem('kaachu_auth_user'); } catch (e) {}
         this.updateAuthUI();
+      }
+    });
+
+    // Superadmin Portal Trigger Buttons
+    document.getElementById('superadminNavBtn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      soundManager.playClick();
+      this.openAdminModal();
+    });
+    document.getElementById('mobileSuperadminNavBtn')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      soundManager.playClick();
+      this.openAdminModal();
+    });
+    document.getElementById('webCloseAdminModalBtn')?.addEventListener('click', () => {
+      soundManager.playClick();
+      this.closeAdminModal();
+    });
+    document.getElementById('webCloseBroadcastBtn')?.addEventListener('click', () => {
+      document.getElementById('webUniversalBroadcastBanner')?.classList.add('hidden');
+    });
+
+    // Superadmin Tab Switching
+    document.getElementById('adminTabUsersBtn')?.addEventListener('click', () => this.switchAdminTab('USERS'));
+    document.getElementById('adminTabBroadcastBtn')?.addEventListener('click', () => this.switchAdminTab('BROADCAST'));
+    document.getElementById('adminTabBansBtn')?.addEventListener('click', () => this.switchAdminTab('BANS'));
+
+    // Universal Push Broadcast Form Submission
+    document.getElementById('adminBroadcastForm')?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = document.getElementById('adminBroadcastTitle')?.value || '';
+      const body = document.getElementById('adminBroadcastBody')?.value || '';
+      const type = document.getElementById('adminBroadcastType')?.value || 'EVENT';
+      const sound = document.getElementById('adminBroadcastSound')?.checked !== false;
+      this.sendUniversalPushNotification(title, body, type, sound);
+    });
+
+    // Admin User Search Input
+    document.getElementById('adminUserSearchInput')?.addEventListener('input', () => {
+      if (this.cachedAdminUsers) {
+        this.renderAdminUsersList(this.cachedAdminUsers);
+      }
+    });
+
+    // Admin Refresh Users
+    document.getElementById('adminRefreshUsersBtn')?.addEventListener('click', () => {
+      soundManager.playClick();
+      this.loadAdminData();
+    });
+
+    // Page Visibility API - Battery Optimization (Suspend Web Audio on Inactive Tab)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        soundManager.suspend();
+      } else {
+        soundManager.resume();
       }
     });
 
@@ -1174,6 +1385,7 @@ window.KaachuPhoolWeb = {
   },
 
   startSinglePlayerGame() {
+    if (this.checkIsBanned()) return;
     const nameInput = document.getElementById('webPlayerNameInput');
     const avatarSel = document.getElementById('webAvatarSelect');
     const modeSel = document.getElementById('webModeSelect');
@@ -1767,6 +1979,7 @@ window.KaachuPhoolWeb = {
   },
 
   async joinOrCreateNamedRoom(code) {
+    if (this.checkIsBanned()) return;
     if (!this.rtdb) {
       alert("Connecting to multiplayer server... Try again in 2 seconds.");
       this.setupFirebase();
@@ -2216,6 +2429,366 @@ window.KaachuPhoolWeb = {
       isTrickFinished: false,
       trickWinnerMessage: ''
     });
+  },
+
+  // ==========================================
+  // SUPERADMIN PORTAL & TELEMETRY CONTROLLER
+  // Strictly restricted to: patelhet.0507@gmail.com
+  // ==========================================
+
+  openAdminModal() {
+    if (!this.isSuperAdmin()) {
+      alert("⛔ Unauthorized: This control center is strictly restricted to Root Superadmin (patelhet.0507@gmail.com).");
+      return;
+    }
+    const modal = document.getElementById('webAdminModal');
+    if (modal) modal.classList.remove('hidden');
+    this.switchAdminTab('USERS');
+    this.loadAdminData();
+  },
+
+  closeAdminModal() {
+    const modal = document.getElementById('webAdminModal');
+    if (modal) modal.classList.add('hidden');
+  },
+
+  switchAdminTab(tabKey) {
+    const usersPanel = document.getElementById('adminUsersPanel');
+    const broadcastPanel = document.getElementById('adminBroadcastPanel');
+    const bansPanel = document.getElementById('adminBansPanel');
+
+    const btnUsers = document.getElementById('adminTabUsersBtn');
+    const btnBroadcast = document.getElementById('adminTabBroadcastBtn');
+    const btnBans = document.getElementById('adminTabBansBtn');
+
+    [usersPanel, broadcastPanel, bansPanel].forEach(p => p?.classList.add('hidden'));
+    [btnUsers, btnBroadcast, btnBans].forEach(b => {
+      if (b) {
+        b.className = 'px-4 py-2 rounded-xl text-white hover:text-goldPrimary transition-all cursor-pointer flex items-center gap-1.5 shrink-0';
+      }
+    });
+
+    if (tabKey === 'USERS') {
+      usersPanel?.classList.remove('hidden');
+      if (btnUsers) btnUsers.className = 'px-4 py-2 rounded-xl bg-goldPrimary text-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 font-bold';
+    } else if (tabKey === 'BROADCAST') {
+      broadcastPanel?.classList.remove('hidden');
+      if (btnBroadcast) btnBroadcast.className = 'px-4 py-2 rounded-xl bg-goldPrimary text-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0 font-bold';
+    } else if (tabKey === 'BANS') {
+      bansPanel?.classList.remove('hidden');
+      if (btnBans) btnBans.className = 'px-4 py-2 rounded-xl bg-rose-500 text-white transition-all cursor-pointer flex items-center gap-1.5 shrink-0 font-bold';
+    }
+  },
+
+  loadAdminData() {
+    if (!this.rtdb || !this.isSuperAdmin()) return;
+
+    // Real-Time Users Directory
+    this.rtdb.ref('users').on('value', snapshot => {
+      const data = snapshot.val() || {};
+      this.cachedAdminUsers = Object.values(data);
+      this.renderAdminUsersList(this.cachedAdminUsers);
+      this.updateAdminTelemetry(this.cachedAdminUsers);
+    });
+
+    // Real-Time Online Rooms Counter
+    this.rtdb.ref('rooms').once('value', snapshot => {
+      const rooms = snapshot.val() || {};
+      const roomCountEl = document.getElementById('adminStatRoomCount');
+      if (roomCountEl) roomCountEl.textContent = Object.keys(rooms).length;
+    });
+
+    // Real-Time Broadcast History
+    this.rtdb.ref('broadcasts/history').limitToLast(10).on('value', snapshot => {
+      const historyListEl = document.getElementById('adminBroadcastHistoryList');
+      if (!historyListEl) return;
+      const data = snapshot.val() || {};
+      const items = Object.values(data).reverse();
+      if (items.length === 0) {
+        historyListEl.innerHTML = '<div class="text-white/40 italic p-3 text-center">No broadcasts sent yet.</div>';
+        return;
+      }
+      historyListEl.innerHTML = items.map(bc => `
+        <div class="p-3 rounded-xl bg-black/60 border border-emeraldBorder/30 flex items-start justify-between gap-3">
+          <div class="space-y-0.5">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-goldPrimary text-xs">${this.escapeHtml(bc.title || 'Broadcast')}</span>
+              <span class="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-black/80 text-emerald-300 border border-emeraldBorder/40">${bc.type || 'INFO'}</span>
+              <span class="text-[10px] text-white/40 font-mono">${new Date(bc.timestamp).toLocaleTimeString()}</span>
+            </div>
+            <p class="text-xs text-white/80">${this.escapeHtml(bc.message || '')}</p>
+          </div>
+          <span class="text-[10px] text-emerald-400 font-mono shrink-0">✓ Live Broadcasted</span>
+        </div>
+      `).join('');
+    });
+  },
+
+  updateAdminTelemetry(usersList) {
+    const userCountEl = document.getElementById('adminStatUserCount');
+    const banCountEl = document.getElementById('adminStatBanCount');
+    if (userCountEl) userCountEl.textContent = usersList.length;
+    if (banCountEl) {
+      const bannedCount = usersList.filter(u => u.isBanned).length;
+      banCountEl.textContent = bannedCount;
+    }
+  },
+
+  renderAdminUsersList(usersList) {
+    const tbody = document.getElementById('adminUsersTableBody');
+    const bansListEl = document.getElementById('adminBansList');
+    if (!tbody) return;
+
+    const query = (document.getElementById('adminUserSearchInput')?.value || '').toLowerCase().trim();
+    const filtered = usersList.filter(u => {
+      if (!query) return true;
+      return (u.displayName && u.displayName.toLowerCase().includes(query)) ||
+             (u.email && u.email.toLowerCase().includes(query));
+    });
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-white/40 italic">No users found matching query.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(u => {
+      const isRoot = (u.email && u.email.toLowerCase() === this.SUPERADMIN_EMAIL.toLowerCase());
+      const isBanned = !!u.isBanned;
+      const role = isRoot ? 'SUPERADMIN' : (u.role || 'STANDARD');
+
+      return `
+        <tr class="hover:bg-white/5 transition-colors">
+          <td class="p-3">
+            <div class="flex items-center gap-2.5">
+              <span class="w-8 h-8 rounded-full bg-goldPrimary/20 border border-goldPrimary flex items-center justify-center text-sm">${u.avatar || '👤'}</span>
+              <div>
+                <div class="font-bold text-white flex items-center gap-1.5">
+                  ${this.escapeHtml(u.displayName || 'Player')}
+                  ${isRoot ? '<span class="text-[9px] bg-amber-500/30 text-amber-300 border border-amber-400/50 px-1.5 rounded font-mono font-bold">ROOT</span>' : ''}
+                </div>
+                <div class="text-[10px] font-mono text-emerald-300/60">Rating: ${u.rating || 1200} • ${u.wins || 0}W / ${u.matches || 0}M</div>
+              </div>
+            </div>
+          </td>
+          <td class="p-3 font-mono text-white/80">${this.escapeHtml(u.email || 'N/A')}</td>
+          <td class="p-3">
+            ${isRoot ? '<span class="font-mono text-xs font-bold text-goldPrimary">👑 ROOT SUPERADMIN</span>' : `
+              <select class="admin-role-change-select px-2.5 py-1 rounded-lg bg-black/80 border border-emeraldBorder/60 text-white font-mono text-xs focus:border-goldPrimary cursor-pointer" data-uid="${u.uid}">
+                <option value="SUPERADMIN" ${role === 'SUPERADMIN' ? 'selected' : ''}>👑 SUPERADMIN</option>
+                <option value="MODERATOR" ${role === 'MODERATOR' ? 'selected' : ''}>🛡️ MODERATOR</option>
+                <option value="VIP" ${role === 'VIP' ? 'selected' : ''}>⭐ VIP</option>
+                <option value="VERIFIED_PLAYER" ${role === 'VERIFIED_PLAYER' ? 'selected' : ''}>🏅 VERIFIED</option>
+                <option value="STANDARD" ${role === 'STANDARD' ? 'selected' : ''}>🎮 STANDARD</option>
+              </select>
+            `}
+          </td>
+          <td class="p-3 text-center">
+            ${isBanned 
+              ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-rose-950 text-rose-300 border border-rose-500/50 font-bold">⛔ BANNED</span>' 
+              : '<span class="px-2 py-0.5 rounded-full text-[10px] font-mono uppercase bg-emerald-950 text-emerald-300 border border-emerald-500/50">ACTIVE</span>'}
+          </td>
+          <td class="p-3 text-right">
+            ${isRoot ? '<span class="text-[11px] text-white/40 italic">Protected</span>' : `
+              <div class="flex items-center justify-end gap-1.5">
+                <button class="admin-toggle-ban-btn px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${isBanned ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-rose-950/80 hover:bg-rose-800 text-rose-300 border border-rose-500/40'}" data-uid="${u.uid}" data-banned="${isBanned}">
+                  ${isBanned ? '✅ Unban' : '🚫 Ban'}
+                </button>
+              </div>
+            `}
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Update Banned list tab
+    if (bansListEl) {
+      const bannedUsers = usersList.filter(u => u.isBanned);
+      if (bannedUsers.length === 0) {
+        bansListEl.innerHTML = '<div class="text-white/40 italic p-4 text-center">No accounts currently banned. Platform healthy!</div>';
+      } else {
+        bansListEl.innerHTML = bannedUsers.map(u => `
+          <div class="p-3.5 rounded-2xl bg-black/60 border border-rose-500/30 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">${u.avatar || '👤'}</span>
+              <div>
+                <div class="font-bold text-white text-xs">${this.escapeHtml(u.displayName || 'Player')} <span class="font-mono text-rose-300">(${this.escapeHtml(u.email || '')})</span></div>
+                <div class="text-[10px] font-mono text-rose-400/80">Account suspended by Superadmin</div>
+              </div>
+            </div>
+            <button class="admin-toggle-ban-btn px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold transition-all cursor-pointer" data-uid="${u.uid}" data-banned="true">
+              ✅ Unban Account
+            </button>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Attach row events
+    document.querySelectorAll('.admin-role-change-select').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const uid = sel.dataset.uid;
+        const newRole = sel.value;
+        this.updateUserRole(uid, newRole);
+      });
+    });
+
+    document.querySelectorAll('.admin-toggle-ban-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const uid = btn.dataset.uid;
+        const isBanned = btn.dataset.banned === 'true';
+        this.toggleBanUser(uid, isBanned);
+      });
+    });
+  },
+
+  updateUserRole(uid, newRole) {
+    if (!this.isSuperAdmin() || !this.rtdb) return;
+    this.rtdb.ref(`users/${uid}/role`).set(newRole).then(() => {
+      soundManager.playClick();
+      alert(`Updated player permission to: ${newRole}`);
+    }).catch(e => {
+      alert("Error updating user role: " + e.message);
+    });
+  },
+
+  toggleBanUser(uid, currentlyBanned) {
+    if (!this.isSuperAdmin() || !this.rtdb) return;
+    const action = currentlyBanned ? 'unban' : 'ban';
+    if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+    const updates = {};
+    updates[`users/${uid}/isBanned`] = !currentlyBanned;
+    if (!currentlyBanned) {
+      updates[`bannedUsers/${uid}`] = {
+        bannedAt: Date.now(),
+        bannedBy: this.SUPERADMIN_EMAIL
+      };
+    } else {
+      updates[`bannedUsers/${uid}`] = null;
+    }
+
+    this.rtdb.ref().update(updates).then(() => {
+      soundManager.playClick();
+      alert(`User has been ${currentlyBanned ? 'unbanned' : 'banned and restricted from rooms'}!`);
+    }).catch(e => {
+      alert("Error: " + e.message);
+    });
+  },
+
+  sendUniversalPushNotification(title, message, type, sound) {
+    if (!this.isSuperAdmin() || !this.rtdb) return;
+    if (!title.trim() || !message.trim()) {
+      alert("Please provide both Title and Message for the broadcast.");
+      return;
+    }
+
+    const broadcastId = 'bc_' + Date.now();
+    const payload = {
+      id: broadcastId,
+      title: title.trim(),
+      message: message.trim(),
+      type: type || 'EVENT',
+      sound: !!sound,
+      sender: `Superadmin (${this.SUPERADMIN_EMAIL})`,
+      timestamp: Date.now()
+    };
+
+    const updates = {};
+    updates['broadcasts/latest'] = payload;
+    updates[`broadcasts/history/${broadcastId}`] = payload;
+
+    this.rtdb.ref().update(updates).then(() => {
+      soundManager.playClick();
+      alert("📢 Universal Push Notification has been broadcasted to all online Web & App players!");
+      const form = document.getElementById('adminBroadcastForm');
+      if (form) form.reset();
+    }).catch(err => {
+      alert("Failed to send broadcast: " + err.message);
+    });
+  },
+
+  setupBroadcastListener() {
+    if (!this.rtdb) return;
+    let lastSeenTime = 0;
+    try {
+      lastSeenTime = parseInt(localStorage.getItem('kaachu_last_broadcast_time') || '0', 10);
+    } catch (e) {}
+
+    this.rtdb.ref('broadcasts/latest').on('value', snapshot => {
+      const data = snapshot.val();
+      if (!data || !data.timestamp) return;
+
+      // Only display if newer than last seen and within 24 hours
+      if (data.timestamp > lastSeenTime && (Date.now() - data.timestamp) < 24 * 60 * 60 * 1000) {
+        lastSeenTime = data.timestamp;
+        try { localStorage.setItem('kaachu_last_broadcast_time', String(lastSeenTime)); } catch (e) {}
+        this.displayUniversalBroadcast(data);
+      }
+    });
+  },
+
+  displayUniversalBroadcast(data) {
+    const banner = document.getElementById('webUniversalBroadcastBanner');
+    const titleEl = document.getElementById('webBroadcastTitle');
+    const msgEl = document.getElementById('webBroadcastMessage');
+    const badgeEl = document.getElementById('webBroadcastBadge');
+    const iconEl = document.getElementById('webBroadcastIcon');
+    const timeEl = document.getElementById('webBroadcastTime');
+    if (!banner || !titleEl || !msgEl) return;
+
+    titleEl.textContent = data.title || 'System Announcement';
+    msgEl.textContent = data.message || '';
+    if (timeEl) timeEl.textContent = 'Just now';
+
+    const typeIcons = {
+      URGENT: '🚨',
+      WARNING: '⚠️',
+      EVENT: '⭐',
+      INFO: '📢'
+    };
+    const typeBadges = {
+      URGENT: 'URGENT ALERT',
+      WARNING: 'SYSTEM NOTICE',
+      EVENT: 'SPECIAL EVENT',
+      INFO: 'ANNOUNCEMENT'
+    };
+
+    if (iconEl) iconEl.textContent = typeIcons[data.type] || '📢';
+    if (badgeEl) badgeEl.textContent = typeBadges[data.type] || 'BROADCAST';
+
+    banner.classList.remove('hidden');
+
+    if (data.sound) {
+      soundManager.playBroadcastChime();
+    }
+
+    // Native Web Push Notification if supported and granted
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification(data.title || 'Kaachu Phool Announcement', {
+          body: data.message,
+          icon: 'https://cdn-icons-png.flaticon.com/512/8243/8243306.png'
+        });
+      } catch (e) {}
+    } else if ('Notification' in window && Notification.permission === 'default') {
+      try { Notification.requestPermission(); } catch (e) {}
+    }
+
+    // Auto-dismiss after 15 seconds
+    clearTimeout(this._broadcastDismissTimeout);
+    this._broadcastDismissTimeout = setTimeout(() => {
+      banner.classList.add('hidden');
+    }, 15000);
+  },
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 };
 

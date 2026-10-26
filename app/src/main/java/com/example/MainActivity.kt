@@ -134,6 +134,30 @@ fun KaachuPhoolApp(
                 e.printStackTrace()
             }
         }
+
+        // Real-Time Universal Push Broadcast Listener from Superadmin
+        try {
+            val database = com.google.firebase.database.FirebaseDatabase.getInstance("https://gen-lang-client-0782479965-default-rtdb.asia-southeast1.firebasedatabase.app")
+            val broadcastRef = database.getReference("broadcasts/latest")
+            var lastSeenTimestamp = System.currentTimeMillis() - 60_000L
+            broadcastRef.addValueEventListener(object : com.google.firebase.database.ValueEventListener {
+                override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
+                    val timestamp = snapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+                    if (timestamp > lastSeenTimestamp && (System.currentTimeMillis() - timestamp) < 15 * 60 * 1000) {
+                        lastSeenTimestamp = timestamp
+                        val title = snapshot.child("title").getValue(String::class.java) ?: "Announcement"
+                        val message = snapshot.child("message").getValue(String::class.java) ?: ""
+                        scope.launch(Dispatchers.Main) {
+                            snackbarHostState.showSnackbar(
+                                message = "📢 $title: $message",
+                                duration = SnackbarDuration.Long
+                            )
+                        }
+                    }
+                }
+                override fun onCancelled(error: com.google.firebase.database.DatabaseError) {}
+            })
+        } catch (_: Exception) {}
     }
 
     Scaffold(

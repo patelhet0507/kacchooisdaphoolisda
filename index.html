@@ -79,6 +79,25 @@
       z-index: 0;
       opacity: 0.65;
     }
+    /* Battery Saver / Eco Mode Performance Overrides */
+    body.battery-saver * {
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      text-shadow: none !important;
+    }
+    body.battery-saver #webgl-canvas,
+    body.battery-saver .hero-glow {
+      display: none !important;
+    }
+    body.battery-saver .glass-card,
+    body.battery-saver .glass-nav {
+      background: #041f10 !important;
+      border-color: rgba(212, 168, 67, 0.35) !important;
+    }
+    body.battery-saver .active-player-pod::before {
+      animation: none !important;
+      filter: none !important;
+    }
     .hero-glow {
       position: absolute;
       width: 600px;
@@ -193,18 +212,26 @@
     </div>
 
     <!-- Desktop Nav Links -->
-    <div class="hidden md:flex items-center gap-7 text-sm font-medium text-emerald-100/80">
+    <div class="hidden md:flex items-center gap-6 text-sm font-medium text-emerald-100/80">
       <a href="#webgame" id="navPlayBtn" data-play-trigger="true" class="text-goldPrimary font-bold hover:text-goldLight transition-colors flex items-center gap-1"><span>🎮</span> Play Web Game</a>
       <a href="#features" class="hover:text-goldPrimary transition-colors">Features</a>
       <a href="#rules" class="hover:text-goldPrimary transition-colors">Rules</a>
       <a href="#download" class="hover:text-goldPrimary transition-colors">Download</a>
+      <!-- Superadmin Nav Button (Visible ONLY to patelhet.0507@gmail.com) -->
+      <button id="superadminNavBtn" class="hidden bg-gradient-to-r from-amber-500/20 via-amber-600/30 to-amber-500/20 border border-goldPrimary text-goldLight font-bold px-3.5 py-1 rounded-full text-xs hover:bg-goldPrimary/40 transition-all cursor-pointer items-center gap-1.5 shadow-lg shadow-amber-950/40">
+        <span>👑</span> Superadmin
+      </button>
     </div>
 
-    <div class="flex items-center gap-3">
-      <a href="#webgame" id="navPlayWebBtn" data-play-trigger="true" class="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border border-goldPrimary/50 text-white font-display font-bold px-4 py-2.5 rounded-full text-xs sm:text-sm shadow-lg transition-all transform hover:scale-105 flex items-center gap-1.5">
+    <div class="flex items-center gap-2.5">
+      <!-- Battery Saver / Eco Mode Toggle -->
+      <button id="webBatterySaverBtn" title="Toggle Battery Saver (Eco Mode)" class="bg-black/60 border border-emeraldBorder/60 hover:border-goldPrimary text-emerald-300 px-3 py-1.5 rounded-full text-xs font-mono transition-all cursor-pointer flex items-center gap-1.5">
+        <span id="webBatteryIcon">🔋</span> <span id="webBatterySaverLabel" class="hidden sm:inline">Eco: OFF</span>
+      </button>
+      <a href="#webgame" id="navPlayWebBtn" data-play-trigger="true" class="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 border border-goldPrimary/50 text-white font-display font-bold px-4 py-2 rounded-full text-xs sm:text-sm shadow-lg transition-all transform hover:scale-105 flex items-center gap-1.5">
         <span>🎮</span> Play Web
       </a>
-      <a href="#download" class="hidden sm:inline-flex bg-goldPrimary text-black font-display font-bold px-5 py-2.5 rounded-full text-xs sm:text-sm shadow-lg hover:bg-goldLight transition-all transform hover:scale-105">
+      <a href="#download" class="hidden sm:inline-flex bg-goldPrimary text-black font-display font-bold px-4 py-2 rounded-full text-xs sm:text-sm shadow-lg hover:bg-goldLight transition-all transform hover:scale-105">
         Get APK
       </a>
       <!-- Mobile Hamburger Button -->
@@ -215,11 +242,18 @@
   </nav>
 
   <!-- Mobile Drawer Menu -->
-  <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center space-y-8 text-xl font-display font-bold opacity-0 pointer-events-none transition-all duration-300 md:hidden">
+  <div id="mobileMenu" class="fixed inset-0 z-40 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center space-y-6 text-xl font-display font-bold opacity-0 pointer-events-none transition-all duration-300 md:hidden">
+    <!-- Superadmin Mobile Nav Link -->
+    <button id="mobileSuperadminNavBtn" class="hidden text-goldLight font-display font-bold text-base bg-amber-500/25 border border-goldPrimary px-6 py-2.5 rounded-2xl items-center gap-2 shadow-xl">
+      <span>👑</span> Superadmin Portal
+    </button>
     <a href="#webgame" id="mobileNavPlayBtn" data-play-trigger="true" class="mobile-link text-goldPrimary hover:text-goldLight transition-colors flex items-center gap-2"><span>🎮</span> Play Web Game</a>
     <a href="#features" class="mobile-link hover:text-goldPrimary transition-colors">Features</a>
     <a href="#rules" class="mobile-link hover:text-goldPrimary transition-colors">Rules</a>
     <a href="#download" class="mobile-link hover:text-goldPrimary transition-colors">Download APK</a>
+    <button id="mobileBatterySaverBtn" class="text-xs font-mono text-emerald-200 bg-black/70 border border-emeraldBorder/80 px-4 py-2 rounded-xl flex items-center gap-2">
+      <span>🔋</span> <span id="mobileBatterySaverLabel">Battery Saver: OFF</span>
+    </button>
     <button id="closeMenuBtn" class="absolute top-6 right-6 p-3 rounded-full bg-emeraldCard text-goldPrimary border border-goldPrimary/30">
       <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
@@ -574,6 +608,10 @@
 
           <!-- Right: Control Action Buttons -->
           <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <!-- Table Battery Saver / Eco Mode Toggle -->
+            <button id="webTableBatterySaverBtn" title="Toggle Battery Saver (Eco Mode)" class="px-2 sm:px-2.5 py-1.5 rounded-xl bg-black/60 border border-emeraldBorder/60 hover:border-goldPrimary text-emerald-300 text-xs font-mono transition-all cursor-pointer flex items-center gap-1">
+              <span id="webTableBatteryIcon">🔋</span> <span id="webTableBatteryLabel" class="hidden md:inline">Eco</span>
+            </button>
             <!-- Game Pace / Speed Toggle Button -->
             <button id="webSpeedToggleBtn" title="Toggle Game Pace (Fast / Turbo)" class="px-2 sm:px-2.5 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-300 text-xs font-mono font-bold hover:bg-amber-500/30 transition-all cursor-pointer flex items-center gap-1">
               <span id="webSpeedIcon">⚡</span> <span id="webSpeedLabel" class="hidden sm:inline">Fast</span>
@@ -940,6 +978,181 @@
       <button onclick="window.KaachuPhoolWeb.showSetupScreen()" class="w-full py-4 rounded-2xl bg-goldPrimary text-black font-display font-bold text-base shadow-xl hover:bg-goldLight transition-all cursor-pointer">
         🔄 PLAY AGAIN
       </button>
+    </div>
+  </div>
+
+  <!-- Universal Custom Push Notification Floating Banner (Visible to all clients on broadcast) -->
+  <div id="webUniversalBroadcastBanner" class="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] w-[94%] max-w-lg p-4 rounded-2xl bg-gradient-to-r from-[#031d10] via-black to-[#052816] border-2 border-goldPrimary shadow-2xl transition-all duration-300 hidden select-text">
+    <div class="flex items-start justify-between gap-3">
+      <div class="flex items-start gap-3">
+        <div id="webBroadcastIcon" class="w-10 h-10 rounded-xl bg-goldPrimary/20 border border-goldPrimary flex items-center justify-center text-xl shrink-0 shadow-md">
+          📢
+        </div>
+        <div class="space-y-1">
+          <div class="flex items-center gap-2">
+            <span id="webBroadcastBadge" class="text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-goldPrimary/20 text-goldPrimary border border-goldPrimary/40">SYSTEM BROADCAST</span>
+            <span id="webBroadcastTime" class="text-[10px] font-mono text-emerald-300/60">Just now</span>
+          </div>
+          <h4 id="webBroadcastTitle" class="font-display font-bold text-sm text-white">Announcement</h4>
+          <p id="webBroadcastMessage" class="text-xs text-emerald-100/90 leading-relaxed font-sans"></p>
+        </div>
+      </div>
+      <button id="webCloseBroadcastBtn" class="p-1.5 rounded-lg bg-black/70 text-goldPrimary border border-goldPrimary/30 hover:bg-goldPrimary/20 cursor-pointer shrink-0">✕</button>
+    </div>
+  </div>
+
+  <!-- SUPERADMIN PORTAL (Strictly accessible by patelhet.0507@gmail.com only) -->
+  <div id="webAdminModal" class="fixed inset-0 z-[1002] bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-5 hidden select-text">
+    <div class="glass-card w-full max-w-4xl max-h-[92vh] rounded-3xl border-2 border-goldPrimary shadow-2xl flex flex-col overflow-hidden animate-scaleUp">
+      <!-- Admin Header -->
+      <div class="p-4 sm:p-5 border-b border-goldPrimary/30 flex items-center justify-between bg-black/60 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-2xl shadow-lg border border-goldPrimary">👑</div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-display font-extrabold text-lg sm:text-xl text-white">Superadmin Control Center</h3>
+              <span class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/50">SECURE ROOT</span>
+            </div>
+            <div class="text-xs font-mono text-emerald-200/80">
+              Authenticated Superadmin: <span class="text-goldPrimary font-bold">patelhet.0507@gmail.com</span>
+            </div>
+          </div>
+        </div>
+        <button id="webCloseAdminModalBtn" class="p-2 rounded-xl bg-emeraldCard text-goldPrimary border border-goldPrimary/30 hover:bg-goldPrimary/20 cursor-pointer">✕</button>
+      </div>
+
+      <!-- Admin Top Stats Telemetry Bar -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-black/40 border-b border-emeraldBorder/30 text-xs font-mono shrink-0">
+        <div class="p-2.5 rounded-xl bg-black/50 border border-emeraldBorder/40">
+          <div class="text-[10px] text-emerald-300/60 uppercase">Registered Users</div>
+          <div id="adminStatUserCount" class="text-base font-bold text-white">--</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-black/50 border border-emeraldBorder/40">
+          <div class="text-[10px] text-emerald-300/60 uppercase">Active Bans</div>
+          <div id="adminStatBanCount" class="text-base font-bold text-rose-400">0</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-black/50 border border-emeraldBorder/40">
+          <div class="text-[10px] text-emerald-300/60 uppercase">Active Online Rooms</div>
+          <div id="adminStatRoomCount" class="text-base font-bold text-goldPrimary">--</div>
+        </div>
+        <div class="p-2.5 rounded-xl bg-black/50 border border-emeraldBorder/40">
+          <div class="text-[10px] text-emerald-300/60 uppercase">Database Status</div>
+          <div id="adminStatDbStatus" class="text-xs font-bold text-emerald-400 flex items-center gap-1.5 mt-0.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Connected
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Tabs Bar -->
+      <div class="flex items-center gap-2 p-3 border-b border-goldPrimary/20 bg-black/30 shrink-0 overflow-x-auto font-mono text-xs font-bold">
+        <button id="adminTabUsersBtn" class="px-4 py-2 rounded-xl bg-goldPrimary text-black transition-all cursor-pointer flex items-center gap-1.5 shrink-0">
+          <span>👥</span> User Management & Permissions
+        </button>
+        <button id="adminTabBroadcastBtn" class="px-4 py-2 rounded-xl text-white hover:text-goldPrimary transition-all cursor-pointer flex items-center gap-1.5 shrink-0">
+          <span>📢</span> Universal Push Broadcast
+        </button>
+        <button id="adminTabBansBtn" class="px-4 py-2 rounded-xl text-white hover:text-goldPrimary transition-all cursor-pointer flex items-center gap-1.5 shrink-0">
+          <span>⛔</span> Banned Accounts List
+        </button>
+      </div>
+
+      <!-- Admin Content Area -->
+      <div class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+        
+        <!-- TAB 1: USER MANAGEMENT -->
+        <div id="adminUsersPanel" class="space-y-4">
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="relative w-full sm:w-80">
+              <input type="text" id="adminUserSearchInput" placeholder="Search user by name or email..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none focus:border-goldPrimary" />
+              <span class="absolute left-3 top-2.5 text-xs text-goldPrimary">🔍</span>
+            </div>
+            <button id="adminRefreshUsersBtn" class="px-3.5 py-2 rounded-xl bg-black/60 border border-goldPrimary/40 text-goldPrimary text-xs font-mono font-bold hover:bg-goldPrimary/20 transition-all cursor-pointer flex items-center gap-1.5 self-end sm:self-auto">
+              <span>🔄</span> Refresh Users
+            </button>
+          </div>
+
+          <div class="overflow-x-auto rounded-2xl border border-emeraldBorder/40 bg-black/40">
+            <table class="w-full text-left text-xs min-w-[620px]">
+              <thead class="bg-black/60 border-b border-emeraldBorder/40 font-mono text-goldPrimary text-[11px] uppercase">
+                <tr>
+                  <th class="p-3">Player</th>
+                  <th class="p-3">Email</th>
+                  <th class="p-3">Permission / Role</th>
+                  <th class="p-3 text-center">Status</th>
+                  <th class="p-3 text-right">Admin Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adminUsersTableBody" class="divide-y divide-emeraldBorder/20">
+                <!-- Dynamically populated user rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 2: UNIVERSAL PUSH BROADCAST -->
+        <div id="adminBroadcastPanel" class="space-y-4 hidden">
+          <div class="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/70 to-black border border-goldPrimary/30 space-y-1">
+            <h4 class="font-display font-bold text-sm text-goldPrimary flex items-center gap-2">
+              <span>📢</span> Universal Real-Time Broadcast Transmitter
+            </h4>
+            <p class="text-xs text-emerald-100/70">
+              Push real-time notifications to <b>all connected players</b> across website browsers and the Android mobile app simultaneously.
+            </p>
+          </div>
+
+          <form id="adminBroadcastForm" class="space-y-4 max-w-2xl bg-black/40 p-5 rounded-2xl border border-emeraldBorder/40">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-mono text-goldPrimary mb-1">Notification Title</label>
+                <input type="text" id="adminBroadcastTitle" placeholder="e.g. ⚡ Special Weekend Room Open!" required maxlength="60" class="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none focus:border-goldPrimary" />
+              </div>
+              <div>
+                <label class="block text-xs font-mono text-goldPrimary mb-1">Category & Urgency</label>
+                <select id="adminBroadcastType" class="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none focus:border-goldPrimary">
+                  <option value="INFO">ℹ️ General Info (Emerald)</option>
+                  <option value="EVENT" selected>⭐ Special Event / Tournament (Gold)</option>
+                  <option value="WARNING">⚠️ System Notice (Amber)</option>
+                  <option value="URGENT">🚨 Urgent Announcement (Rose)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-mono text-goldPrimary mb-1">Push Message Body</label>
+              <textarea id="adminBroadcastBody" rows="3" placeholder="Enter universal notification message to appear on all player screens..." required maxlength="240" class="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-emeraldBorder/60 text-white text-xs focus:outline-none focus:border-goldPrimary"></textarea>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <label class="flex items-center gap-2 text-xs font-mono text-emerald-200 cursor-pointer">
+                <input type="checkbox" id="adminBroadcastSound" checked class="accent-goldPrimary rounded" />
+                <span>Play Chime Alert on Client Receipt</span>
+              </label>
+              <button type="submit" id="adminSendBroadcastBtn" class="px-6 py-3 rounded-xl bg-gradient-to-r from-goldPrimary via-amber-500 to-amber-600 text-black font-display font-bold text-xs shadow-xl hover:opacity-95 transition-all transform hover:scale-105 cursor-pointer flex items-center gap-2">
+                <span>🚀</span> Broadcast Universal Notification
+              </button>
+            </div>
+          </form>
+
+          <!-- Recent Broadcasts List -->
+          <div class="space-y-2">
+            <h5 class="text-xs font-mono font-bold text-goldPrimary uppercase">Broadcast History</h5>
+            <div id="adminBroadcastHistoryList" class="space-y-2 text-xs">
+              <!-- Populated via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: BANNED ACCOUNTS -->
+        <div id="adminBansPanel" class="space-y-4 hidden">
+          <p class="text-xs text-emerald-100/70">
+            Accounts in this list are blocked from hosting, joining rooms, or playing matches. Unbanning immediately restores their access.
+          </p>
+          <div id="adminBansList" class="space-y-2">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 
@@ -1480,32 +1693,59 @@
       });
     });
 
-    // Lightweight Canvas Particle Constellation
+    // Battery-Optimized Canvas Particle Constellation with Eco Mode & Page Visibility API
     const canvas = document.getElementById('webgl-canvas');
-    const ctx = canvas.getContext('2d');
-    let width = canvas.width = window.innerWidth;
-    let height = canvas.height = window.innerHeight;
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    let width = canvas ? (canvas.width = window.innerWidth) : 0;
+    let height = canvas ? (canvas.height = window.innerHeight) : 0;
 
     window.addEventListener('resize', () => {
+      if (!canvas) return;
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
-    });
+    }, { passive: true });
 
-    const particleCount = window.innerWidth < 768 ? 25 : 45;
+    // Lower particle count saves battery significantly (12 mobile, 22 desktop)
+    const particleCount = window.innerWidth < 768 ? 12 : 22;
     const particles = Array.from({ length: particleCount }, () => ({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      vx: (Math.random() - 0.5) * 0.35,
-      vy: (Math.random() - 0.5) * 0.35,
-      radius: Math.random() * 2 + 1
+      x: Math.random() * (width || 800),
+      y: Math.random() * (height || 600),
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      radius: Math.random() * 1.8 + 1
     }));
 
-    function animateParticles() {
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = 'rgba(212, 168, 67, 0.25)';
-      ctx.strokeStyle = 'rgba(212, 168, 67, 0.08)';
+    let particleAnimId = null;
+    let lastParticleFrame = 0;
+    const TARGET_PARTICLE_INTERVAL = 1000 / 30; // Throttle to 30 FPS to reduce CPU/GPU draw calls
 
-      particles.forEach((p, index) => {
+    function isEcoModeActive() {
+      return document.body.classList.contains('battery-saver');
+    }
+
+    function isTableCurrentlyOpen() {
+      const table = document.getElementById('webGameTableSection');
+      return table && !table.classList.contains('hidden');
+    }
+
+    function animateParticles(currentTime) {
+      if (document.hidden || isEcoModeActive() || isTableCurrentlyOpen() || !ctx) {
+        particleAnimId = null;
+        return; // Halt loop completely to conserve battery
+      }
+
+      particleAnimId = requestAnimationFrame(animateParticles);
+
+      // 30 FPS throttle
+      if (currentTime - lastParticleFrame < TARGET_PARTICLE_INTERVAL) return;
+      lastParticleFrame = currentTime;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = 'rgba(212, 168, 67, 0.22)';
+      ctx.strokeStyle = 'rgba(212, 168, 67, 0.07)';
+
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
 
@@ -1518,20 +1758,105 @@
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        for (let j = index + 1; j < particles.length; j++) {
+        for (let j = i + 1; j < particles.length; j++) {
           const p2 = particles[j];
-          const dist = Math.hypot(p.x - p2.x, p.y - p2.y);
-          if (dist < 120) {
+          const dx = p.x - p2.x;
+          if (Math.abs(dx) > 85) continue; // Quick Manhattan skip
+          const dy = p.y - p2.y;
+          if (Math.abs(dy) > 85) continue;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < 7225) { // 85^2
             ctx.beginPath();
             ctx.moveTo(p.x, p.y);
             ctx.lineTo(p2.x, p2.y);
             ctx.stroke();
           }
         }
-      });
-      requestAnimationFrame(animateParticles);
+      }
     }
-    animateParticles();
+
+    function resumeParticlesIfNeeded() {
+      if (!particleAnimId && !document.hidden && !isEcoModeActive() && !isTableCurrentlyOpen()) {
+        lastParticleFrame = performance.now();
+        particleAnimId = requestAnimationFrame(animateParticles);
+      }
+    }
+
+    function stopParticles() {
+      if (particleAnimId) {
+        cancelAnimationFrame(particleAnimId);
+        particleAnimId = null;
+      }
+      if (ctx) ctx.clearRect(0, 0, width, height);
+    }
+
+    // Page Visibility API to save battery when tab is backgrounded
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        stopParticles();
+      } else {
+        resumeParticlesIfNeeded();
+      }
+    });
+
+    // Global Eco Mode Controller
+    window.toggleEcoMode = function(force) {
+      const willBeEco = (typeof force === 'boolean') ? force : !document.body.classList.contains('battery-saver');
+      if (willBeEco) {
+        document.body.classList.add('battery-saver');
+        stopParticles();
+      } else {
+        document.body.classList.remove('battery-saver');
+        resumeParticlesIfNeeded();
+      }
+
+      try {
+        localStorage.setItem('kaachu_eco_mode', willBeEco ? 'true' : 'false');
+      } catch (e) {}
+
+      // Update UI buttons across Navbar, Mobile Drawer & Table Header
+      const label1 = document.getElementById('webBatterySaverLabel');
+      const icon1 = document.getElementById('webBatteryIcon');
+      const label2 = document.getElementById('mobileBatterySaverLabel');
+      const label3 = document.getElementById('webTableBatteryLabel');
+      const icon3 = document.getElementById('webTableBatteryIcon');
+
+      if (label1) label1.textContent = willBeEco ? 'Eco: ON' : 'Eco: OFF';
+      if (icon1) icon1.textContent = willBeEco ? '⚡' : '🔋';
+      if (label2) label2.textContent = willBeEco ? 'Battery Saver: ON' : 'Battery Saver: OFF';
+      if (label3) label3.textContent = willBeEco ? 'Eco: ON' : 'Eco';
+      if (icon3) icon3.textContent = willBeEco ? '⚡' : '🔋';
+      
+      const btn1 = document.getElementById('webBatterySaverBtn');
+      if (btn1) {
+        if (willBeEco) {
+          btn1.classList.add('border-goldPrimary', 'bg-goldPrimary/20', 'text-goldLight');
+        } else {
+          btn1.classList.remove('border-goldPrimary', 'bg-goldPrimary/20', 'text-goldLight');
+        }
+      }
+      return willBeEco;
+    };
+
+    // Attach Eco Mode buttons
+    ['webBatterySaverBtn', 'mobileBatterySaverBtn', 'webTableBatterySaverBtn'].forEach(id => {
+      document.getElementById(id)?.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.toggleEcoMode();
+      });
+    });
+
+    // Load persisted Eco Mode preference
+    try {
+      const savedEco = localStorage.getItem('kaachu_eco_mode');
+      if (savedEco === 'true') {
+        window.toggleEcoMode(true);
+      } else {
+        resumeParticlesIfNeeded();
+      }
+    } catch (e) {
+      resumeParticlesIfNeeded();
+    }
 
     // GSAP ScrollTrigger Animations
     gsap.registerPlugin(ScrollTrigger);
